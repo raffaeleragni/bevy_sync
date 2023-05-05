@@ -7,16 +7,19 @@ use bevy_renet::renet::{
     ServerConfig,
 };
 use bevy_renet::{RenetClientPlugin, RenetServerPlugin};
+use serial_test::serial;
 
 use super::proto::PROTOCOL_ID;
 use super::*;
 
 #[test]
+#[serial]
 fn test_connection_setup() {
     setup().unwrap();
 }
 
 #[test]
+#[serial]
 fn test_entity_copied() {
     let (mut server, mut client) = setup().unwrap();
 
