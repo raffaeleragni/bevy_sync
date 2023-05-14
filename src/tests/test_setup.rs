@@ -20,6 +20,7 @@ const PROTOCOL_ID: u64 = 1;
 pub struct TestEnv {
     pub port: u16,
     pub ip: IpAddr,
+    pub updates_per_run: u32,
 }
 
 impl Default for TestEnv {
@@ -27,6 +28,7 @@ impl Default for TestEnv {
         Self {
             port: 4444,
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            updates_per_run: 1,
         }
     }
 }
@@ -39,8 +41,10 @@ impl TestEnv {
     {
         let (mut server, mut client) = setup_env(self).unwrap();
         setup(&mut server, &mut client);
-        server.update();
-        client.update();
+        for _ in [..self.updates_per_run] {
+            server.update();
+            client.update();
+        }
         assertion(&mut server, &mut client);
     }
 }
