@@ -1,60 +1,52 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 
-use crate::proto::Message;
+use crate::{proto::Message, SyncEntitySpawnedFromClient};
 
-use super::SyncUp;
+use super::SyncDown;
 
-pub struct SendPlugin;
+pub struct ServerSendPlugin;
+pub struct ClientSendPlugin;
 
-impl Plugin for SendPlugin {
+impl Plugin for ServerSendPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(on_changed_sync_up);
+        app.add_system(entity_created_on_server);
     }
 }
 
-fn on_changed_sync_up(
+impl Plugin for ClientSendPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system(entity_created_on_client);
+    }
+}
+
+fn entity_created_on_server(
     opt_server: Option<ResMut<RenetServer>>,
-    opt_client: Option<ResMut<RenetClient>>,
-    mut query: Query<(Entity, &mut SyncUp), Changed<SyncUp>>,
+    mut query: Query<Entity, Added<SyncDown>>,
 ) {
-    if let Some(server) = opt_server {
-        send_updated_components_from_server(server, &mut query);
-    }
-    if let Some(client) = opt_client {
-        send_updated_components_from_client(client, &mut query);
-    }
-}
-
-fn send_updated_components_from_server(
-    mut server: ResMut<RenetServer>,
-    query: &mut Query<(Entity, &mut SyncUp), Changed<SyncUp>>,
-) {
-    for client_id in server.clients_id().into_iter() {
-        for (id, sync) in query.iter_mut() {
-            let msg = build_update_message(sync, id);
-            server.send_message(client_id, DefaultChannel::Reliable, msg);
+    if let Some(mut server) = opt_server {
+        for id in query.iter_mut() {
+            for client_id in server.clients_id().into_iter() {
+                server.send_message(
+                    client_id,
+                    DefaultChannel::Reliable,
+                    bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
+                );
+            }
         }
     }
 }
 
-fn build_update_message(mut sync: Mut<SyncUp>, id: Entity) -> Vec<u8> {
-    sync.changed = false;
-    let msg = bincode::serialize(&Message::ComponentUpdated {
-        id: id,
-        type_id: 1u64,
-        data: vec![],
-    })
-    .unwrap();
-    msg
-}
-
-fn send_updated_components_from_client(
-    mut client: ResMut<RenetClient>,
-    query: &mut Query<(Entity, &mut SyncUp), Changed<SyncUp>>,
+fn entity_created_on_client(
+    opt_client: Option<ResMut<RenetClient>>,
+    mut query: Query<Entity, Added<SyncEntitySpawnedFromClient>>,
 ) {
-    for (id, sync) in query.iter_mut() {
-        let msg = build_update_message(sync, id);
-        client.send_message(DefaultChannel::Reliable, msg);
+    if let Some(mut client) = opt_client {
+        for id in query.iter_mut() {
+            client.send_message(
+                DefaultChannel::Reliable,
+                bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
+            );
+        }
     }
 }

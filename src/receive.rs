@@ -1,73 +1,104 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 
-use crate::{proto::Message, SyncDown};
+use crate::{proto::Message, SyncDown, SyncEntitySpawnedFromClient, SyncUp};
 
-pub struct ReceivePlugin;
+pub struct ServerReceivePlugin;
+pub struct ClientReceivePlugin;
 
-impl Plugin for ReceivePlugin {
+impl Plugin for ServerReceivePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(query_received);
+        app.add_system(check_server);
     }
 }
 
-fn query_received(
-    mut commands: Commands,
-    opt_client: Option<ResMut<RenetClient>>,
-    opt_server: Option<ResMut<RenetServer>>,
-) {
-    if let Some(client) = opt_client {
-        receive_as_client(client, &mut commands);
-    }
-    if let Some(server) = opt_server {
-        receive_as_server(server, &mut commands);
+impl Plugin for ClientReceivePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system(check_client);
     }
 }
 
-fn receive_as_client(mut client: ResMut<RenetClient>, commands: &mut Commands) {
-    while let Some(message) = client.receive_message(DefaultChannel::Reliable) {
-        let deser_message = bincode::deserialize(&message).unwrap();
-        receive_message(MessageProcessorType::Client, deser_message, commands);
+fn check_server(mut commands: Commands, opt_server: Option<ResMut<RenetServer>>) {
+    if let Some(mut server) = opt_server {
+        receive_as_server(&mut server, &mut commands);
     }
 }
 
-fn receive_as_server(mut server: ResMut<RenetServer>, commands: &mut Commands) {
+fn check_client(mut commands: Commands, opt_client: Option<ResMut<RenetClient>>) {
+    if let Some(mut client) = opt_client {
+        receive_as_client(&mut client, &mut commands);
+    }
+}
+
+fn receive_as_server(server: &mut ResMut<RenetServer>, commands: &mut Commands) {
     for client_id in server.clients_id().into_iter() {
         while let Some(message) = server.receive_message(client_id, DefaultChannel::Reliable) {
             let deser_message = bincode::deserialize(&message).unwrap();
-            receive_message(
-                MessageProcessorType::Server { client_id },
-                deser_message,
-                commands,
-            );
+            server_received_a_message(client_id, deser_message, commands, server);
         }
     }
 }
 
-enum MessageProcessorType {
-    Server { client_id: u64 },
-    Client,
+fn receive_as_client(client: &mut ResMut<RenetClient>, commands: &mut Commands) {
+    while let Some(message) = client.receive_message(DefaultChannel::Reliable) {
+        let deser_message = bincode::deserialize(&message).unwrap();
+        client_received_a_message(deser_message, commands);
+    }
 }
 
-fn receive_message(
-    connection_type: MessageProcessorType,
-    server_message: Message,
-    commands: &mut Commands,
+fn server_received_a_message(
+    client_id: u64,
+    msg: Message,
+    cmd: &mut Commands,
+    server: &mut ResMut<RenetServer>,
 ) {
-    match server_message {
-        Message::ComponentUpdated {
-            id,
-            type_id: _,
-            data: _,
-        } => {
-            commands.spawn(SyncDown { server_entity: id });
+    match msg {
+        Message::SequenceConfirm { id: _ } => todo!(),
+        Message::SequenceRepeat { id: _ } => todo!(),
+        Message::EntitySpawn { id } => {
+            let server_entity_id = cmd.spawn(SyncDown { changed: false }).id();
+            let msg_one = bincode::serialize(&Message::EntitySpawnBack {
+                id: server_entity_id,
+                back_id: id,
+            })
+            .unwrap();
+            server.send_message(client_id, DefaultChannel::Reliable, msg_one);
+            for cid in server.clients_id().into_iter() {
+                if client_id != cid {
+                    server.send_message(
+                        cid,
+                        DefaultChannel::Reliable,
+                        bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
+                    );
+                }
+            }
         }
-        Message::ClientConnected { client_id: _ } => todo!(),
-        Message::ClientDisconnected { client_id: _ } => todo!(),
-        Message::ComponentRegistered {
-            component_id: _,
-            component_type_name: _,
-        } => todo!(),
-        Message::ComponentDestroyed { id: _, type_id: _ } => todo!(),
+        Message::EntityDelete { id: _ } => todo!(),
+        // This has no meaning on server side
+        Message::EntitySpawnBack { id: _, back_id: _ } => {}
+    }
+}
+
+fn client_received_a_message(msg: Message, cmd: &mut Commands) {
+    match msg {
+        Message::EntitySpawn { id } => {
+            cmd.spawn(SyncUp {
+                changed: false,
+                server_entity_id: id,
+            });
+        }
+        Message::EntitySpawnBack { id, back_id } => {
+            if let Some(mut e) = cmd.get_entity(back_id) {
+                e.insert(SyncUp {
+                    changed: true,
+                    server_entity_id: id,
+                });
+                e.remove::<SyncEntitySpawnedFromClient>();
+            }
+        }
+        Message::EntityDelete { id: _ } => todo!(),
+        // No meaning on client side for these
+        Message::SequenceConfirm { id: _ } => {}
+        Message::SequenceRepeat { id: _ } => {}
     }
 }

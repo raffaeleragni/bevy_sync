@@ -1,28 +1,42 @@
-mod test_setup;
+mod setup;
 use super::*;
 use serial_test::serial;
-use test_setup::TestEnv;
+use setup::TestEnv;
 
 #[test]
 #[serial]
 fn test_connection_setup() {
-    TestEnv::default().run(|_, _| {}, |_, _| {});
+    TestEnv::default().run(|_, _| {}, |_, _, _| {});
 }
 
 #[test]
 #[serial]
-fn test_entity_copied() {
-    let setup = |s: &mut App, c: &mut App| {
-        assert_eq!(s.world.entities().is_empty(), true);
-        assert_eq!(c.world.entities().is_empty(), true);
+fn test_entity_spawned_from_server() {
+    TestEnv::default().run(
+        |s: &mut App, _: &mut App| s.world.spawn(SyncDown::default()).id(),
+        |_: &mut App, c: &mut App, id: Entity| {
+            let mut empty = true;
+            for e in c.world.query::<&SyncUp>().iter(&c.world) {
+                assert_eq!(e.server_entity_id, id);
+                empty = false;
+            }
+            assert_eq!(empty, false);
+        },
+    );
+}
 
-        s.world.spawn(SyncUp::default());
-    };
-
-    let assertion = |s: &mut App, c: &mut App| {
-        assert_eq!(s.world.entities().is_empty(), false);
-        assert_eq!(c.world.entities().is_empty(), false);
-    };
-
-    TestEnv::default().run(setup, assertion);
+#[test]
+#[serial]
+fn test_entity_spawned_from_client() {
+    TestEnv::default().run(
+        |_: &mut App, c: &mut App| c.world.spawn(SyncEntitySpawnedFromClient {}).id(),
+        |s: &mut App, c: &mut App, _: Entity| {
+            let mut empty = true;
+            for e in c.world.query::<&SyncUp>().iter(&c.world) {
+                s.world.entities().get(e.server_entity_id).unwrap();
+                empty = false;
+            }
+            assert_eq!(empty, false);
+        },
+    );
 }
