@@ -1,16 +1,13 @@
 mod setup;
 use super::*;
-use serial_test::serial;
 use setup::TestEnv;
 
 #[test]
-#[serial]
 fn test_connection_setup() {
     TestEnv::default().run(|_, _| {}, |_, _, _| {});
 }
 
 #[test]
-#[serial]
 fn test_entity_spawned_from_server() {
     TestEnv::default().run(
         |s: &mut App, _: &mut App| s.world.spawn(SyncDown::default()).id(),
@@ -26,7 +23,6 @@ fn test_entity_spawned_from_server() {
 }
 
 #[test]
-#[serial]
 fn test_entity_spawned_from_client() {
     TestEnv::default().run(
         |_: &mut App, c: &mut App| c.world.spawn(SyncEntitySpawnedFromClient {}).id(),
@@ -36,7 +32,7 @@ fn test_entity_spawned_from_client() {
                 s.world.entities().get(e.server_entity_id).unwrap();
                 empty = false;
             }
-            assert!(empty);
+            assert!(!empty);
         },
     );
 }
