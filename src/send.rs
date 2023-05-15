@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 
-use crate::{proto::Message, SyncClientGeneratedEntity, SyncEntitySpawnedFromClient};
+use crate::{proto::Message, SyncClientGeneratedEntity, SyncMark};
 
 use super::SyncDown;
 
@@ -15,8 +15,9 @@ impl Plugin for ServerSendPlugin {
 }
 
 fn entity_created_on_server(
+    mut commands: Commands,
     opt_server: Option<ResMut<RenetServer>>,
-    mut query: Query<Entity, Added<SyncDown>>,
+    mut query: Query<Entity, Added<SyncMark>>,
 ) {
     if let Some(mut server) = opt_server {
         for id in query.iter_mut() {
@@ -27,6 +28,10 @@ fn entity_created_on_server(
                     bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
                 );
             }
+            let mut entity = commands.entity(id);
+            entity
+                .remove::<SyncMark>()
+                .insert(SyncDown { changed: false });
         }
     }
 }
@@ -56,9 +61,10 @@ fn reply_back_to_client_generated_entity(
                     );
                 }
             }
-            commands
-                .entity(entity_id)
-                .remove::<SyncClientGeneratedEntity>();
+            let mut entity = commands.entity(entity_id);
+            entity
+                .remove::<SyncClientGeneratedEntity>()
+                .insert(SyncDown { changed: false });
         }
     }
 }
@@ -73,7 +79,7 @@ impl Plugin for ClientSendPlugin {
 
 fn entity_created_on_client(
     opt_client: Option<ResMut<RenetClient>>,
-    mut query: Query<Entity, Added<SyncEntitySpawnedFromClient>>,
+    mut query: Query<Entity, Added<SyncMark>>,
 ) {
     if let Some(mut client) = opt_client {
         for id in query.iter_mut() {

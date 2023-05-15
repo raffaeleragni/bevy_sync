@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 
-use crate::{proto::Message, SyncClientGeneratedEntity, SyncEntitySpawnedFromClient, SyncUp};
+use crate::{proto::Message, SyncClientGeneratedEntity, SyncMark, SyncUp};
 
 pub struct ServerReceivePlugin;
 pub struct ClientReceivePlugin;
@@ -78,11 +78,10 @@ fn client_received_a_message(msg: Message, cmd: &mut Commands) {
             client_entity_id: back_id,
         } => {
             if let Some(mut e) = cmd.get_entity(back_id) {
-                e.insert(SyncUp {
+                e.remove::<SyncMark>().insert(SyncUp {
                     changed: true,
                     server_entity_id: id,
                 });
-                e.remove::<SyncEntitySpawnedFromClient>();
             }
         }
         Message::EntityDelete { id: _ } => todo!(),

@@ -42,7 +42,7 @@ pub struct SyncUp {
 }
 
 #[derive(Component)]
-pub struct SyncEntitySpawnedFromClient;
+pub struct SyncMark;
 #[derive(Component)]
 pub struct SyncClientGeneratedEntity {
     client_id: u64,

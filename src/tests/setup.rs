@@ -4,7 +4,7 @@ use std::{
     net::{IpAddr, Ipv4Addr},
 };
 
-use bevy::{prelude::App, MinimalPlugins};
+use bevy::{prelude::App, transform::TransformBundle, MinimalPlugins};
 use bevy_renet::renet::RenetClient;
 
 use crate::{ClientPlugin, ServerPlugin};
@@ -64,6 +64,8 @@ fn setup_env(env: &TestEnv) -> Result<(App, App), Box<dyn Error>> {
     let mut capp = App::new();
     capp.add_plugins(MinimalPlugins);
 
+    // Start an entity only on server so the IDs intentionally offset between server and client
+    sapp.world.spawn(TransformBundle::default());
     sapp.add_plugin(ServerPlugin {
         ip: env.ip,
         port: env.port,
