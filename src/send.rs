@@ -1,22 +1,16 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 
-use crate::{proto::Message, SyncEntitySpawnedFromClient};
+use crate::{proto::Message, SyncClientGeneratedEntity, SyncEntitySpawnedFromClient};
 
 use super::SyncDown;
 
 pub struct ServerSendPlugin;
-pub struct ClientSendPlugin;
 
 impl Plugin for ServerSendPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(entity_created_on_server);
-    }
-}
-
-impl Plugin for ClientSendPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_system(entity_created_on_client);
+        app.add_system(reply_back_to_client_generated_entity);
     }
 }
 
@@ -34,6 +28,46 @@ fn entity_created_on_server(
                 );
             }
         }
+    }
+}
+
+fn reply_back_to_client_generated_entity(
+    mut commands: Commands,
+    opt_server: Option<ResMut<RenetServer>>,
+    mut query: Query<(Entity, &SyncClientGeneratedEntity), Added<SyncClientGeneratedEntity>>,
+) {
+    if let Some(mut server) = opt_server {
+        for (entity_id, marker_component) in query.iter_mut() {
+            server.send_message(
+                marker_component.client_id,
+                DefaultChannel::Reliable,
+                bincode::serialize(&Message::EntitySpawnBack {
+                    server_entity_id: entity_id,
+                    client_entity_id: marker_component.client_entity_id,
+                })
+                .unwrap(),
+            );
+            for cid in server.clients_id().into_iter() {
+                if marker_component.client_id != cid {
+                    server.send_message(
+                        cid,
+                        DefaultChannel::Reliable,
+                        bincode::serialize(&Message::EntitySpawn { id: entity_id }).unwrap(),
+                    );
+                }
+            }
+            commands
+                .entity(entity_id)
+                .remove::<SyncClientGeneratedEntity>();
+        }
+    }
+}
+
+pub struct ClientSendPlugin;
+
+impl Plugin for ClientSendPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system(entity_created_on_client);
     }
 }
 

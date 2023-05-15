@@ -43,6 +43,11 @@ pub struct SyncUp {
 
 #[derive(Component)]
 pub struct SyncEntitySpawnedFromClient;
+#[derive(Component)]
+pub struct SyncClientGeneratedEntity {
+    client_id: u64,
+    client_entity_id: Entity,
+}
 
 pub struct ServerPlugin {
     pub port: u16,

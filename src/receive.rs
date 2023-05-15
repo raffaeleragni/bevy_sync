@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 
-use crate::{proto::Message, SyncDown, SyncEntitySpawnedFromClient, SyncUp};
+use crate::{proto::Message, SyncClientGeneratedEntity, SyncEntitySpawnedFromClient, SyncUp};
 
 pub struct ServerReceivePlugin;
 pub struct ClientReceivePlugin;
@@ -34,7 +34,7 @@ fn receive_as_server(server: &mut ResMut<RenetServer>, commands: &mut Commands) 
     for client_id in server.clients_id().into_iter() {
         while let Some(message) = server.receive_message(client_id, DefaultChannel::Reliable) {
             let deser_message = bincode::deserialize(&message).unwrap();
-            server_received_a_message(client_id, deser_message, commands, server);
+            server_received_a_message(client_id, deser_message, commands);
         }
     }
 }
@@ -46,36 +46,22 @@ fn receive_as_client(client: &mut ResMut<RenetClient>, commands: &mut Commands) 
     }
 }
 
-fn server_received_a_message(
-    client_id: u64,
-    msg: Message,
-    cmd: &mut Commands,
-    server: &mut ResMut<RenetServer>,
-) {
+fn server_received_a_message(client_id: u64, msg: Message, cmd: &mut Commands) {
     match msg {
         Message::SequenceConfirm { id: _ } => todo!(),
         Message::SequenceRepeat { id: _ } => todo!(),
         Message::EntitySpawn { id } => {
-            let server_entity_id = cmd.spawn(SyncDown { changed: false }).id();
-            let msg_one = bincode::serialize(&Message::EntitySpawnBack {
-                id: server_entity_id,
-                back_id: id,
-            })
-            .unwrap();
-            server.send_message(client_id, DefaultChannel::Reliable, msg_one);
-            for cid in server.clients_id().into_iter() {
-                if client_id != cid {
-                    server.send_message(
-                        cid,
-                        DefaultChannel::Reliable,
-                        bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
-                    );
-                }
-            }
+            cmd.spawn(SyncClientGeneratedEntity {
+                client_id,
+                client_entity_id: id,
+            });
         }
         Message::EntityDelete { id: _ } => todo!(),
         // This has no meaning on server side
-        Message::EntitySpawnBack { id: _, back_id: _ } => {}
+        Message::EntitySpawnBack {
+            server_entity_id: _,
+            client_entity_id: _,
+        } => {}
     }
 }
 
@@ -87,7 +73,10 @@ fn client_received_a_message(msg: Message, cmd: &mut Commands) {
                 server_entity_id: id,
             });
         }
-        Message::EntitySpawnBack { id, back_id } => {
+        Message::EntitySpawnBack {
+            server_entity_id: id,
+            client_entity_id: back_id,
+        } => {
             if let Some(mut e) = cmd.get_entity(back_id) {
                 e.insert(SyncUp {
                     changed: true,
