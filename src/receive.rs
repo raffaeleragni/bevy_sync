@@ -37,7 +37,11 @@ fn server_received_a_message(client_id: u64, msg: Message, cmd: &mut Commands) {
                 client_entity_id: id,
             });
         }
-        Message::EntityDelete { id: _ } => todo!(),
+        Message::EntityDelete { id } => {
+            if let Some(mut e) = cmd.get_entity(id) {
+                e.despawn();
+            }
+        }
         // This has no meaning on server side
         Message::EntitySpawnBack {
             server_entity_id: _,
@@ -93,7 +97,7 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
             }
         }
         Message::EntityDelete { id } => {
-            let Some(&e_id) = track.entities.get(&id) else {return};
+            let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             cmd.entity(e_id).despawn();
         }
         // No meaning on client side for these

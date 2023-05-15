@@ -14,7 +14,7 @@ use super::SyncDown;
 // For servers, the map contains same key & value.
 #[derive(Resource, Default)]
 pub struct SyncTrackerRes {
-    pub entities: HashMap<Entity, Entity>,
+    pub server_to_client_entities: HashMap<Entity, Entity>,
 }
 
 pub struct ServerSendPlugin;
@@ -31,7 +31,7 @@ impl Plugin for ServerSendPlugin {
 
 fn track_spawn_server(mut track: ResMut<SyncTrackerRes>, query: Query<Entity, Added<SyncDown>>) {
     for e_id in query.iter() {
-        track.entities.insert(e_id, e_id);
+        track.server_to_client_entities.insert(e_id, e_id);
     }
 }
 
@@ -94,7 +94,7 @@ fn entity_removed_from_server(
     query: Query<Entity>,
 ) {
     let mut despawned_entities = HashSet::new();
-    track.entities.retain(|&e_id, _| {
+    track.server_to_client_entities.retain(|&e_id, _| {
         if query.get(e_id).is_err() {
             despawned_entities.insert(e_id);
             false
@@ -121,6 +121,7 @@ impl Plugin for ClientSendPlugin {
         app.init_resource::<SyncTrackerRes>();
         app.add_system(track_spawn_client);
         app.add_system(entity_created_on_client);
+        app.add_system(entity_removed_from_client);
     }
 }
 
@@ -129,7 +130,9 @@ fn track_spawn_client(
     query: Query<(Entity, &SyncUp), Added<SyncUp>>,
 ) {
     for (e_id, sync_up) in query.iter() {
-        track.entities.insert(sync_up.server_entity_id, e_id);
+        track
+            .server_to_client_entities
+            .insert(sync_up.server_entity_id, e_id);
     }
 }
 
@@ -142,6 +145,31 @@ fn entity_created_on_client(
         client.send_message(
             DefaultChannel::Reliable,
             bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
+        );
+    }
+}
+
+fn entity_removed_from_client(
+    opt_client: Option<ResMut<RenetClient>>,
+    mut track: ResMut<SyncTrackerRes>,
+    query: Query<Entity>,
+) {
+    let mut despawned_entities = HashSet::new();
+    track
+        .server_to_client_entities
+        .retain(|&s_e_id, &mut e_id| {
+            if query.get(e_id).is_err() {
+                despawned_entities.insert(s_e_id);
+                false
+            } else {
+                true
+            }
+        });
+    let Some(mut client) = opt_client else { return };
+    for &id in despawned_entities.iter() {
+        client.send_message(
+            DefaultChannel::Reliable,
+            bincode::serialize(&Message::EntityDelete { id }).unwrap(),
         );
     }
 }

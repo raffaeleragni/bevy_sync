@@ -80,3 +80,27 @@ fn test_entity_deleted_from_server() {
         all_client_entities_are_in_sync,
     );
 }
+
+#[test]
+fn test_entity_deleted_from_client() {
+    TestEnv::default().run(
+        |s: &mut App, c: &mut App| {
+            let e_id = c.world.spawn(SyncMark {}).id();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            let e = c.world.entity_mut(e_id);
+            let server_e_id = e.get::<SyncUp>().unwrap().server_entity_id;
+            e.despawn();
+            server_e_id
+        },
+        |s: &mut App, _: &mut App, id: Entity| {
+            assert!(s.world.get_entity(id).is_none());
+        },
+    );
+}
