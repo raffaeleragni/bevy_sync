@@ -3,8 +3,8 @@ use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 
 use crate::{proto::Message, send::SyncTrackerRes, SyncClientGeneratedEntity, SyncMark, SyncUp};
 
-pub struct ServerReceivePlugin;
-pub struct ClientReceivePlugin;
+pub(crate) struct ServerReceivePlugin;
+pub(crate) struct ClientReceivePlugin;
 
 impl Plugin for ServerReceivePlugin {
     fn build(&self, app: &mut App) {

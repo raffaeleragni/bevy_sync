@@ -13,11 +13,12 @@ use super::SyncDown;
 // Value: client entity id.
 // For servers, the map contains same key & value.
 #[derive(Resource, Default)]
-pub struct SyncTrackerRes {
-    pub server_to_client_entities: HashMap<Entity, Entity>,
+pub(crate) struct SyncTrackerRes {
+    pub(crate) server_to_client_entities: HashMap<Entity, Entity>,
 }
 
-pub struct ServerSendPlugin;
+pub(crate) struct ServerSendPlugin;
+pub(crate) struct ClientSendPlugin;
 
 impl Plugin for ServerSendPlugin {
     fn build(&self, app: &mut App) {
@@ -113,8 +114,6 @@ fn entity_removed_from_server(
         }
     }
 }
-
-pub struct ClientSendPlugin;
 
 impl Plugin for ClientSendPlugin {
     fn build(&self, app: &mut App) {

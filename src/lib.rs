@@ -2,10 +2,6 @@ mod proto;
 mod receive;
 mod send;
 
-pub mod prelude {
-    pub use super::{ClientPlugin, ServerPlugin, SyncMark};
-}
-
 use std::{
     error::Error,
     net::{IpAddr, SocketAddr, UdpSocket},
@@ -24,9 +20,32 @@ use proto::PROTOCOL_ID;
 use receive::{ClientReceivePlugin, ServerReceivePlugin};
 use send::{ClientSendPlugin, ServerSendPlugin};
 
+pub mod prelude {
+    pub use super::{ClientPlugin, ServerPlugin, SyncDown, SyncMark, SyncUp};
+}
+
+#[derive(Component)]
+pub struct SyncMark;
+
+pub struct ServerPlugin {
+    pub port: u16,
+    pub ip: IpAddr,
+}
+
+pub struct ClientPlugin {
+    pub ip: IpAddr,
+    pub port: u16,
+}
+
 #[derive(Component)]
 pub struct SyncDown {
     pub changed: bool,
+}
+
+#[derive(Component)]
+pub struct SyncUp {
+    pub changed: bool,
+    pub(crate) server_entity_id: Entity,
 }
 
 impl Default for SyncDown {
@@ -36,22 +55,9 @@ impl Default for SyncDown {
 }
 
 #[derive(Component)]
-pub struct SyncUp {
-    pub changed: bool,
-    pub server_entity_id: Entity,
-}
-
-#[derive(Component)]
-pub struct SyncMark;
-#[derive(Component)]
-pub struct SyncClientGeneratedEntity {
+pub(crate) struct SyncClientGeneratedEntity {
     client_id: u64,
     client_entity_id: Entity,
-}
-
-pub struct ServerPlugin {
-    pub port: u16,
-    pub ip: IpAddr,
 }
 
 impl Plugin for ServerPlugin {
@@ -61,11 +67,6 @@ impl Plugin for ServerPlugin {
         app.add_plugin(ServerSendPlugin);
         app.add_plugin(ServerReceivePlugin);
     }
-}
-
-pub struct ClientPlugin {
-    pub ip: IpAddr,
-    pub port: u16,
 }
 
 impl Plugin for ClientPlugin {
