@@ -20,7 +20,7 @@ fn test_entity_spawned_from_server() {
                 assert_eq!(e.server_entity_id, id);
                 empty = false;
             }
-            assert_eq!(empty, false);
+            assert!(!empty);
         },
     );
 }
@@ -36,7 +36,7 @@ fn test_entity_spawned_from_client() {
                 s.world.entities().get(e.server_entity_id).unwrap();
                 empty = false;
             }
-            assert_eq!(empty, false);
+            assert!(empty);
         },
     );
 }

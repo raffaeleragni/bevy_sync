@@ -32,7 +32,7 @@ pub struct TestEnv {
 impl Default for TestEnv {
     fn default() -> Self {
         Self {
-            port: 4444,
+            port: 54321,
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             startup_max_wait_updates: 1000,
             updates_per_run: 10,
@@ -44,7 +44,7 @@ impl TestEnv {
     pub fn run<F1, F2, T>(&self, mut setup: F1, mut assertion: F2)
     where
         F1: FnMut(&mut App, &mut App) -> T,
-        F2: FnMut(&mut App, &mut App, T) -> (),
+        F2: FnMut(&mut App, &mut App, T),
     {
         let (mut server, mut client) = setup_env(self).unwrap();
         let x = setup(&mut server, &mut client);
@@ -97,5 +97,5 @@ fn wait_until_connected(
         count += 1;
     }
 
-    return Err(TestError("Client did not connect.".into()).into());
+    Err(TestError("Client did not connect.".into()).into())
 }
