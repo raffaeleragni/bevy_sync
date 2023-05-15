@@ -32,10 +32,10 @@ pub struct TestEnv {
 impl Default for TestEnv {
     fn default() -> Self {
         Self {
-            port: 54321,
+            port: portpicker::pick_unused_port().expect("No ports free"),
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             startup_max_wait_updates: 1000,
-            updates_per_run: 10,
+            updates_per_run: 100,
         }
     }
 }

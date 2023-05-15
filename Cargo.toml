@@ -13,3 +13,4 @@ serde = { version = "1.0.160", features = ["derive"] }
 
 [dev-dependencies]
 serial_test = "2.0.0"
+portpicker = "0.1.1"
