@@ -23,6 +23,6 @@ jobs:
           cargo fmt --check
           cargo clippy --no-deps --tests -- -D warnings
           cargo rustdoc -- -D warnings
-      #- name: "Test"
-      #  run: |
-      #    cargo test --verbose
+      - name: "Test"
+        run: |
+          cargo test --verbose
