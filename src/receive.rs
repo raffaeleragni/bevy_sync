@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 
-use crate::{proto::Message, SyncClientGeneratedEntity, SyncMark, SyncUp};
+use crate::{proto::Message, send::SyncTrackerRes, SyncClientGeneratedEntity, SyncMark, SyncUp};
 
 pub struct ServerReceivePlugin;
 pub struct ClientReceivePlugin;
@@ -12,21 +12,9 @@ impl Plugin for ServerReceivePlugin {
     }
 }
 
-impl Plugin for ClientReceivePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_system(check_client);
-    }
-}
-
 fn check_server(mut commands: Commands, opt_server: Option<ResMut<RenetServer>>) {
     if let Some(mut server) = opt_server {
         receive_as_server(&mut server, &mut commands);
-    }
-}
-
-fn check_client(mut commands: Commands, opt_client: Option<ResMut<RenetClient>>) {
-    if let Some(mut client) = opt_client {
-        receive_as_client(&mut client, &mut commands);
     }
 }
 
@@ -36,13 +24,6 @@ fn receive_as_server(server: &mut ResMut<RenetServer>, commands: &mut Commands) 
             let deser_message = bincode::deserialize(&message).unwrap();
             server_received_a_message(client_id, deser_message, commands);
         }
-    }
-}
-
-fn receive_as_client(client: &mut ResMut<RenetClient>, commands: &mut Commands) {
-    while let Some(message) = client.receive_message(DefaultChannel::Reliable) {
-        let deser_message = bincode::deserialize(&message).unwrap();
-        client_received_a_message(deser_message, commands);
     }
 }
 
@@ -65,7 +46,34 @@ fn server_received_a_message(client_id: u64, msg: Message, cmd: &mut Commands) {
     }
 }
 
-fn client_received_a_message(msg: Message, cmd: &mut Commands) {
+impl Plugin for ClientReceivePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system(check_client);
+    }
+}
+
+fn check_client(
+    mut commands: Commands,
+    mut track: ResMut<SyncTrackerRes>,
+    opt_client: Option<ResMut<RenetClient>>,
+) {
+    if let Some(mut client) = opt_client {
+        receive_as_client(&mut client, &mut track, &mut commands);
+    }
+}
+
+fn receive_as_client(
+    client: &mut ResMut<RenetClient>,
+    track: &mut ResMut<SyncTrackerRes>,
+    commands: &mut Commands,
+) {
+    while let Some(message) = client.receive_message(DefaultChannel::Reliable) {
+        let deser_message = bincode::deserialize(&message).unwrap();
+        client_received_a_message(deser_message, track, commands);
+    }
+}
+
+fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, cmd: &mut Commands) {
     match msg {
         Message::EntitySpawn { id } => {
             cmd.spawn(SyncUp {
@@ -84,7 +92,10 @@ fn client_received_a_message(msg: Message, cmd: &mut Commands) {
                 });
             }
         }
-        Message::EntityDelete { id: _ } => todo!(),
+        Message::EntityDelete { id } => {
+            let Some(&e_id) = track.entities.get(&id) else {return};
+            cmd.entity(e_id).despawn();
+        }
         // No meaning on client side for these
         Message::SequenceConfirm { id: _ } => {}
         Message::SequenceRepeat { id: _ } => {}

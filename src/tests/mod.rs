@@ -64,3 +64,19 @@ fn test_more_entities_spawned_from_client() {
         all_client_entities_are_in_sync,
     );
 }
+
+#[test]
+fn test_entity_deleted_from_server() {
+    TestEnv::default().run(
+        |s: &mut App, c: &mut App| {
+            let e_id = s.world.spawn(SyncMark {}).id();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            s.world.entity_mut(e_id).despawn();
+            0
+        },
+        all_client_entities_are_in_sync,
+    );
+}
