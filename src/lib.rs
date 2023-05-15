@@ -3,7 +3,7 @@ mod receive;
 mod send;
 
 pub mod prelude {
-    pub use super::{ClientPlugin, ServerPlugin, SyncDown};
+    pub use super::{ClientPlugin, ServerPlugin, SyncMark};
 }
 
 use std::{
