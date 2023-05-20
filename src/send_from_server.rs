@@ -1,7 +1,7 @@
-use bevy::{prelude::*, utils::HashSet};
-use bevy_renet::renet::{DefaultChannel, RenetServer};
+use bevy::{ecs::component::ComponentId, prelude::*, utils::HashSet};
+use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 
-use crate::{data::SyncTrackerRes, proto::Message, SyncClientGeneratedEntity, SyncMark};
+use crate::{data::SyncTrackerRes, proto::Message, SyncClientGeneratedEntity, SyncMark, SyncUp};
 
 use super::SyncDown;
 
@@ -13,6 +13,7 @@ impl Plugin for ServerSendPlugin {
         app.add_system(entity_created_on_server);
         app.add_system(reply_back_to_client_generated_entity);
         app.add_system(entity_removed_from_server);
+        //TODO: component sync first case: app.add_system(track_components_server);
     }
 }
 
@@ -98,3 +99,20 @@ fn entity_removed_from_server(
         }
     }
 }
+
+fn track_components_server(track: ResMut<SyncTrackerRes>, world: &World) {
+    let Some(marker) = world.component_id::<SyncDown>() else {return;};
+    for archetype in world.archetypes().iter().filter(|a| a.contains(marker)) {
+        for c_id in archetype
+            .components()
+            .filter(|c_id| track.sync_components.contains(c_id))
+        {
+            for archetype_entity in archetype.entities() {
+                let e_id = world.entity(archetype_entity.entity()).id();
+                check_if_component_changed_on_server(e_id, c_id);
+            }
+        }
+    }
+}
+
+fn check_if_component_changed_on_server(e_id: Entity, c_id: ComponentId) {}

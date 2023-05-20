@@ -1,4 +1,5 @@
 mod setup;
+use crate::data::SyncComponent;
 
 use super::*;
 use setup::TestEnv;
@@ -149,6 +150,31 @@ fn test_non_marked_component_is_not_transferred_from_client() {
                 found = true;
             }
             assert!(!found);
+        },
+    );
+}
+
+//TODO: component sync first case:
+//#[test]
+fn test_marked_component_is_transferred_from_server() {
+    TestEnv::default().run(
+        |s: &mut App, _: &mut App| {
+            s.sync_component::<MySynched>();
+            s.world.spawn((SyncMark {}, MySynched {}));
+            1
+        },
+        |s: &mut App, c: &mut App, entity_count: u32| {
+            let mut count_check = 0;
+            for e in c
+                .world
+                .query_filtered::<&SyncUp, With<MySynched>>()
+                .iter(&c.world)
+            {
+                assert!(s.world.entities().contains(e.server_entity_id));
+                s.world.entity(e.server_entity_id).get::<SyncDown>();
+                count_check += 1;
+            }
+            assert_eq!(count_check, entity_count);
         },
     );
 }
