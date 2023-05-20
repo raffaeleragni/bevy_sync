@@ -1,6 +1,9 @@
+mod data;
 mod proto;
-mod receive;
-mod send;
+mod receive_client;
+mod receive_server;
+mod send_from_client;
+mod send_from_server;
 
 use std::{
     error::Error,
@@ -16,9 +19,12 @@ use bevy_renet::{
     },
     RenetClientPlugin, RenetServerPlugin,
 };
+use data::SyncDataPlugin;
 use proto::PROTOCOL_ID;
-use receive::{ClientReceivePlugin, ServerReceivePlugin};
-use send::{ClientSendPlugin, ServerSendPlugin};
+use receive_client::ClientReceivePlugin;
+use receive_server::ServerReceivePlugin;
+use send_from_client::ClientSendPlugin;
+use send_from_server::ServerSendPlugin;
 
 pub mod prelude {
     pub use super::{ClientPlugin, ServerPlugin, SyncDown, SyncMark, SyncUp};
@@ -38,20 +44,11 @@ pub struct ClientPlugin {
 }
 
 #[derive(Component)]
-pub struct SyncDown {
-    pub changed: bool,
-}
+pub struct SyncDown {}
 
 #[derive(Component)]
 pub struct SyncUp {
-    pub changed: bool,
     pub(crate) server_entity_id: Entity,
-}
-
-impl Default for SyncDown {
-    fn default() -> Self {
-        Self { changed: true }
-    }
 }
 
 #[derive(Component)]
@@ -64,6 +61,7 @@ impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(RenetServerPlugin::default());
         app.insert_resource(create_server(self.ip, self.port).unwrap());
+        app.add_plugin(SyncDataPlugin);
         app.add_plugin(ServerSendPlugin);
         app.add_plugin(ServerReceivePlugin);
     }
@@ -73,6 +71,7 @@ impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(RenetClientPlugin::default());
         app.insert_resource(create_client(self.ip, self.port).unwrap());
+        app.add_plugin(SyncDataPlugin);
         app.add_plugin(ClientSendPlugin);
         app.add_plugin(ClientReceivePlugin);
     }
