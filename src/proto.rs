@@ -27,5 +27,7 @@ pub(crate) enum Message {
     } = 5,
     EntityComponentUpdated {
         id: EntityId,
+        name: String,
+        data: Box<dyn Reflect>,
     },
 }

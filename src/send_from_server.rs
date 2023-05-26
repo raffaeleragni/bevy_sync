@@ -1,8 +1,8 @@
-use bevy::{ecs::component::ComponentId, prelude::*, utils::HashSet};
-use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
+use bevy::{prelude::*, utils::HashSet};
+use bevy_renet::renet::{DefaultChannel, RenetServer};
 
 use crate::{
-    data::SyncTrackerRes, proto::Message, SyncClientGeneratedEntity, SyncMark, SyncPusher, SyncUp,
+    data::SyncTrackerRes, proto::Message, SyncClientGeneratedEntity, SyncMark, SyncPusher,
 };
 
 use super::SyncDown;
@@ -107,12 +107,17 @@ fn react_on_changed_components(
     mut track: ResMut<SyncPusher>,
 ) {
     let Some(mut server) = opt_server else { return; };
-    for (id, component) in track.components.drain(..) {
+    for change in track.components.drain(..) {
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,
                 DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::EntityComponentUpdated { id }).unwrap(),
+                bincode::serialize(&Message::EntityComponentUpdated {
+                    id: change.id,
+                    name: change.name.clone(),
+                    data: change.data,
+                })
+                .unwrap(),
             );
         }
     }

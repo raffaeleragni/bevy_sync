@@ -7,7 +7,6 @@ mod send_from_server;
 
 use std::{
     collections::VecDeque,
-    error::Error,
     net::{IpAddr, SocketAddr, UdpSocket},
     time::SystemTime,
 };
@@ -38,9 +37,15 @@ pub mod prelude {
 #[derive(Component)]
 pub struct SyncMark;
 
+pub struct ComponentChange {
+    id: Entity,
+    name: String,
+    data: Box<dyn Reflect>,
+}
+
 #[derive(Resource)]
 pub struct SyncPusher {
-    components: VecDeque<(Entity, Box<dyn Reflect>)>,
+    components: VecDeque<ComponentChange>,
 }
 
 impl Default for SyncPusher {
@@ -53,7 +58,11 @@ impl Default for SyncPusher {
 
 impl SyncPusher {
     pub fn push(&mut self, e_id: Entity, component: Box<dyn Reflect>) {
-        self.components.push_back((e_id, component));
+        self.components.push_back(ComponentChange {
+            id: e_id,
+            name: component.type_name().into(),
+            data: component,
+        });
     }
 }
 

@@ -2,7 +2,7 @@ mod setup;
 use crate::data::SyncComponent;
 
 use super::*;
-use bevy::reflect::{TypeRegistration, TypeRegistry};
+use serde::{Deserialize, Serialize};
 use setup::TestEnv;
 
 #[test]
@@ -111,8 +111,8 @@ fn test_entity_deleted_from_client() {
 #[derive(Component)]
 pub struct MyNonSynched;
 
-#[derive(Component, Default, Reflect, FromReflect, Debug)]
-#[reflect(Component)]
+#[derive(Component, Default, Reflect, FromReflect, Serialize, Deserialize, Debug)]
+#[reflect(Component, Serialize, Deserialize)]
 pub struct MySynched;
 
 fn changes_of_my_synched(
