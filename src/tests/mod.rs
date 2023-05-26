@@ -2,6 +2,7 @@ mod setup;
 use crate::data::SyncComponent;
 
 use super::*;
+use bevy::reflect::{TypeRegistration, TypeRegistry};
 use setup::TestEnv;
 
 #[test]
@@ -110,8 +111,18 @@ fn test_entity_deleted_from_client() {
 #[derive(Component)]
 pub struct MyNonSynched;
 
-#[derive(Component)]
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 pub struct MySynched;
+
+fn changes_of_my_synched(
+    mut push: ResMut<SyncPusher>,
+    q: Query<(Entity, &MySynched), Changed<MySynched>>,
+) {
+    for (e_id, component) in q.iter() {
+        push.push(e_id, component.clone_value());
+    }
+}
 
 #[test]
 fn test_non_marked_component_is_not_transferred_from_server() {
@@ -154,12 +165,12 @@ fn test_non_marked_component_is_not_transferred_from_client() {
     );
 }
 
-//TODO: component sync first case:
-//#[test]
+#[test]
 fn test_marked_component_is_transferred_from_server() {
     TestEnv::default().run(
         |s: &mut App, _: &mut App| {
             s.sync_component::<MySynched>();
+            s.add_system(changes_of_my_synched);
             s.world.spawn((SyncMark {}, MySynched {}));
             1
         },

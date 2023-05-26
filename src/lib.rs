@@ -6,12 +6,13 @@ mod send_from_client;
 mod send_from_server;
 
 use std::{
+    collections::VecDeque,
     error::Error,
     net::{IpAddr, SocketAddr, UdpSocket},
     time::SystemTime,
 };
 
-use bevy::prelude::*;
+use bevy::{prelude::*, reflect::TypeRegistryInternal};
 use bevy_renet::{
     renet::{
         ClientAuthentication, RenetClient, RenetConnectionConfig, RenetServer,
@@ -27,11 +28,30 @@ use send_from_client::ClientSendPlugin;
 use send_from_server::ServerSendPlugin;
 
 pub mod prelude {
-    pub use super::{ClientPlugin, ServerPlugin, SyncDown, SyncMark, SyncUp};
+    pub use super::{ClientPlugin, ServerPlugin, SyncDown, SyncMark, SyncPusher, SyncUp};
 }
 
 #[derive(Component)]
 pub struct SyncMark;
+
+#[derive(Resource)]
+pub struct SyncPusher {
+    components: VecDeque<(Entity, Box<dyn Reflect>)>,
+}
+
+impl Default for SyncPusher {
+    fn default() -> Self {
+        Self {
+            components: Default::default(),
+        }
+    }
+}
+
+impl SyncPusher {
+    pub fn push(&mut self, e_id: Entity, component: Box<dyn Reflect>) {
+        self.components.push_back((e_id, component));
+    }
+}
 
 pub struct ServerPlugin {
     pub port: u16,
@@ -59,6 +79,7 @@ pub(crate) struct SyncClientGeneratedEntity {
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
+        app.init_resource::<SyncPusher>();
         app.add_plugin(RenetServerPlugin::default());
         app.insert_resource(create_server(self.ip, self.port).unwrap());
         app.add_plugin(SyncDataPlugin);
@@ -69,6 +90,7 @@ impl Plugin for ServerPlugin {
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
+        app.init_resource::<SyncPusher>();
         app.add_plugin(RenetClientPlugin::default());
         app.insert_resource(create_client(self.ip, self.port).unwrap());
         app.add_plugin(SyncDataPlugin);

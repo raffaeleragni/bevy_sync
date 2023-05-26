@@ -46,5 +46,6 @@ fn server_received_a_message(client_id: u64, msg: Message, cmd: &mut Commands) {
             server_entity_id: _,
             client_entity_id: _,
         } => {}
+        Message::EntityComponentUpdated { id: _ } => {}
     }
 }

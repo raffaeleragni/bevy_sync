@@ -55,5 +55,6 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
         // No meaning on client side for these
         Message::SequenceConfirm { id: _ } => {}
         Message::SequenceRepeat { id: _ } => {}
+        Message::EntityComponentUpdated { id: _ } => {}
     }
 }

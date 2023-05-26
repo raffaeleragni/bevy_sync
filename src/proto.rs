@@ -1,4 +1,4 @@
-use bevy::prelude::Entity;
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub(crate) const PROTOCOL_ID: u64 = 1;
@@ -25,4 +25,7 @@ pub(crate) enum Message {
     EntityDelete {
         id: EntityId,
     } = 5,
+    EntityComponentUpdated {
+        id: EntityId,
+    },
 }
