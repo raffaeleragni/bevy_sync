@@ -19,7 +19,8 @@ fn check_server(mut commands: Commands, opt_server: Option<ResMut<RenetServer>>)
 
 fn receive_as_server(server: &mut ResMut<RenetServer>, commands: &mut Commands) {
     for client_id in server.clients_id().into_iter() {
-        while let Some(message) = server.receive_message(client_id, DefaultChannel::Reliable) {
+        while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered)
+        {
             let deser_message = bincode::deserialize(&message).unwrap();
             server_received_a_message(client_id, deser_message, commands);
         }

@@ -35,7 +35,7 @@ fn entity_created_on_server(
         for client_id in server.clients_id().into_iter() {
             server.send_message(
                 client_id,
-                DefaultChannel::Reliable,
+                DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
             );
         }
@@ -53,7 +53,7 @@ fn reply_back_to_client_generated_entity(
     for (entity_id, marker_component) in query.iter_mut() {
         server.send_message(
             marker_component.client_id,
-            DefaultChannel::Reliable,
+            DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawnBack {
                 server_entity_id: entity_id,
                 client_entity_id: marker_component.client_entity_id,
@@ -64,7 +64,7 @@ fn reply_back_to_client_generated_entity(
             if marker_component.client_id != cid {
                 server.send_message(
                     cid,
-                    DefaultChannel::Reliable,
+                    DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::EntitySpawn { id: entity_id }).unwrap(),
                 );
             }
@@ -95,7 +95,7 @@ fn entity_removed_from_server(
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,
-                DefaultChannel::Reliable,
+                DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::EntityDelete { id }).unwrap(),
             );
         }
@@ -111,7 +111,7 @@ fn react_on_changed_components(
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,
-                DefaultChannel::Reliable,
+                DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::EntityComponentUpdated { id }).unwrap(),
             );
         }

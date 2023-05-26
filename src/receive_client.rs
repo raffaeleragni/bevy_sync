@@ -25,7 +25,7 @@ fn receive_as_client(
     track: &mut ResMut<SyncTrackerRes>,
     commands: &mut Commands,
 ) {
-    while let Some(message) = client.receive_message(DefaultChannel::Reliable) {
+    while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         let deser_message = bincode::deserialize(&message).unwrap();
         client_received_a_message(deser_message, track, commands);
     }

@@ -111,7 +111,7 @@ fn test_entity_deleted_from_client() {
 #[derive(Component)]
 pub struct MyNonSynched;
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Reflect, FromReflect, Debug)]
 #[reflect(Component)]
 pub struct MySynched;
 

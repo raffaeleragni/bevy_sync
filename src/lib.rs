@@ -12,12 +12,16 @@ use std::{
     time::SystemTime,
 };
 
-use bevy::{prelude::*, reflect::TypeRegistryInternal};
+use bevy::prelude::*;
 use bevy_renet::{
     renet::{
-        ClientAuthentication, RenetClient, RenetConnectionConfig, RenetServer,
-        ServerAuthentication, ServerConfig,
+        transport::{
+            ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport,
+            ServerAuthentication, ServerConfig,
+        },
+        ConnectionConfig, RenetClient, RenetServer,
     },
+    transport::{NetcodeClientPlugin, NetcodeServerPlugin},
     RenetClientPlugin, RenetServerPlugin,
 };
 use data::SyncDataPlugin;
@@ -79,9 +83,12 @@ pub(crate) struct SyncClientGeneratedEntity {
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(RenetServerPlugin);
+        app.insert_resource(RenetServer::new(ConnectionConfig::default()));
+        app.add_plugin(NetcodeServerPlugin);
+        app.insert_resource(create_server(self.ip, self.port));
+
         app.init_resource::<SyncPusher>();
-        app.add_plugin(RenetServerPlugin::default());
-        app.insert_resource(create_server(self.ip, self.port).unwrap());
         app.add_plugin(SyncDataPlugin);
         app.add_plugin(ServerSendPlugin);
         app.add_plugin(ServerReceivePlugin);
@@ -90,31 +97,39 @@ impl Plugin for ServerPlugin {
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(RenetClientPlugin);
+        app.insert_resource(RenetClient::new(ConnectionConfig::default()));
+        app.add_plugin(NetcodeClientPlugin);
+        app.insert_resource(create_client(self.ip, self.port));
+
         app.init_resource::<SyncPusher>();
-        app.add_plugin(RenetClientPlugin::default());
-        app.insert_resource(create_client(self.ip, self.port).unwrap());
         app.add_plugin(SyncDataPlugin);
         app.add_plugin(ClientSendPlugin);
         app.add_plugin(ClientReceivePlugin);
     }
 }
 
-fn create_server(ip: IpAddr, port: u16) -> Result<RenetServer, Box<dyn Error>> {
-    let socket = UdpSocket::bind((ip, port))?;
-    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-    let server_addr = socket.local_addr()?;
-    let config = ServerConfig::new(
-        64,
-        proto::PROTOCOL_ID,
-        server_addr,
-        ServerAuthentication::Unsecure,
-    );
-    RenetServer::new(now, config, RenetConnectionConfig::default(), socket).map_err(From::from)
+fn create_server(ip: IpAddr, port: u16) -> NetcodeServerTransport {
+    let socket = UdpSocket::bind((ip, port)).unwrap();
+    let server_addr = socket.local_addr().unwrap();
+    const MAX_CLIENTS: usize = 64;
+    let server_config = ServerConfig {
+        max_clients: MAX_CLIENTS,
+        protocol_id: PROTOCOL_ID,
+        public_addr: server_addr,
+        authentication: ServerAuthentication::Unsecure,
+    };
+    let current_time = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap();
+    NetcodeServerTransport::new(current_time, server_config, socket).unwrap()
 }
 
-fn create_client(ip: IpAddr, port: u16) -> Result<RenetClient, Box<dyn Error>> {
-    let socket = UdpSocket::bind((ip, 0))?;
-    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
+fn create_client(ip: IpAddr, port: u16) -> NetcodeClientTransport {
+    let socket = UdpSocket::bind((ip, 0)).unwrap();
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap();
     let client_id = now.as_millis() as u64;
     let authentication = ClientAuthentication::Unsecure {
         client_id,
@@ -122,13 +137,7 @@ fn create_client(ip: IpAddr, port: u16) -> Result<RenetClient, Box<dyn Error>> {
         protocol_id: PROTOCOL_ID,
         user_data: None,
     };
-    RenetClient::new(
-        now,
-        socket,
-        RenetConnectionConfig::default(),
-        authentication,
-    )
-    .map_err(From::from)
+    NetcodeClientTransport::new(now, authentication, socket).unwrap()
 }
 
 #[cfg(test)]
