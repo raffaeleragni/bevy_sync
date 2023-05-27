@@ -29,10 +29,10 @@ pub trait SyncComponent {
 
 impl SyncComponent for App {
     fn sync_component<T: Component + GetTypeRegistration>(&mut self) -> &mut Self {
+        self.register_type::<T>();
         let c_id = self.world.init_component::<T>();
         let mut data = self.world.resource_mut::<SyncTrackerRes>();
         data.sync_components.insert(c_id);
-        self.register_type::<T>();
         self
     }
 }

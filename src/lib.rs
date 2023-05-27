@@ -44,17 +44,9 @@ pub struct ComponentChange {
     data: Box<dyn Reflect>,
 }
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct SyncPusher {
     components: VecDeque<ComponentChange>,
-}
-
-impl Default for SyncPusher {
-    fn default() -> Self {
-        Self {
-            components: Default::default(),
-        }
-    }
 }
 
 impl SyncPusher {

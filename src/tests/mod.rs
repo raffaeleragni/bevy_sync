@@ -2,6 +2,7 @@ mod setup;
 use crate::data::SyncComponent;
 
 use super::*;
+use bevy::reflect::ReflectFromReflect;
 use serde::{Deserialize, Serialize};
 use setup::TestEnv;
 
@@ -111,8 +112,8 @@ fn test_entity_deleted_from_client() {
 #[derive(Component)]
 pub struct MyNonSynched;
 
-#[derive(Component, Default, Reflect, FromReflect, Serialize, Deserialize, Debug)]
-#[reflect(Component)]
+#[derive(Component, Reflect, FromReflect, Default, PartialEq, Serialize, Deserialize, Debug)]
+#[reflect(Component, FromReflect)]
 pub struct MySynched;
 
 fn changes_of_my_synched(
@@ -168,8 +169,9 @@ fn test_non_marked_component_is_not_transferred_from_client() {
 #[test]
 fn test_marked_component_is_transferred_from_server() {
     TestEnv::default().run(
-        |s: &mut App, _: &mut App| {
+        |s: &mut App, c: &mut App| {
             s.sync_component::<MySynched>();
+            c.sync_component::<MySynched>();
             s.add_system(changes_of_my_synched);
             s.world.spawn((SyncMark {}, MySynched {}));
             1

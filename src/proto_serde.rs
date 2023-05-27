@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
     reflect::{
         serde::{ReflectSerializer, UntypedReflectDeserializer},
-        TypeRegistryInternal,
+        DynamicStruct, ReflectFromReflect, TypeRegistryInternal,
     },
 };
 
@@ -18,7 +18,7 @@ use serde::{
 pub(crate) fn compo_to_bin(compo: Box<dyn Reflect>, registry: &TypeRegistryInternal) -> Vec<u8> {
     let serializer = ComponentData {
         data: compo.clone_value(),
-        registry: &registry,
+        registry,
     };
     bincode::serialize(&serializer).unwrap()
 }
@@ -28,10 +28,18 @@ pub(crate) fn bin_to_compo(data: Vec<u8>, registry: &TypeRegistryInternal) -> Bo
         .with_fixint_encoding()
         .allow_trailing_bytes();
     let mut bin_deser = bincode::Deserializer::from_slice(&data, binoptions);
-    let deserializer = ComponentDataDeserializer {
-        registry: &registry,
-    };
-    deserializer.deserialize(&mut bin_deser).unwrap().data
+    let deserializer = ComponentDataDeserializer { registry };
+    let data = deserializer
+        .deserialize(&mut bin_deser)
+        .unwrap()
+        .data
+        .downcast::<DynamicStruct>()
+        .unwrap();
+    let registration = registry.get_with_name(data.name()).unwrap();
+    let rfr = registry
+        .get_type_data::<ReflectFromReflect>(registration.type_id())
+        .unwrap();
+    rfr.from_reflect(&*data).unwrap()
 }
 
 struct ComponentData<'a> {
@@ -63,10 +71,7 @@ impl<'a: 'de, 'de: 'a> DeserializeSeed<'de> for ComponentDataDeserializer<'a> {
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         let registry = self.registry;
         let data = deserializer.deserialize_struct(type_name::<Self::Value>(), &["data"], self)?;
-        Ok(ComponentData {
-            data: data,
-            registry: registry,
-        })
+        Ok(ComponentData { data, registry })
     }
 }
 
@@ -111,7 +116,8 @@ mod test {
         let data = compo_to_bin(compo_orig.clone_value(), &registry);
 
         let compo_result = bin_to_compo(data, &registry);
+        let compo_result = compo_result.downcast::<MyCompo>().unwrap();
 
-        dbg!(compo_result);
+        assert_eq!(*compo_result, compo_orig);
     }
 }
