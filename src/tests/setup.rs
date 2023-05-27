@@ -7,7 +7,7 @@ use std::{
 use bevy::{prelude::App, transform::TransformBundle, MinimalPlugins};
 use bevy_renet::renet::RenetClient;
 
-use crate::{ClientPlugin, ServerPlugin};
+use crate::{ClientPlugin, ServerPlugin, SyncPlugin};
 
 #[derive(Debug)]
 pub struct TestError(String);
@@ -61,8 +61,10 @@ impl TestEnv {
 fn setup_env(env: &TestEnv) -> Result<(App, App), Box<dyn Error>> {
     let mut sapp = App::new();
     sapp.add_plugins(MinimalPlugins);
+    sapp.add_plugin(SyncPlugin);
     let mut capp = App::new();
     capp.add_plugins(MinimalPlugins);
+    capp.add_plugin(SyncPlugin);
 
     // Start an entity only on server so the IDs intentionally offset between server and client
     sapp.world.spawn(TransformBundle::default());

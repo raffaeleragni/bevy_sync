@@ -32,7 +32,10 @@ use send_from_client::ClientSendPlugin;
 use send_from_server::ServerSendPlugin;
 
 pub mod prelude {
-    pub use super::{ClientPlugin, ServerPlugin, SyncDown, SyncMark, SyncPusher, SyncUp};
+    pub use super::{
+        data::SyncComponent, ClientPlugin, ServerPlugin, SyncDown, SyncMark, SyncPlugin,
+        SyncPusher, SyncUp,
+    };
 }
 
 #[derive(Component)]
@@ -59,6 +62,8 @@ impl SyncPusher {
     }
 }
 
+pub struct SyncPlugin;
+
 pub struct ServerPlugin {
     pub port: u16,
     pub ip: IpAddr,
@@ -83,6 +88,13 @@ pub(crate) struct SyncClientGeneratedEntity {
     client_entity_id: Entity,
 }
 
+impl Plugin for SyncPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<SyncPusher>();
+        app.add_plugin(SyncDataPlugin);
+    }
+}
+
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(RenetServerPlugin);
@@ -90,8 +102,6 @@ impl Plugin for ServerPlugin {
         app.add_plugin(NetcodeServerPlugin);
         app.insert_resource(create_server(self.ip, self.port));
 
-        app.init_resource::<SyncPusher>();
-        app.add_plugin(SyncDataPlugin);
         app.add_plugin(ServerSendPlugin);
         app.add_plugin(ServerReceivePlugin);
     }
@@ -104,8 +114,6 @@ impl Plugin for ClientPlugin {
         app.add_plugin(NetcodeClientPlugin);
         app.insert_resource(create_client(self.ip, self.port));
 
-        app.init_resource::<SyncPusher>();
-        app.add_plugin(SyncDataPlugin);
         app.add_plugin(ClientSendPlugin);
         app.add_plugin(ClientReceivePlugin);
     }
