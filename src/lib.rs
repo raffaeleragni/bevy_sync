@@ -1,5 +1,6 @@
 mod data;
 mod proto;
+mod proto_serde;
 mod receive_client;
 mod receive_server;
 mod send_from_client;

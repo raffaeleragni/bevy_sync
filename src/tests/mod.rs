@@ -112,7 +112,7 @@ fn test_entity_deleted_from_client() {
 pub struct MyNonSynched;
 
 #[derive(Component, Default, Reflect, FromReflect, Serialize, Deserialize, Debug)]
-#[reflect(Component, Serialize, Deserialize)]
+#[reflect(Component)]
 pub struct MySynched;
 
 fn changes_of_my_synched(

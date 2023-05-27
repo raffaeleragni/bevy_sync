@@ -2,9 +2,8 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetServer};
 
 use crate::{
-    data::SyncTrackerRes,
-    proto::{ComponentData, Message},
-    SyncClientGeneratedEntity, SyncMark, SyncPusher,
+    data::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, SyncClientGeneratedEntity,
+    SyncMark, SyncPusher,
 };
 
 use super::SyncDown;
@@ -114,18 +113,13 @@ fn react_on_changed_components(
     let registry = registry.read();
     while let Some(change) = track.components.pop_front() {
         for cid in server.clients_id().into_iter() {
-            let serializer = ComponentData {
-                data: change.data.clone_value(),
-                registry: &registry,
-            };
-            let data = bincode::serialize(&serializer).unwrap();
             server.send_message(
                 cid,
                 DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::EntityComponentUpdated {
                     id: change.id,
                     name: change.name.clone(),
-                    data: data.into(),
+                    data: compo_to_bin(change.data.clone_value(), &registry),
                 })
                 .unwrap(),
             );

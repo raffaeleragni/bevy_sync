@@ -1,18 +1,11 @@
-use bevy::{
-    prelude::{
-        App, AppTypeRegistry, Commands, Entity, Plugin, ReflectComponent, Res, ResMut, World,
-    },
-    reflect::TypeRegistryInternal,
+use bevy::prelude::{
+    App, AppTypeRegistry, Commands, Entity, Plugin, ReflectComponent, ResMut, World,
 };
 use bevy_renet::renet::{DefaultChannel, RenetClient};
-use bincode::DefaultOptions;
+use bincode::{DefaultOptions, Options};
 use serde::de::DeserializeSeed;
 
-use crate::{
-    data::SyncTrackerRes,
-    proto::{ComponentDataDeserializer, Message},
-    SyncMark, SyncUp,
-};
+use crate::{data::SyncTrackerRes, proto::Message, proto_serde::bin_to_compo, SyncMark, SyncUp};
 
 pub(crate) struct ClientReceivePlugin;
 impl Plugin for ClientReceivePlugin {
@@ -22,36 +15,27 @@ impl Plugin for ClientReceivePlugin {
 }
 
 fn check_client(
-    registry: Res<AppTypeRegistry>,
     mut commands: Commands,
     mut track: ResMut<SyncTrackerRes>,
     opt_client: Option<ResMut<RenetClient>>,
 ) {
     if let Some(mut client) = opt_client {
-        let registry = registry.clone();
-        let registry = registry.read();
-        receive_as_client(&registry, &mut client, &mut track, &mut commands);
+        receive_as_client(&mut client, &mut track, &mut commands);
     }
 }
 
 fn receive_as_client(
-    registry: &TypeRegistryInternal,
     client: &mut ResMut<RenetClient>,
     track: &mut ResMut<SyncTrackerRes>,
     commands: &mut Commands,
 ) {
     while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         let deser_message = bincode::deserialize(&message).unwrap();
-        client_received_a_message(registry, deser_message, track, commands);
+        client_received_a_message(deser_message, track, commands);
     }
 }
 
-fn client_received_a_message(
-    registry: &TypeRegistryInternal,
-    msg: Message,
-    track: &mut ResMut<SyncTrackerRes>,
-    cmd: &mut Commands,
-) {
+fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, cmd: &mut Commands) {
     match msg {
         Message::EntitySpawn { id } => {
             cmd.spawn(SyncUp {
@@ -78,20 +62,14 @@ fn client_received_a_message(
         Message::EntityComponentUpdated { id, name, data } => {
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             let mut entity = cmd.entity(e_id);
-            let mut bin_deser = bincode::Deserializer::from_slice(&data, DefaultOptions::default());
-            let deserializer = ComponentDataDeserializer {
-                registry: &registry,
-            };
-            let component_data = deserializer.deserialize(&mut bin_deser).unwrap();
             entity.add(move |_: Entity, world: &mut World| {
                 let registry = world.resource::<AppTypeRegistry>().clone();
                 let registry = registry.read();
+                let component_data = bin_to_compo(data, &registry);
                 let registration = registry.get_with_name(name.as_str()).unwrap();
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
-                reflect_component.apply_or_insert(
-                    &mut world.entity_mut(e_id),
-                    component_data.data.as_reflect(),
-                );
+                reflect_component
+                    .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
             });
         }
     }
