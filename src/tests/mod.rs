@@ -1,9 +1,14 @@
 mod setup;
+use crate::data::SyncComponent;
 
 use super::*;
+use bevy::reflect::ReflectFromReflect;
+use serde::{Deserialize, Serialize};
+use serial_test::serial;
 use setup::TestEnv;
 
 #[test]
+#[serial]
 fn test_connection_setup() {
     TestEnv::default().run(|_, _| {}, |_, _, _| {});
 }
@@ -19,6 +24,7 @@ fn all_client_entities_are_in_sync(s: &mut App, c: &mut App, entity_count: u32) 
 }
 
 #[test]
+#[serial]
 fn test_one_entity_spawned_from_server() {
     TestEnv::default().run(
         |s: &mut App, _: &mut App| {
@@ -30,6 +36,7 @@ fn test_one_entity_spawned_from_server() {
 }
 
 #[test]
+#[serial]
 fn test_one_entity_spawned_from_client() {
     TestEnv::default().run(
         |_: &mut App, c: &mut App| {
@@ -41,6 +48,7 @@ fn test_one_entity_spawned_from_client() {
 }
 
 #[test]
+#[serial]
 fn test_more_entities_spawned_from_server() {
     TestEnv::default().run(
         |s: &mut App, _: &mut App| {
@@ -54,6 +62,7 @@ fn test_more_entities_spawned_from_server() {
 }
 
 #[test]
+#[serial]
 fn test_more_entities_spawned_from_client() {
     TestEnv::default().run(
         |_: &mut App, c: &mut App| {
@@ -67,6 +76,7 @@ fn test_more_entities_spawned_from_client() {
 }
 
 #[test]
+#[serial]
 fn test_entity_deleted_from_server() {
     TestEnv::default().run(
         |s: &mut App, c: &mut App| {
@@ -83,6 +93,7 @@ fn test_entity_deleted_from_server() {
 }
 
 #[test]
+#[serial]
 fn test_entity_deleted_from_client() {
     TestEnv::default().run(
         |s: &mut App, c: &mut App| {
@@ -109,10 +120,23 @@ fn test_entity_deleted_from_client() {
 #[derive(Component)]
 pub struct MyNonSynched;
 
-#[derive(Component)]
-pub struct MySynched;
+#[derive(Component, Reflect, FromReflect, Default, PartialEq, Serialize, Deserialize, Debug)]
+#[reflect(Component, FromReflect)]
+pub struct MySynched {
+    value: i32,
+}
+
+fn changes_of_my_synched(
+    mut push: ResMut<SyncPusher>,
+    q: Query<(Entity, &MySynched), Changed<MySynched>>,
+) {
+    for (e_id, component) in q.iter() {
+        push.push(e_id, component.clone_value());
+    }
+}
 
 #[test]
+#[serial]
 fn test_non_marked_component_is_not_transferred_from_server() {
     TestEnv::default().run(
         |s: &mut App, _: &mut App| {
@@ -136,6 +160,7 @@ fn test_non_marked_component_is_not_transferred_from_server() {
 }
 
 #[test]
+#[serial]
 fn test_non_marked_component_is_not_transferred_from_client() {
     TestEnv::default().run(
         |_: &mut App, c: &mut App| c.world.spawn((SyncMark {}, MyNonSynched {})).id(),
@@ -149,6 +174,30 @@ fn test_non_marked_component_is_not_transferred_from_client() {
                 found = true;
             }
             assert!(!found);
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn test_marked_component_is_transferred_from_server() {
+    TestEnv::default().run(
+        |s: &mut App, c: &mut App| {
+            s.sync_component::<MySynched>();
+            c.sync_component::<MySynched>();
+            s.add_system(changes_of_my_synched);
+            s.world.spawn((SyncMark {}, MySynched { value: 7 }));
+            1
+        },
+        |s: &mut App, c: &mut App, entity_count: u32| {
+            let mut count_check = 0;
+            for (e, c) in c.world.query::<(&SyncUp, &MySynched)>().iter(&c.world) {
+                assert!(s.world.entities().contains(e.server_entity_id));
+                assert_eq!(c.value, 7);
+                s.world.entity(e.server_entity_id).get::<SyncDown>();
+                count_check += 1;
+            }
+            assert_eq!(count_check, entity_count);
         },
     );
 }

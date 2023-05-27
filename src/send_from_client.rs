@@ -34,7 +34,7 @@ fn entity_created_on_client(
     let Some(mut client) = opt_client else { return };
     for id in query.iter_mut() {
         client.send_message(
-            DefaultChannel::Reliable,
+            DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
         );
     }
@@ -59,7 +59,7 @@ fn entity_removed_from_client(
     let Some(mut client) = opt_client else { return };
     for &id in despawned_entities.iter() {
         client.send_message(
-            DefaultChannel::Reliable,
+            DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntityDelete { id }).unwrap(),
         );
     }

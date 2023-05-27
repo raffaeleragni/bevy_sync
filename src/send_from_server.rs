@@ -1,7 +1,10 @@
 use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetServer};
 
-use crate::{data::SyncTrackerRes, proto::Message, SyncClientGeneratedEntity, SyncMark};
+use crate::{
+    data::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, SyncClientGeneratedEntity,
+    SyncMark, SyncPusher,
+};
 
 use super::SyncDown;
 
@@ -13,6 +16,7 @@ impl Plugin for ServerSendPlugin {
         app.add_system(entity_created_on_server);
         app.add_system(reply_back_to_client_generated_entity);
         app.add_system(entity_removed_from_server);
+        app.add_system(react_on_changed_components);
     }
 }
 
@@ -32,7 +36,7 @@ fn entity_created_on_server(
         for client_id in server.clients_id().into_iter() {
             server.send_message(
                 client_id,
-                DefaultChannel::Reliable,
+                DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
             );
         }
@@ -50,7 +54,7 @@ fn reply_back_to_client_generated_entity(
     for (entity_id, marker_component) in query.iter_mut() {
         server.send_message(
             marker_component.client_id,
-            DefaultChannel::Reliable,
+            DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawnBack {
                 server_entity_id: entity_id,
                 client_entity_id: marker_component.client_entity_id,
@@ -61,7 +65,7 @@ fn reply_back_to_client_generated_entity(
             if marker_component.client_id != cid {
                 server.send_message(
                     cid,
-                    DefaultChannel::Reliable,
+                    DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::EntitySpawn { id: entity_id }).unwrap(),
                 );
             }
@@ -92,8 +96,32 @@ fn entity_removed_from_server(
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,
-                DefaultChannel::Reliable,
+                DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::EntityDelete { id }).unwrap(),
+            );
+        }
+    }
+}
+
+fn react_on_changed_components(
+    registry: Res<AppTypeRegistry>,
+    opt_server: Option<ResMut<RenetServer>>,
+    mut track: ResMut<SyncPusher>,
+) {
+    let Some(mut server) = opt_server else { return; };
+    let registry = registry.clone();
+    let registry = registry.read();
+    while let Some(change) = track.components.pop_front() {
+        for cid in server.clients_id().into_iter() {
+            server.send_message(
+                cid,
+                DefaultChannel::ReliableOrdered,
+                bincode::serialize(&Message::EntityComponentUpdated {
+                    id: change.id,
+                    name: change.name.clone(),
+                    data: compo_to_bin(change.data.clone_value(), &registry),
+                })
+                .unwrap(),
             );
         }
     }

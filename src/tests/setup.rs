@@ -93,7 +93,7 @@ fn wait_until_connected(
     while count < updates {
         sapp.update();
         capp.update();
-        if capp.world.resource::<RenetClient>().is_connected() {
+        if !capp.world.resource::<RenetClient>().is_disconnected() {
             return Ok(());
         }
         count += 1;
