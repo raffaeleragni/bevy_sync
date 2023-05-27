@@ -2,7 +2,9 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetServer};
 
 use crate::{
-    data::SyncTrackerRes, proto::Message, SyncClientGeneratedEntity, SyncMark, SyncPusher,
+    data::SyncTrackerRes,
+    proto::{ComponentData, Message},
+    SyncClientGeneratedEntity, SyncMark, SyncPusher,
 };
 
 use super::SyncDown;
@@ -103,19 +105,27 @@ fn entity_removed_from_server(
 }
 
 fn react_on_changed_components(
+    registry: Res<AppTypeRegistry>,
     opt_server: Option<ResMut<RenetServer>>,
     mut track: ResMut<SyncPusher>,
 ) {
     let Some(mut server) = opt_server else { return; };
-    for change in track.components.drain(..) {
+    let registry = registry.clone();
+    let registry = registry.read();
+    while let Some(change) = track.components.pop_front() {
         for cid in server.clients_id().into_iter() {
+            let serializer = ComponentData {
+                data: change.data.clone_value(),
+                registry: &registry,
+            };
+            let data = bincode::serialize(&serializer).unwrap();
             server.send_message(
                 cid,
                 DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::EntityComponentUpdated {
                     id: change.id,
                     name: change.name.clone(),
-                    data: change.data,
+                    data: data.into(),
                 })
                 .unwrap(),
             );
