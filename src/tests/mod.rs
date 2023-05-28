@@ -126,12 +126,21 @@ pub struct MySynched {
     value: i32,
 }
 
-fn changes_of_my_synched(
+fn changes_of_my_synched_from_server(
     mut push: ResMut<SyncPusher>,
     q: Query<(Entity, &MySynched), Changed<MySynched>>,
 ) {
     for (e_id, component) in q.iter() {
         push.push(e_id, component.clone_value());
+    }
+}
+
+fn changes_of_my_synched_from_client(
+    mut push: ResMut<SyncPusher>,
+    q: Query<(&SyncUp, &MySynched), Changed<MySynched>>,
+) {
+    for (sup, component) in q.iter() {
+        push.push(sup.server_entity_id, component.clone_value());
     }
 }
 
@@ -185,8 +194,18 @@ fn test_marked_component_is_transferred_from_server() {
         |s: &mut App, c: &mut App| {
             s.sync_component::<MySynched>();
             c.sync_component::<MySynched>();
-            s.add_system(changes_of_my_synched);
-            s.world.spawn((SyncMark {}, MySynched { value: 7 }));
+            s.add_system(changes_of_my_synched_from_server);
+            let e_id = c.world.spawn(SyncMark {}).id();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            let mut e = c.world.entity_mut(e_id);
+            e.insert(MySynched { value: 7 });
             1
         },
         |s: &mut App, c: &mut App, entity_count: u32| {
@@ -198,6 +217,36 @@ fn test_marked_component_is_transferred_from_server() {
                 count_check += 1;
             }
             assert_eq!(count_check, entity_count);
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn test_marked_component_is_transferred_from_client() {
+    TestEnv::default().run(
+        |s: &mut App, c: &mut App| {
+            s.sync_component::<MySynched>();
+            c.sync_component::<MySynched>();
+            c.add_system(changes_of_my_synched_from_client);
+            let e_id = c.world.spawn(SyncMark {}).id();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            s.update();
+            c.update();
+            let mut e = c.world.entity_mut(e_id);
+            e.insert(MySynched { value: 7 });
+            let server_e_id = e.get::<SyncUp>().unwrap().server_entity_id;
+            server_e_id
+        },
+        |s: &mut App, _: &mut App, id: Entity| {
+            let e = s.world.get_entity(id).unwrap();
+            let compo = e.get::<MySynched>().unwrap();
+            assert_eq!(compo.value, 7);
         },
     );
 }

@@ -1,10 +1,12 @@
 use bevy::{
-    prelude::{Added, App, Entity, Plugin, Query, ResMut},
+    prelude::{Added, App, AppTypeRegistry, Entity, Plugin, Query, Res, ResMut},
     utils::HashSet,
 };
 use bevy_renet::renet::{DefaultChannel, RenetClient};
 
-use crate::{data::SyncTrackerRes, proto::Message, SyncMark, SyncUp};
+use crate::{
+    data::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, SyncMark, SyncPusher, SyncUp,
+};
 
 pub(crate) struct ClientSendPlugin;
 impl Plugin for ClientSendPlugin {
@@ -13,6 +15,7 @@ impl Plugin for ClientSendPlugin {
         app.add_system(track_spawn_client);
         app.add_system(entity_created_on_client);
         app.add_system(entity_removed_from_client);
+        app.add_system(react_on_changed_components);
     }
 }
 
@@ -61,6 +64,27 @@ fn entity_removed_from_client(
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntityDelete { id }).unwrap(),
+        );
+    }
+}
+
+fn react_on_changed_components(
+    registry: Res<AppTypeRegistry>,
+    opt_client: Option<ResMut<RenetClient>>,
+    mut track: ResMut<SyncPusher>,
+) {
+    let Some(mut client) = opt_client else { return; };
+    let registry = registry.clone();
+    let registry = registry.read();
+    while let Some(change) = track.components.pop_front() {
+        client.send_message(
+            DefaultChannel::ReliableOrdered,
+            bincode::serialize(&Message::EntityComponentUpdated {
+                id: change.id,
+                name: change.name.clone(),
+                data: compo_to_bin(change.data.clone_value(), &registry),
+            })
+            .unwrap(),
         );
     }
 }
