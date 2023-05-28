@@ -124,6 +124,18 @@ impl Plugin for ServerPlugin {
     }
 }
 
+impl ServerPlugin {
+    #[allow(clippy::type_complexity)]
+    fn sync_detect<T: Component + Reflect>(
+        mut push: ResMut<SyncPusher>,
+        q: Query<(Entity, &T), (With<SyncDown>, Changed<T>)>,
+    ) {
+        for (e_id, component) in q.iter() {
+            push.push(e_id, component.clone_value());
+        }
+    }
+}
+
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(RenetClientPlugin);
@@ -133,6 +145,18 @@ impl Plugin for ClientPlugin {
 
         app.add_plugin(ClientSendPlugin);
         app.add_plugin(ClientReceivePlugin);
+    }
+}
+
+impl ClientPlugin {
+    #[allow(clippy::type_complexity)]
+    fn sync_detect<T: Component + Reflect>(
+        mut push: ResMut<SyncPusher>,
+        q: Query<(&SyncUp, &T), (With<SyncUp>, Changed<T>)>,
+    ) {
+        for (sup, component) in q.iter() {
+            push.push(sup.server_entity_id, component.clone_value());
+        }
     }
 }
 

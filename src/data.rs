@@ -1,9 +1,11 @@
 use bevy::{
     ecs::component::ComponentId,
     prelude::{App, Component, Entity, Plugin, Resource},
-    reflect::GetTypeRegistration,
+    reflect::{GetTypeRegistration, Reflect},
     utils::{HashMap, HashSet},
 };
+
+use crate::{ClientPlugin, ServerPlugin};
 
 // Keeps mapping of server entity ids to client entity ids.
 // Key: server entity id.
@@ -24,15 +26,17 @@ impl Plugin for SyncDataPlugin {
 }
 
 pub trait SyncComponent {
-    fn sync_component<T: Component + GetTypeRegistration>(&mut self) -> &mut Self;
+    fn sync_component<T: Component + Reflect + GetTypeRegistration>(&mut self) -> &mut Self;
 }
 
 impl SyncComponent for App {
-    fn sync_component<T: Component + GetTypeRegistration>(&mut self) -> &mut Self {
+    fn sync_component<T: Component + Reflect + GetTypeRegistration>(&mut self) -> &mut Self {
         self.register_type::<T>();
         let c_id = self.world.init_component::<T>();
         let mut data = self.world.resource_mut::<SyncTrackerRes>();
         data.sync_components.insert(c_id);
+        self.add_system(ServerPlugin::sync_detect::<T>);
+        self.add_system(ClientPlugin::sync_detect::<T>);
         self
     }
 }
