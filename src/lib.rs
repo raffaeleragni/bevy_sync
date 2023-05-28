@@ -80,7 +80,7 @@ pub struct SyncDown {}
 
 #[derive(Component)]
 pub struct SyncUp {
-    pub(crate) server_entity_id: Entity,
+    pub server_entity_id: Entity,
 }
 
 #[derive(Component)]
