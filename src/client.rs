@@ -1,22 +1,67 @@
 use bevy::{
-    prelude::{Added, App, AppTypeRegistry, Entity, Plugin, Query, Res, ResMut},
+    ecs::schedule::run_enter_schedule,
+    prelude::{
+        resource_removed, state_exists_and_equals, Added, App, AppTypeRegistry, Commands, CoreSet,
+        Entity, IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnExit,
+        OnUpdate, Plugin, Query, Res, ResMut,
+    },
     utils::HashSet,
 };
-use bevy_renet::renet::{DefaultChannel, RenetClient};
+use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
-    data::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, SyncMark, SyncPusher, SyncUp,
+    data::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, ClientState, SyncMark,
+    SyncPusher, SyncUp,
 };
 
 pub(crate) struct ClientSendPlugin;
 impl Plugin for ClientSendPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SyncTrackerRes>();
-        app.add_system(track_spawn_client);
-        app.add_system(entity_created_on_client);
-        app.add_system(entity_removed_from_client);
-        app.add_system(react_on_changed_components);
+
+        app.add_state::<ClientState>();
+        app.add_systems(
+            (
+                client_disconnected.run_if(resource_removed::<NetcodeClientTransport>()),
+                client_connecting
+                    .run_if(bevy_renet::transport::client_connecting)
+                    .run_if(state_exists_and_equals(ClientState::Disconnected)),
+                client_connected
+                    .run_if(bevy_renet::transport::client_connected)
+                    .run_if(state_exists_and_equals(ClientState::Connecting)),
+            )
+                .before(run_enter_schedule::<ClientState>)
+                .in_base_set(CoreSet::StateTransitions),
+        );
+
+        app.add_system(client_reset.in_schedule(OnExit(ClientState::Connected)))
+            .add_systems(
+                (
+                    track_spawn_client,
+                    entity_created_on_client,
+                    entity_removed_from_client,
+                    react_on_changed_components,
+                )
+                    .chain()
+                    .in_set(OnUpdate(ClientState::Connected)),
+            );
     }
+}
+
+fn client_disconnected(mut client_state: ResMut<NextState<ClientState>>) {
+    client_state.set(ClientState::Disconnected);
+}
+
+fn client_connecting(mut client_state: ResMut<NextState<ClientState>>) {
+    client_state.set(ClientState::Connecting);
+}
+
+fn client_connected(mut client_state: ResMut<NextState<ClientState>>) {
+    client_state.set(ClientState::Connected);
+}
+
+fn client_reset(mut cmd: Commands) {
+    cmd.insert_resource(SyncTrackerRes::default());
 }
 
 fn track_spawn_client(

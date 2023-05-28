@@ -1,9 +1,9 @@
-use bevy::{prelude::*, utils::HashSet};
-use bevy_renet::renet::{DefaultChannel, RenetServer};
+use bevy::{ecs::schedule::run_enter_schedule, prelude::*, utils::HashSet};
+use bevy_renet::renet::{transport::NetcodeServerTransport, DefaultChannel, RenetServer};
 
 use crate::{
-    data::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, SyncClientGeneratedEntity,
-    SyncMark, SyncPusher,
+    data::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, ServerState,
+    SyncClientGeneratedEntity, SyncMark, SyncPusher,
 };
 
 use super::SyncDown;
@@ -12,18 +12,53 @@ pub(crate) struct ServerSendPlugin;
 
 impl Plugin for ServerSendPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(track_spawn_server);
-        app.add_system(entity_created_on_server);
-        app.add_system(reply_back_to_client_generated_entity);
-        app.add_system(entity_removed_from_server);
-        app.add_system(react_on_changed_components);
+        app.init_resource::<SyncTrackerRes>();
+
+        app.add_state::<ServerState>();
+        app.add_systems(
+            (
+                server_disconnected
+                    .run_if(state_exists_and_equals(ServerState::Connected))
+                    .run_if(resource_removed::<NetcodeServerTransport>()),
+                server_connected
+                    .run_if(resource_added::<NetcodeServerTransport>())
+                    .run_if(state_exists_and_equals(ServerState::Disconnected)),
+            )
+                .before(run_enter_schedule::<ServerState>)
+                .in_base_set(CoreSet::StateTransitions),
+        );
+
+        app.add_system(server_reset.in_schedule(OnExit(ServerState::Connected)))
+            .add_systems(
+                (
+                    track_spawn_server,
+                    entity_created_on_server,
+                    reply_back_to_client_generated_entity,
+                    entity_removed_from_server,
+                    react_on_changed_components,
+                )
+                    .chain()
+                    .in_set(OnUpdate(ServerState::Connected)),
+            );
     }
+}
+
+fn server_disconnected(mut state: ResMut<NextState<ServerState>>) {
+    state.set(ServerState::Disconnected);
+}
+
+fn server_connected(mut state: ResMut<NextState<ServerState>>) {
+    state.set(ServerState::Connected);
 }
 
 fn track_spawn_server(mut track: ResMut<SyncTrackerRes>, query: Query<Entity, Added<SyncDown>>) {
     for e_id in query.iter() {
         track.server_to_client_entities.insert(e_id, e_id);
     }
+}
+
+fn server_reset(mut cmd: Commands) {
+    cmd.insert_resource(SyncTrackerRes::default());
 }
 
 fn entity_created_on_server(

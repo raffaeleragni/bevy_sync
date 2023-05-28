@@ -1,10 +1,10 @@
+mod client;
 mod data;
 mod proto;
 mod proto_serde;
 mod receive_client;
 mod receive_server;
-mod send_from_client;
-mod send_from_server;
+mod server;
 
 use std::{
     collections::VecDeque,
@@ -24,18 +24,33 @@ use bevy_renet::{
     transport::{NetcodeClientPlugin, NetcodeServerPlugin},
     RenetClientPlugin, RenetServerPlugin,
 };
+use client::ClientSendPlugin;
 use data::SyncDataPlugin;
 use proto::PROTOCOL_ID;
 use receive_client::ClientReceivePlugin;
 use receive_server::ServerReceivePlugin;
-use send_from_client::ClientSendPlugin;
-use send_from_server::ServerSendPlugin;
+use server::ServerSendPlugin;
 
 pub mod prelude {
     pub use super::{
-        data::SyncComponent, ClientPlugin, ServerPlugin, SyncDown, SyncMark, SyncPlugin,
-        SyncPusher, SyncUp,
+        data::SyncComponent, ClientPlugin, ClientState, ServerPlugin, ServerState, SyncDown,
+        SyncMark, SyncPlugin, SyncPusher, SyncUp,
     };
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
+pub enum ServerState {
+    Connected,
+    #[default]
+    Disconnected,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
+pub enum ClientState {
+    Connected,
+    Connecting,
+    #[default]
+    Disconnected,
 }
 
 #[derive(Component, Reflect, Default)]
