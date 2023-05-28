@@ -241,3 +241,32 @@ fn test_marked_component_is_transferred_from_client() {
         },
     );
 }
+
+#[test]
+#[serial]
+fn test_initial_world_sync_sent_from_server() {
+    TestEnv::default().run(
+        |s: &mut App, c: &mut App| {
+            s.sync_component::<MySynched>();
+            c.sync_component::<MySynched>();
+
+            let e_id = s.world.spawn(SyncMark {}).id();
+
+            let mut e = s.world.entity_mut(e_id);
+            e.insert(MySynched { value: 7 });
+
+            1
+        },
+        |_, _| {},
+        |s: &mut App, c: &mut App, entity_count: u32, _| {
+            let mut count_check = 0;
+            for (e, c) in c.world.query::<(&SyncUp, &MySynched)>().iter(&c.world) {
+                assert!(s.world.entities().contains(e.server_entity_id));
+                assert_eq!(c.value, 7);
+                s.world.entity(e.server_entity_id).get::<SyncDown>();
+                count_check += 1;
+            }
+            assert_eq!(count_check, entity_count);
+        },
+    );
+}
