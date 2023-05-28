@@ -38,7 +38,8 @@ pub mod prelude {
     };
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 pub struct SyncMark;
 
 pub struct ComponentChange {
@@ -90,6 +91,7 @@ pub(crate) struct SyncClientGeneratedEntity {
 
 impl Plugin for SyncPlugin {
     fn build(&self, app: &mut App) {
+        app.register_type::<SyncMark>();
         app.init_resource::<SyncPusher>();
         app.add_plugin(SyncDataPlugin);
     }
