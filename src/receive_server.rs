@@ -32,7 +32,7 @@ fn receive_as_server(
         while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered)
         {
             let deser_message = bincode::deserialize(&message).unwrap();
-            server_received_a_message(client_id, deser_message, track, commands);
+            server_received_a_message(client_id, deser_message, server, track, commands);
         }
     }
 }
@@ -40,6 +40,7 @@ fn receive_as_server(
 fn server_received_a_message(
     client_id: u64,
     msg: Message,
+    server: &mut ResMut<RenetServer>,
     track: &mut ResMut<SyncTrackerRes>,
     cmd: &mut Commands,
 ) {
@@ -65,6 +66,15 @@ fn server_received_a_message(
         Message::EntityComponentUpdated { id, name, data } => {
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             let mut entity = cmd.entity(e_id);
+            repeat_except_for_client(
+                client_id,
+                server,
+                &Message::EntityComponentUpdated {
+                    id,
+                    name: name.clone(),
+                    data: data.clone(),
+                },
+            );
             entity.add(move |_: Entity, world: &mut World| {
                 let registry = world.resource::<AppTypeRegistry>().clone();
                 let registry = registry.read();
@@ -73,8 +83,20 @@ fn server_received_a_message(
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
                 reflect_component
                     .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
-                
             });
         }
+    }
+}
+
+fn repeat_except_for_client(msg_client_id: u64, server: &mut ResMut<RenetServer>, msg: &Message) {
+    for client_id in server.clients_id().into_iter() {
+        if client_id == msg_client_id {
+            continue;
+        }
+        server.send_message(
+            client_id,
+            DefaultChannel::ReliableOrdered,
+            bincode::serialize(msg).unwrap(),
+        );
     }
 }
