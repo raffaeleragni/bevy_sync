@@ -47,6 +47,7 @@ pub enum ServerState {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
 pub enum ClientState {
+    ConnectedInitialSync,
     Connected,
     Connecting,
     #[default]

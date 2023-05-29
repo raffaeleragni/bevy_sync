@@ -115,7 +115,7 @@ fn reply_back_to_client_generated_entity(
 fn entity_removed_from_server(
     opt_server: Option<ResMut<RenetServer>>,
     mut track: ResMut<SyncTrackerRes>,
-    query: Query<Entity>,
+    query: Query<Entity, With<SyncDown>>,
 ) {
     let mut despawned_entities = HashSet::new();
     track.server_to_client_entities.retain(|&e_id, _| {
@@ -162,22 +162,46 @@ fn react_on_changed_components(
     }
 }
 
+pub(crate) fn send_initial_sync(client_id: u64, world: &mut World) {
+    // exclusive access to world while looping through all objects, this can be blocking/freezing for the server
+    let mut initial_sync = build_initial_sync(world);
+    let mut server = world.resource_mut::<RenetServer>();
+    for msg in initial_sync.drain(..) {
+        let msg_bin = bincode::serialize(&msg).unwrap();
+        server.send_message(client_id, DefaultChannel::ReliableOrdered, msg_bin);
+    }
+}
+
 pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
     let mut entity_ids_sent: HashSet<Entity> = HashSet::new();
     let mut result: Vec<Message> = Vec::new();
     let track = world.resource::<SyncTrackerRes>();
     let registry = world.resource::<AppTypeRegistry>().clone();
     let registry = registry.read();
+    let sync_down_id = world
+        .component_id::<SyncDown>()
+        .expect("SyncDown is not registered");
     for arch in world
         .archetypes()
         .iter()
-        .filter(|arch| track.is_synched_archetype(arch))
+        .filter(|arch| arch.contains(sync_down_id))
     {
+        for arch_entity in arch.entities() {
+            let entity = world.entity(arch_entity.entity());
+            let e_id = entity.id();
+            if !entity_ids_sent.contains(&e_id) {
+                result.push(Message::EntitySpawn { id: e_id });
+                entity_ids_sent.insert(e_id);
+            }
+        }
         for c_id in arch
             .components()
-            .filter(|&c_id| track.is_synched_component(&c_id))
+            .filter(|&c_id| track.sync_components.contains(&c_id))
         {
-            let c_info = unsafe { world.components().get_info_unchecked(c_id) };
+            let c_info = world
+                .components()
+                .get_info(c_id)
+                .expect("component not found");
             let type_name = c_info.name();
             let registration = registry
                 .get(c_info.type_id().expect("not registered"))
@@ -190,10 +214,6 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).expect("not registered");
                 let compo_bin = compo_to_bin(component.clone_value(), &registry);
-                if !entity_ids_sent.contains(&e_id) {
-                    result.push(Message::EntitySpawn { id: e_id });
-                    entity_ids_sent.insert(e_id);
-                }
                 result.push(Message::EntityComponentUpdated {
                     id: e_id,
                     name: type_name.into(),

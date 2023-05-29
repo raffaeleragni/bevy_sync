@@ -1,16 +1,35 @@
 use bevy::prelude::*;
-use bevy_renet::renet::{DefaultChannel, RenetServer};
+use bevy_renet::renet::{DefaultChannel, RenetServer, ServerEvent};
 
 use crate::{
-    data::SyncTrackerRes, proto::Message, proto_serde::bin_to_compo, server::build_initial_sync,
-    SyncClientGeneratedEntity,
+    data::SyncTrackerRes, proto::Message, proto_serde::bin_to_compo, server::send_initial_sync,
+    ServerState, SyncClientGeneratedEntity,
 };
 
 pub(crate) struct ServerReceivePlugin;
 
 impl Plugin for ServerReceivePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(check_server);
+        app.add_systems(
+            (client_connected, check_server)
+                .chain()
+                .in_set(OnUpdate(ServerState::Connected)),
+        );
+    }
+}
+
+fn client_connected(mut cmd: Commands, mut server_events: EventReader<ServerEvent>) {
+    for event in server_events.iter() {
+        match event {
+            ServerEvent::ClientConnected { client_id } => {
+                let c_id = client_id.clone();
+                cmd.add(move |world: &mut World| send_initial_sync(c_id, world));
+            }
+            ServerEvent::ClientDisconnected {
+                client_id: _,
+                reason: _,
+            } => {}
+        }
     }
 }
 
@@ -47,10 +66,14 @@ fn server_received_a_message(
 ) {
     match msg {
         Message::EntitySpawn { id } => {
-            cmd.spawn(SyncClientGeneratedEntity {
-                client_id,
-                client_entity_id: id,
-            });
+            let e_id = cmd
+                .spawn(SyncClientGeneratedEntity {
+                    client_id,
+                    client_entity_id: id,
+                })
+                .id();
+            // Need to update the map right away or else adjacent messages won't see each other entity
+            //track.server_to_client_entities.insert(e_id, e_id);
         }
         Message::EntityDelete { id } => {
             if let Some(mut e) = cmd.get_entity(id) {
@@ -82,23 +105,6 @@ fn server_received_a_message(
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
                 reflect_component
                     .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
-            });
-        }
-        /*
-          Creating an initial sync means scanning the world in a blocking way.
-          This is an issue that will need to be addressed somehow since users will not
-          receive any server updates in the meanwhile, and the server will be frozen as
-          this loops through all items.
-          cmd.add 'should' queue it into another pipeline, but the loops will still be blocking and world-accessing
-        */
-        Message::InitialSync {} => {
-            cmd.add(move |world: &mut World| {
-                let mut initial_sync = build_initial_sync(world);
-                let mut server = world.resource_mut::<RenetServer>();
-                for msg in initial_sync.drain(..) {
-                    let msg_bin = bincode::serialize(&msg).unwrap();
-                    server.send_message(client_id, DefaultChannel::ReliableOrdered, msg_bin);
-                }
             });
         }
     }

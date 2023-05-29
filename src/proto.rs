@@ -23,5 +23,4 @@ pub(crate) enum Message {
         name: String,
         data: Vec<u8>,
     } = 4,
-    InitialSync {} = 5,
 }

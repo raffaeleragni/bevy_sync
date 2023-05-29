@@ -3,7 +3,7 @@ use bevy::{
     prelude::{
         resource_removed, state_exists_and_equals, Added, App, AppTypeRegistry, Commands, CoreSet,
         Entity, IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnEnter,
-        OnExit, OnUpdate, Plugin, Query, Res, ResMut,
+        OnExit, OnUpdate, Plugin, Query, Res, ResMut, With,
     },
     utils::HashSet,
 };
@@ -34,20 +34,17 @@ impl Plugin for ClientSendPlugin {
                 .in_base_set(CoreSet::StateTransitions),
         );
 
-        app.add_system(client_reset.in_schedule(OnExit(ClientState::Connected)))
-            .add_system(
-                client_connect_request_initial_sync.in_schedule(OnEnter(ClientState::Connected)),
+        app.add_system(client_reset.in_schedule(OnExit(ClientState::Connected)));
+        app.add_systems(
+            (
+                track_spawn_client,
+                entity_created_on_client,
+                react_on_changed_components,
+                entity_removed_from_client,
             )
-            .add_systems(
-                (
-                    entity_created_on_client,
-                    entity_removed_from_client,
-                    track_spawn_client,
-                    react_on_changed_components,
-                )
-                    .chain()
-                    .in_set(OnUpdate(ClientState::Connected)),
-            );
+                .chain()
+                .in_set(OnUpdate(ClientState::Connected)),
+        );
     }
 }
 
@@ -65,14 +62,6 @@ fn client_connected(mut client_state: ResMut<NextState<ClientState>>) {
 
 fn client_reset(mut cmd: Commands) {
     cmd.insert_resource(SyncTrackerRes::default());
-}
-
-fn client_connect_request_initial_sync(opt_client: Option<ResMut<RenetClient>>) {
-    let Some(mut client) = opt_client else { return };
-    client.send_message(
-        DefaultChannel::ReliableOrdered,
-        bincode::serialize(&Message::InitialSync {}).unwrap(),
-    );
 }
 
 fn track_spawn_client(
@@ -102,7 +91,7 @@ fn entity_created_on_client(
 fn entity_removed_from_client(
     opt_client: Option<ResMut<RenetClient>>,
     mut track: ResMut<SyncTrackerRes>,
-    query: Query<Entity>,
+    query: Query<Entity, With<SyncUp>>,
 ) {
     let mut despawned_entities = HashSet::new();
     track
