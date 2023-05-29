@@ -3,15 +3,17 @@ use bevy::{
     prelude::{
         resource_removed, state_exists_and_equals, Added, App, AppTypeRegistry, Commands, CoreSet,
         Entity, IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnExit,
-        OnUpdate, Plugin, Query, Res, ResMut,
+        OnUpdate, Plugin, Query, ReflectComponent, Res, ResMut, With, World,
     },
     utils::HashSet,
 };
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
-    data::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, ClientState, SyncMark,
-    SyncPusher, SyncUp,
+    data::SyncTrackerRes,
+    proto::Message,
+    proto_serde::{bin_to_compo, compo_to_bin},
+    ClientState, SyncMark, SyncPusher, SyncUp,
 };
 
 pub(crate) struct ClientSendPlugin;
@@ -34,17 +36,18 @@ impl Plugin for ClientSendPlugin {
                 .in_base_set(CoreSet::StateTransitions),
         );
 
-        app.add_system(client_reset.in_schedule(OnExit(ClientState::Connected)))
-            .add_systems(
-                (
-                    track_spawn_client,
-                    entity_created_on_client,
-                    entity_removed_from_client,
-                    react_on_changed_components,
-                )
-                    .chain()
-                    .in_set(OnUpdate(ClientState::Connected)),
-            );
+        app.add_system(client_reset.in_schedule(OnExit(ClientState::Connected)));
+        app.add_systems(
+            (
+                track_spawn_client,
+                entity_created_on_client,
+                react_on_changed_components,
+                entity_removed_from_client,
+                poll_for_messages,
+            )
+                .chain()
+                .in_set(OnUpdate(ClientState::Connected)),
+        );
     }
 }
 
@@ -91,7 +94,7 @@ fn entity_created_on_client(
 fn entity_removed_from_client(
     opt_client: Option<ResMut<RenetClient>>,
     mut track: ResMut<SyncTrackerRes>,
-    query: Query<Entity>,
+    query: Query<Entity, With<SyncUp>>,
 ) {
     let mut despawned_entities = HashSet::new();
     track
@@ -124,12 +127,80 @@ fn react_on_changed_components(
     while let Some(change) = track.components.pop_front() {
         client.send_message(
             DefaultChannel::ReliableOrdered,
-            bincode::serialize(&Message::EntityComponentUpdated {
+            bincode::serialize(&Message::ComponentUpdated {
                 id: change.id,
                 name: change.name.clone(),
                 data: compo_to_bin(change.data.clone_value(), &registry),
             })
             .unwrap(),
         );
+    }
+}
+
+fn poll_for_messages(
+    mut commands: Commands,
+    mut track: ResMut<SyncTrackerRes>,
+    opt_client: Option<ResMut<RenetClient>>,
+) {
+    if let Some(mut client) = opt_client {
+        receive_as_client(&mut client, &mut track, &mut commands);
+    }
+}
+
+fn receive_as_client(
+    client: &mut ResMut<RenetClient>,
+    track: &mut ResMut<SyncTrackerRes>,
+    commands: &mut Commands,
+) {
+    while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
+        let deser_message = bincode::deserialize(&message).unwrap();
+        client_received_a_message(deser_message, track, commands);
+    }
+}
+
+fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, cmd: &mut Commands) {
+    match msg {
+        Message::EntitySpawn { id } => {
+            if let Some(e_id) = track.server_to_client_entities.get(&id) {
+                if cmd.get_entity(*e_id).is_some() {
+                    return;
+                }
+            }
+            let e_id = cmd
+                .spawn(SyncUp {
+                    server_entity_id: id,
+                })
+                .id();
+            // Need to update the map right away or else adjacent messages won't see each other entity
+            track.server_to_client_entities.insert(id, e_id);
+        }
+        Message::EntitySpawnBack {
+            server_entity_id: id,
+            client_entity_id: back_id,
+        } => {
+            if let Some(mut e) = cmd.get_entity(back_id) {
+                e.remove::<SyncMark>().insert(SyncUp {
+                    server_entity_id: id,
+                });
+            }
+        }
+        Message::EntityDelete { id } => {
+            let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
+            let Some(mut e) = cmd.get_entity(e_id) else {return};
+            e.despawn();
+        }
+        Message::ComponentUpdated { id, name, data } => {
+            let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
+            let mut entity = cmd.entity(e_id);
+            entity.add(move |_: Entity, world: &mut World| {
+                let registry = world.resource::<AppTypeRegistry>().clone();
+                let registry = registry.read();
+                let component_data = bin_to_compo(&data, &registry);
+                let registration = registry.get_with_name(name.as_str()).unwrap();
+                let reflect_component = registration.data::<ReflectComponent>().unwrap();
+                reflect_component
+                    .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+            });
+        }
     }
 }

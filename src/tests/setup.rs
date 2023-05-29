@@ -72,12 +72,12 @@ fn create_env() -> Result<(App, App), Box<dyn Error>> {
     let mut capp = App::new();
     capp.add_plugins(MinimalPlugins);
     capp.add_plugin(SyncPlugin);
+    // Start a non synched entity only on server so the id is intentionally offseted between server and client
     sapp.world.spawn(TransformBundle::default());
     Ok((sapp, capp))
 }
 
 fn connect_env(env: &TestEnv, sapp: &mut App, capp: &mut App) -> Result<(), Box<dyn Error>> {
-    // Start an entity only on server so the IDs intentionally offset between server and client
     sapp.add_plugin(ServerPlugin {
         ip: env.ip,
         port: env.port,

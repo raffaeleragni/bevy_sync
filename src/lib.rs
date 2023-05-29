@@ -2,8 +2,6 @@ mod client;
 mod data;
 mod proto;
 mod proto_serde;
-mod receive_client;
-mod receive_server;
 mod server;
 
 use std::{
@@ -27,8 +25,6 @@ use bevy_renet::{
 use client::ClientSendPlugin;
 use data::SyncDataPlugin;
 use proto::PROTOCOL_ID;
-use receive_client::ClientReceivePlugin;
-use receive_server::ServerReceivePlugin;
 use server::ServerSendPlugin;
 
 pub mod prelude {
@@ -47,6 +43,7 @@ pub enum ServerState {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
 pub enum ClientState {
+    ConnectedInitialSync,
     Connected,
     Connecting,
     #[default]
@@ -120,7 +117,6 @@ impl Plugin for ServerPlugin {
         app.insert_resource(create_server(self.ip, self.port));
 
         app.add_plugin(ServerSendPlugin);
-        app.add_plugin(ServerReceivePlugin);
     }
 }
 
@@ -144,7 +140,6 @@ impl Plugin for ClientPlugin {
         app.insert_resource(create_client(self.ip, self.port));
 
         app.add_plugin(ClientSendPlugin);
-        app.add_plugin(ClientReceivePlugin);
     }
 }
 
