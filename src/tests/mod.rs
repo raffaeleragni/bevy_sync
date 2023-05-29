@@ -2,6 +2,8 @@ mod setup;
 
 use crate::data::SyncComponent;
 
+use self::setup::TestRun;
+
 use super::*;
 use bevy::reflect::ReflectFromReflect;
 use serde::{Deserialize, Serialize};
@@ -11,7 +13,7 @@ use setup::TestEnv;
 #[test]
 #[serial]
 fn test_connection_setup() {
-    TestEnv::default().run(|_, _| {}, |_, _| {}, |_, _, _, _| {});
+    TestEnv::default().run_with_single_client(|_, _| {}, |_, _| {}, |_, _, _, _| {});
 }
 
 fn all_client_entities_are_in_sync<T>(s: &mut App, c: &mut App, _: T, entity_count: u32) {
@@ -27,7 +29,7 @@ fn all_client_entities_are_in_sync<T>(s: &mut App, c: &mut App, _: T, entity_cou
 #[test]
 #[serial]
 fn test_one_entity_spawned_from_server() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |s: &mut App, _: &mut App| {
             s.world.spawn(SyncMark {});
@@ -40,7 +42,7 @@ fn test_one_entity_spawned_from_server() {
 #[test]
 #[serial]
 fn test_one_entity_spawned_from_client() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |_: &mut App, c: &mut App| {
             c.world.spawn(SyncMark {});
@@ -53,7 +55,7 @@ fn test_one_entity_spawned_from_client() {
 #[test]
 #[serial]
 fn test_more_entities_spawned_from_server() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |s: &mut App, _: &mut App| {
             s.world.spawn(SyncMark {});
@@ -68,7 +70,7 @@ fn test_more_entities_spawned_from_server() {
 #[test]
 #[serial]
 fn test_more_entities_spawned_from_client() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |_: &mut App, c: &mut App| {
             c.world.spawn(SyncMark {});
@@ -83,7 +85,7 @@ fn test_more_entities_spawned_from_client() {
 #[test]
 #[serial]
 fn test_entity_deleted_from_server() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |s: &mut App, c: &mut App| {
             let e_id = s.world.spawn(SyncMark {}).id();
@@ -101,7 +103,7 @@ fn test_entity_deleted_from_server() {
 #[test]
 #[serial]
 fn test_entity_deleted_from_client() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |s: &mut App, c: &mut App| {
             let e_id = c.world.spawn(SyncMark {}).id();
@@ -133,10 +135,20 @@ pub struct MySynched {
     value: i32,
 }
 
+fn setup_registration(a: &mut App) {
+    a.sync_component::<MySynched>();
+}
+
+fn setup_registrations(apps: &mut Vec<App>) {
+    for a in apps {
+        a.sync_component::<MySynched>();
+    }
+}
+
 #[test]
 #[serial]
 fn test_non_marked_component_is_not_transferred_from_server() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |s: &mut App, _: &mut App| {
             s.world.spawn((SyncMark {}, MyNonSynched {}));
@@ -161,7 +173,7 @@ fn test_non_marked_component_is_not_transferred_from_server() {
 #[test]
 #[serial]
 fn test_non_marked_component_is_not_transferred_from_client() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |_: &mut App, c: &mut App| c.world.spawn((SyncMark {}, MyNonSynched {})).id(),
         |s: &mut App, _: &mut App, _, _| {
@@ -181,11 +193,11 @@ fn test_non_marked_component_is_not_transferred_from_client() {
 #[test]
 #[serial]
 fn test_marked_component_is_transferred_from_server() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |s: &mut App, c: &mut App| {
-            s.sync_component::<MySynched>();
-            c.sync_component::<MySynched>();
+            setup_registration(s);
+            setup_registration(c);
             let e_id = s.world.spawn(SyncMark {}).id();
             s.update();
             c.update();
@@ -215,11 +227,11 @@ fn test_marked_component_is_transferred_from_server() {
 #[test]
 #[serial]
 fn test_marked_component_is_transferred_from_client() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |_, _| {},
         |s: &mut App, c: &mut App| {
-            s.sync_component::<MySynched>();
-            c.sync_component::<MySynched>();
+            setup_registration(s);
+            setup_registration(c);
             let e_id = c.world.spawn(SyncMark {}).id();
             s.update();
             c.update();
@@ -242,31 +254,63 @@ fn test_marked_component_is_transferred_from_client() {
     );
 }
 
+fn setup_initial_sync_on_server(s: &mut App) -> u32 {
+    setup_registration(s);
+
+    let e_id = s.world.spawn(SyncMark {}).id();
+
+    let mut e = s.world.entity_mut(e_id);
+    e.insert(MySynched { value: 7 });
+
+    1
+}
+
+fn verify_initial_sync_for_client(s: &mut App, c: &mut App, entity_count: u32) {
+    let mut count_check = 0;
+    for (e, c) in c.world.query::<(&SyncUp, &MySynched)>().iter(&c.world) {
+        assert!(s.world.entities().contains(e.server_entity_id));
+        assert_eq!(c.value, 7);
+        s.world.entity(e.server_entity_id).get::<SyncDown>();
+        count_check += 1;
+    }
+    assert_eq!(count_check, entity_count);
+}
+
 #[test]
 #[serial]
 fn test_initial_world_sync_sent_from_server() {
-    TestEnv::default().run(
+    TestEnv::default().run_with_single_client(
         |s: &mut App, c: &mut App| {
-            s.sync_component::<MySynched>();
-            c.sync_component::<MySynched>();
-
-            let e_id = s.world.spawn(SyncMark {}).id();
-
-            let mut e = s.world.entity_mut(e_id);
-            e.insert(MySynched { value: 7 });
-
-            1
+            setup_registration(c);
+            setup_initial_sync_on_server(s)
         },
         |_, _| {},
         |s: &mut App, c: &mut App, entity_count: u32, _| {
-            let mut count_check = 0;
-            for (e, c) in c.world.query::<(&SyncUp, &MySynched)>().iter(&c.world) {
-                assert!(s.world.entities().contains(e.server_entity_id));
-                assert_eq!(c.value, 7);
-                s.world.entity(e.server_entity_id).get::<SyncDown>();
-                count_check += 1;
+            verify_initial_sync_for_client(s, c, entity_count);
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn test_connection_setup_multiple_clients() {
+    TestEnv::default().run_with_multiple_clients(3, |_| {}, |_| {}, |_, _, _| {});
+}
+
+#[test]
+#[serial]
+fn test_init_sync_multiple_clients() {
+    TestEnv::default().run_with_multiple_clients(
+        3,
+        |env: &mut TestRun| {
+            setup_registrations(&mut env.clients);
+            setup_initial_sync_on_server(&mut env.server)
+        },
+        |_| {},
+        |env: &mut TestRun, entity_count: u32, _| {
+            for capp in &mut env.clients {
+                verify_initial_sync_for_client(&mut env.server, capp, entity_count);
             }
-            assert_eq!(count_check, entity_count);
         },
     );
 }
