@@ -31,10 +31,10 @@ impl Plugin for ServerSendPlugin {
         app.add_system(server_reset.in_schedule(OnExit(ServerState::Connected)))
             .add_systems(
                 (
-                    track_spawn_server,
-                    entity_created_on_server,
                     reply_back_to_client_generated_entity,
+                    entity_created_on_server,
                     entity_removed_from_server,
+                    track_spawn_server,
                     react_on_changed_components,
                 )
                     .chain()
@@ -160,4 +160,48 @@ fn react_on_changed_components(
             );
         }
     }
+}
+
+pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
+    let mut entity_ids_sent: HashSet<Entity> = HashSet::new();
+    let mut result: Vec<Message> = Vec::new();
+    let track = world.resource::<SyncTrackerRes>();
+    let registry = world.resource::<AppTypeRegistry>().clone();
+    let registry = registry.read();
+    for arch in world
+        .archetypes()
+        .iter()
+        .filter(|arch| track.is_synched_archetype(arch))
+    {
+        for c_id in arch
+            .components()
+            .filter(|&c_id| track.is_synched_component(&c_id))
+        {
+            let c_info = unsafe { world.components().get_info_unchecked(c_id) };
+            let type_name = c_info.name();
+            let registration = registry
+                .get(c_info.type_id().expect("not registered"))
+                .expect("not registered");
+            let reflect_component = registration
+                .data::<ReflectComponent>()
+                .expect("missing #[reflect(Component)]");
+            for arch_entity in arch.entities() {
+                let entity = world.entity(arch_entity.entity());
+                let e_id = entity.id();
+                let component = reflect_component.reflect(entity).expect("not registered");
+                let compo_bin = compo_to_bin(component.clone_value(), &registry);
+                if !entity_ids_sent.contains(&e_id) {
+                    result.push(Message::EntitySpawn { id: e_id });
+                    entity_ids_sent.insert(e_id);
+                }
+                result.push(Message::EntityComponentUpdated {
+                    id: e_id,
+                    name: type_name.into(),
+                    data: compo_bin,
+                });
+            }
+        }
+    }
+
+    result
 }

@@ -2,7 +2,8 @@ use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetServer};
 
 use crate::{
-    data::SyncTrackerRes, proto::Message, proto_serde::bin_to_compo, SyncClientGeneratedEntity,
+    data::SyncTrackerRes, proto::Message, proto_serde::bin_to_compo, server::build_initial_sync,
+    SyncClientGeneratedEntity,
 };
 
 pub(crate) struct ServerReceivePlugin;
@@ -45,8 +46,6 @@ fn server_received_a_message(
     cmd: &mut Commands,
 ) {
     match msg {
-        Message::SequenceConfirm { id: _ } => todo!(),
-        Message::SequenceRepeat { id: _ } => todo!(),
         Message::EntitySpawn { id } => {
             cmd.spawn(SyncClientGeneratedEntity {
                 client_id,
@@ -78,11 +77,28 @@ fn server_received_a_message(
             entity.add(move |_: Entity, world: &mut World| {
                 let registry = world.resource::<AppTypeRegistry>().clone();
                 let registry = registry.read();
-                let component_data = bin_to_compo(data, &registry);
+                let component_data = bin_to_compo(&data, &registry);
                 let registration = registry.get_with_name(name.as_str()).unwrap();
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
                 reflect_component
                     .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+            });
+        }
+        /*
+          Creating an initial sync means scanning the world in a blocking way.
+          This is an issue that will need to be addressed somehow since users will not
+          receive any server updates in the meanwhile, and the server will be frozen as
+          this loops through all items.
+          cmd.add 'should' queue it into another pipeline, but the loops will still be blocking and world-accessing
+        */
+        Message::InitialSync {} => {
+            cmd.add(move |world: &mut World| {
+                let mut initial_sync = build_initial_sync(world);
+                let mut server = world.resource_mut::<RenetServer>();
+                for msg in initial_sync.drain(..) {
+                    let msg_bin = bincode::serialize(&msg).unwrap();
+                    server.send_message(client_id, DefaultChannel::ReliableOrdered, msg_bin);
+                }
             });
         }
     }

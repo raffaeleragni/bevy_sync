@@ -23,7 +23,7 @@ pub(crate) fn compo_to_bin(compo: Box<dyn Reflect>, registry: &TypeRegistryInter
     bincode::serialize(&serializer).unwrap()
 }
 
-pub(crate) fn bin_to_compo(data: Vec<u8>, registry: &TypeRegistryInternal) -> Box<dyn Reflect> {
+pub(crate) fn bin_to_compo(data: &Vec<u8>, registry: &TypeRegistryInternal) -> Box<dyn Reflect> {
     let binoptions = DefaultOptions::new()
         .with_fixint_encoding()
         .allow_trailing_bytes();
@@ -115,7 +115,7 @@ mod test {
 
         let data = compo_to_bin(compo_orig.clone_value(), &registry);
 
-        let compo_result = bin_to_compo(data, &registry);
+        let compo_result = bin_to_compo(&data, &registry);
         let compo_result = compo_result.downcast::<MyCompo>().unwrap();
 
         assert_eq!(*compo_result, compo_orig);

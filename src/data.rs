@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::component::ComponentId,
+    ecs::{archetype::Archetype, component::ComponentId},
     prelude::{App, Component, Entity, Plugin, Resource},
     reflect::{GetTypeRegistration, Reflect},
     utils::{HashMap, HashSet},
@@ -15,6 +15,20 @@ use crate::{ClientPlugin, ServerPlugin};
 pub(crate) struct SyncTrackerRes {
     pub(crate) server_to_client_entities: HashMap<Entity, Entity>,
     pub(crate) sync_components: HashSet<ComponentId>,
+}
+
+impl SyncTrackerRes {
+    pub(crate) fn is_synched_archetype(&self, archetype: &Archetype) -> bool {
+        for c_id in archetype.components().into_iter() {
+            if self.is_synched_component(&c_id) {
+                return true;
+            }
+        }
+        false
+    }
+    pub(crate) fn is_synched_component(&self, c_id: &ComponentId) -> bool {
+        self.sync_components.contains(c_id)
+    }
 }
 
 pub(crate) struct SyncDataPlugin;

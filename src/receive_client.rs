@@ -54,21 +54,28 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             cmd.entity(e_id).despawn();
         }
-        // No meaning on client side for these
-        Message::SequenceConfirm { id: _ } => {}
-        Message::SequenceRepeat { id: _ } => {}
         Message::EntityComponentUpdated { id, name, data } => {
-            let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
-            let mut entity = cmd.entity(e_id);
-            entity.add(move |_: Entity, world: &mut World| {
-                let registry = world.resource::<AppTypeRegistry>().clone();
-                let registry = registry.read();
-                let component_data = bin_to_compo(data, &registry);
-                let registration = registry.get_with_name(name.as_str()).unwrap();
-                let reflect_component = registration.data::<ReflectComponent>().unwrap();
-                reflect_component
-                    .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
-            });
+            apply_component_changed(track, cmd, id, data, name);
         }
+        Message::InitialSync {} => {}
     }
+}
+
+fn apply_component_changed(
+    track: &mut ResMut<SyncTrackerRes>,
+    cmd: &mut Commands,
+    id: Entity,
+    data: Vec<u8>,
+    name: String,
+) {
+    let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
+    let mut entity = cmd.entity(e_id);
+    entity.add(move |_: Entity, world: &mut World| {
+        let registry = world.resource::<AppTypeRegistry>().clone();
+        let registry = registry.read();
+        let component_data = bin_to_compo(&data, &registry);
+        let registration = registry.get_with_name(name.as_str()).unwrap();
+        let reflect_component = registration.data::<ReflectComponent>().unwrap();
+        reflect_component.apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+    });
 }

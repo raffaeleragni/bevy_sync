@@ -2,8 +2,8 @@ use bevy::{
     ecs::schedule::run_enter_schedule,
     prelude::{
         resource_removed, state_exists_and_equals, Added, App, AppTypeRegistry, Commands, CoreSet,
-        Entity, IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnExit,
-        OnUpdate, Plugin, Query, Res, ResMut,
+        Entity, IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnEnter,
+        OnExit, OnUpdate, Plugin, Query, Res, ResMut,
     },
     utils::HashSet,
 };
@@ -35,11 +35,14 @@ impl Plugin for ClientSendPlugin {
         );
 
         app.add_system(client_reset.in_schedule(OnExit(ClientState::Connected)))
+            .add_system(
+                client_connect_request_initial_sync.in_schedule(OnEnter(ClientState::Connected)),
+            )
             .add_systems(
                 (
-                    track_spawn_client,
                     entity_created_on_client,
                     entity_removed_from_client,
+                    track_spawn_client,
                     react_on_changed_components,
                 )
                     .chain()
@@ -62,6 +65,14 @@ fn client_connected(mut client_state: ResMut<NextState<ClientState>>) {
 
 fn client_reset(mut cmd: Commands) {
     cmd.insert_resource(SyncTrackerRes::default());
+}
+
+fn client_connect_request_initial_sync(opt_client: Option<ResMut<RenetClient>>) {
+    let Some(mut client) = opt_client else { return };
+    client.send_message(
+        DefaultChannel::ReliableOrdered,
+        bincode::serialize(&Message::InitialSync {}).unwrap(),
+    );
 }
 
 fn track_spawn_client(
