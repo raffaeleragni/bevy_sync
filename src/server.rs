@@ -56,7 +56,7 @@ fn client_connected(mut cmd: Commands, mut server_events: EventReader<ServerEven
     for event in server_events.iter() {
         match event {
             ServerEvent::ClientConnected { client_id } => {
-                let c_id = client_id.clone();
+                let c_id = *client_id;
                 cmd.add(move |world: &mut World| send_initial_sync(c_id, world));
             }
             ServerEvent::ClientDisconnected {
@@ -175,7 +175,7 @@ fn react_on_changed_components(
             server.send_message(
                 cid,
                 DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::EntityComponentUpdated {
+                bincode::serialize(&Message::ComponentUpdated {
                     id: change.id,
                     name: change.name.clone(),
                     data: compo_to_bin(change.data.clone_value(), &registry),
@@ -238,7 +238,7 @@ fn build_initial_sync(world: &World) -> Vec<Message> {
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).expect("not registered");
                 let compo_bin = compo_to_bin(component.clone_value(), &registry);
-                result.push(Message::EntityComponentUpdated {
+                result.push(Message::ComponentUpdated {
                     id: e_id,
                     name: type_name.into(),
                     data: compo_bin,
@@ -302,13 +302,13 @@ fn server_received_a_message(
             server_entity_id: _,
             client_entity_id: _,
         } => {}
-        Message::EntityComponentUpdated { id, name, data } => {
+        Message::ComponentUpdated { id, name, data } => {
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             let mut entity = cmd.entity(e_id);
             repeat_except_for_client(
                 client_id,
                 server,
-                &Message::EntityComponentUpdated {
+                &Message::ComponentUpdated {
                     id,
                     name: name.clone(),
                     data: data.clone(),

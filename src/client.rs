@@ -127,7 +127,7 @@ fn react_on_changed_components(
     while let Some(change) = track.components.pop_front() {
         client.send_message(
             DefaultChannel::ReliableOrdered,
-            bincode::serialize(&Message::EntityComponentUpdated {
+            bincode::serialize(&Message::ComponentUpdated {
                 id: change.id,
                 name: change.name.clone(),
                 data: compo_to_bin(change.data.clone_value(), &registry),
@@ -162,7 +162,7 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
     match msg {
         Message::EntitySpawn { id } => {
             if let Some(e_id) = track.server_to_client_entities.get(&id) {
-                if let Some(_) = cmd.get_entity(*e_id) {
+                if cmd.get_entity(*e_id).is_some() {
                     return;
                 }
             }
@@ -189,7 +189,7 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
             let Some(mut e) = cmd.get_entity(e_id) else {return};
             e.despawn();
         }
-        Message::EntityComponentUpdated { id, name, data } => {
+        Message::ComponentUpdated { id, name, data } => {
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             let mut entity = cmd.entity(e_id);
             entity.add(move |_: Entity, world: &mut World| {

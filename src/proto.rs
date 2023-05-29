@@ -18,7 +18,7 @@ pub(crate) enum Message {
     EntityDelete {
         id: EntityId,
     } = 3,
-    EntityComponentUpdated {
+    ComponentUpdated {
         id: EntityId,
         name: String,
         data: Vec<u8>,
