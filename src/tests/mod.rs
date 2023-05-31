@@ -6,15 +6,10 @@ use self::setup::TestRun;
 
 use super::*;
 use bevy::reflect::ReflectFromReflect;
+use bevy_renet::renet::DefaultChannel;
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
 use setup::TestEnv;
-
-#[test]
-#[serial]
-fn test_connection_setup() {
-    TestEnv::default().run_with_single_client(|_, _| {}, |_, _| {}, |_, _, _, _| {});
-}
 
 fn all_client_entities_are_in_sync<T>(s: &mut App, c: &mut App, _: T, entity_count: u32) {
     let mut count_check = 0;
@@ -276,6 +271,28 @@ fn verify_initial_sync_for_client(s: &mut App, c: &mut App, entity_count: u32) {
     assert_eq!(count_check, entity_count);
 }
 
+fn verify_no_messages_left_for_server(s: &mut App) {
+    let mut server = s.world.resource_mut::<RenetServer>();
+    for client_id in server.clients_id().into_iter() {
+        assert!(server
+            .receive_message(client_id, DefaultChannel::ReliableOrdered)
+            .is_none());
+    }
+}
+
+fn verify_no_messages_left_for_clients(cs: &mut Vec<App>) {
+    for c in cs {
+        verify_no_messages_left_for_client(c);
+    }
+}
+
+fn verify_no_messages_left_for_client(c: &mut App) {
+    let mut client = c.world.resource_mut::<RenetClient>();
+    assert!(client
+        .receive_message(DefaultChannel::ReliableOrdered)
+        .is_none());
+}
+
 #[test]
 #[serial]
 fn test_initial_world_sync_sent_from_server() {
@@ -287,14 +304,10 @@ fn test_initial_world_sync_sent_from_server() {
         |_, _| {},
         |s: &mut App, c: &mut App, entity_count: u32, _| {
             verify_initial_sync_for_client(s, c, entity_count);
+            verify_no_messages_left_for_server(s);
+            verify_no_messages_left_for_client(c);
         },
     );
-}
-
-#[test]
-#[serial]
-fn test_connection_setup_multiple_clients() {
-    TestEnv::default().run_with_multiple_clients(3, |_| {}, |_| {}, |_, _, _| {});
 }
 
 #[test]
@@ -311,6 +324,9 @@ fn test_init_sync_multiple_clients() {
             for capp in &mut env.clients {
                 verify_initial_sync_for_client(&mut env.server, capp, entity_count);
             }
+
+            verify_no_messages_left_for_server(&mut env.server);
+            verify_no_messages_left_for_clients(&mut env.clients);
         },
     );
 }
