@@ -156,6 +156,11 @@ fn receive_as_client(
 fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, cmd: &mut Commands) {
     match msg {
         Message::EntitySpawn { id } => {
+            debug!(
+                "Client received of type EntitySpawn for server entity {}v{}",
+                id.index(),
+                id.generation()
+            );
             if let Some(e_id) = track.server_to_client_entities.get(&id) {
                 if cmd.get_entity(*e_id).is_some() {
                     return;
@@ -173,6 +178,11 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
             server_entity_id: id,
             client_entity_id: back_id,
         } => {
+            debug!(
+                "Client received of type EntitySpawnBack for server entity {}v{}",
+                id.index(),
+                id.generation()
+            );
             if let Some(mut e) = cmd.get_entity(back_id) {
                 e.remove::<SyncMark>().insert(SyncUp {
                     server_entity_id: id,
@@ -180,6 +190,11 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
             }
         }
         Message::EntityDelete { id } => {
+            debug!(
+                "Client received of type EntityDelete for server entity {}v{}",
+                id.index(),
+                id.generation()
+            );
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             let Some(mut e) = cmd.get_entity(e_id) else {return};
             e.despawn();
@@ -194,14 +209,37 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
                 let registration = registry.get_with_name(name.as_str()).unwrap();
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
                 let previous_value = reflect_component.reflect(world.entity(e_id));
-                let to_change = previous_value.is_none()
-                    || previous_value.unwrap().reflect_hash()
-                        != component_data.as_reflect().reflect_hash();
-                if to_change {
+                if needs_to_change(previous_value, &component_data) {
+                    debug!(
+                        "Client received message of type ComponentUpdated for entity {}v{} and component {}",
+                        id.index(),
+                        id.generation(),
+                        name
+                    );
                     reflect_component
                         .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+                } else {
+                    debug!(
+                        "Skipping client received message of type ComponentUpdated for entity {}v{} and component {}",
+                        id.index(),
+                        id.generation(),
+                        name
+                    );
                 }
             });
         }
     }
+}
+
+fn needs_to_change(
+    previous_value: Option<&dyn Reflect>,
+    component_data: &Box<dyn Reflect>,
+) -> bool {
+    if previous_value.is_none() {
+        return true;
+    }
+    !previous_value
+        .unwrap()
+        .reflect_partial_eq(&**component_data)
+        .unwrap_or_else(|| true)
 }

@@ -294,7 +294,7 @@ fn receive_as_server(
         while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered)
         {
             let deser_message = bincode::deserialize(&message).unwrap();
-            server_received_a_message(client_id, deser_message, server, track, commands);
+            server_received_a_message(client_id, deser_message, track, commands);
         }
     }
 }
@@ -302,7 +302,6 @@ fn receive_as_server(
 fn server_received_a_message(
     client_id: u64,
     msg: Message,
-    server: &mut ResMut<RenetServer>,
     track: &mut ResMut<SyncTrackerRes>,
     cmd: &mut Commands,
 ) {
@@ -338,23 +337,8 @@ fn server_received_a_message(
             client_entity_id: _,
         } => {}
         Message::ComponentUpdated { id, name, data } => {
-            debug!(
-                "Server received message of type ComponentUpdated for entity {}v{} and component {}",
-                id.index(),
-                id.generation(),
-                name
-            );
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             let mut entity = cmd.entity(e_id);
-            repeat_except_for_client(
-                client_id,
-                server,
-                &Message::ComponentUpdated {
-                    id,
-                    name: name.clone(),
-                    data: data.clone(),
-                },
-            );
             entity.add(move |_: Entity, world: &mut World| {
                 let registry = world.resource::<AppTypeRegistry>().clone();
                 let registry = registry.read();
@@ -362,19 +346,51 @@ fn server_received_a_message(
                 let registration = registry.get_with_name(name.as_str()).unwrap();
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
                 let previous_value = reflect_component.reflect(world.entity(e_id));
-                let to_change = previous_value.is_none()
-                    || previous_value.unwrap().reflect_hash()
-                        != component_data.as_reflect().reflect_hash();
-                if to_change {
+                if needs_to_change(previous_value, &component_data) {
+                    debug!(
+                        "Server received message of type ComponentUpdated for entity {}v{} and component {}",
+                        id.index(),
+                        id.generation(),
+                        name
+                    );
                     reflect_component
                         .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+                    repeat_except_for_client(
+                        client_id,
+                        &mut world.resource_mut::<RenetServer>(),
+                        &Message::ComponentUpdated {
+                            id,
+                            name: name.clone(),
+                            data: data.clone(),
+                        },
+                    );
+                } else {
+                    debug!(
+                        "Skipping server received message of type ComponentUpdated for entity {}v{} and component {}",
+                        id.index(),
+                        id.generation(),
+                        name
+                    );
                 }
             });
         }
     }
 }
 
-fn repeat_except_for_client(msg_client_id: u64, server: &mut ResMut<RenetServer>, msg: &Message) {
+fn needs_to_change(
+    previous_value: Option<&dyn Reflect>,
+    component_data: &Box<dyn Reflect>,
+) -> bool {
+    if previous_value.is_none() {
+        return true;
+    }
+    !previous_value
+        .unwrap()
+        .reflect_partial_eq(&**component_data)
+        .unwrap_or_else(|| true)
+}
+
+fn repeat_except_for_client(msg_client_id: u64, server: &mut RenetServer, msg: &Message) {
     for client_id in server.clients_id().into_iter() {
         if client_id == msg_client_id {
             continue;
