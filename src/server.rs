@@ -56,22 +56,27 @@ fn client_connected(mut cmd: Commands, mut server_events: EventReader<ServerEven
     for event in server_events.iter() {
         match event {
             ServerEvent::ClientConnected { client_id } => {
+                info!("Client connected with client id: {}", client_id);
                 let c_id = *client_id;
                 cmd.add(move |world: &mut World| send_initial_sync(c_id, world));
             }
-            ServerEvent::ClientDisconnected {
-                client_id: _,
-                reason: _,
-            } => {}
+            ServerEvent::ClientDisconnected { client_id, reason } => {
+                info!(
+                    "Client disconnected with client id: {}, reason: {}",
+                    client_id, reason
+                );
+            }
         }
     }
 }
 
 fn server_disconnected(mut state: ResMut<NextState<ServerState>>) {
+    info!("Server is shut down.");
     state.set(ServerState::Disconnected);
 }
 
 fn server_connected(mut state: ResMut<NextState<ServerState>>) {
+    info!("Server ready to accept connections.");
     state.set(ServerState::Connected);
 }
 
@@ -92,6 +97,11 @@ fn entity_created_on_server(
 ) {
     let Some(mut server) = opt_server else { return };
     for id in query.iter_mut() {
+        debug!(
+            "New entity created on server: {}v{}",
+            id.index(),
+            id.generation()
+        );
         for client_id in server.clients_id().into_iter() {
             server.send_message(
                 client_id,
@@ -111,6 +121,11 @@ fn reply_back_to_client_generated_entity(
 ) {
     let Some(mut server) = opt_server else { return };
     for (entity_id, marker_component) in query.iter_mut() {
+        debug!(
+            "Replying to client generated entity for: {}v{}",
+            entity_id.index(),
+            entity_id.generation()
+        );
         server.send_message(
             marker_component.client_id,
             DefaultChannel::ReliableOrdered,
@@ -152,6 +167,11 @@ fn entity_removed_from_server(
     });
     let Some(mut server) = opt_server else { return };
     for &id in despawned_entities.iter() {
+        debug!(
+            "Entity was removed from server: {}v{}",
+            id.index(),
+            id.generation()
+        );
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,
@@ -171,6 +191,10 @@ fn react_on_changed_components(
     let registry = registry.clone();
     let registry = registry.read();
     while let Some(change) = track.components.pop_front() {
+        debug!(
+            "Component was changed on server: {}",
+            change.data.type_name()
+        );
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,
@@ -187,6 +211,7 @@ fn react_on_changed_components(
 }
 
 fn send_initial_sync(client_id: u64, world: &mut World) {
+    debug!("Sending initial sync to client id: {}", client_id);
     // exclusive access to world while looping through all objects, this can be blocking/freezing for the server
     let mut initial_sync = build_initial_sync(world);
     let mut server = world.resource_mut::<RenetServer>();
@@ -283,6 +308,11 @@ fn server_received_a_message(
 ) {
     match msg {
         Message::EntitySpawn { id } => {
+            debug!(
+                "Server received message of type EntitySpawn for entity {}v{}",
+                id.index(),
+                id.generation()
+            );
             let e_id = cmd
                 .spawn(SyncClientGeneratedEntity {
                     client_id,
@@ -293,6 +323,11 @@ fn server_received_a_message(
             track.server_to_client_entities.insert(e_id, e_id);
         }
         Message::EntityDelete { id } => {
+            debug!(
+                "Server received message of type EntityDelete for entity {}v{}",
+                id.index(),
+                id.generation()
+            );
             if let Some(mut e) = cmd.get_entity(id) {
                 e.despawn();
             }
@@ -303,6 +338,12 @@ fn server_received_a_message(
             client_entity_id: _,
         } => {}
         Message::ComponentUpdated { id, name, data } => {
+            debug!(
+                "Server received message of type ComponentUpdated for entity {}v{} and component {}",
+                id.index(),
+                id.generation(),
+                name
+            );
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             let mut entity = cmd.entity(e_id);
             repeat_except_for_client(
@@ -320,8 +361,14 @@ fn server_received_a_message(
                 let component_data = bin_to_compo(&data, &registry);
                 let registration = registry.get_with_name(name.as_str()).unwrap();
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
-                reflect_component
-                    .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+                let previous_value = reflect_component.reflect(world.entity(e_id));
+                let to_change = previous_value.is_none()
+                    || previous_value.unwrap().reflect_hash()
+                        != component_data.as_reflect().reflect_hash();
+                if to_change {
+                    reflect_component
+                        .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+                }
             });
         }
     }

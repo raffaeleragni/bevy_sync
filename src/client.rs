@@ -1,12 +1,4 @@
-use bevy::{
-    ecs::schedule::run_enter_schedule,
-    prelude::{
-        resource_removed, state_exists_and_equals, Added, App, AppTypeRegistry, Commands, CoreSet,
-        Entity, IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnExit,
-        OnUpdate, Plugin, Query, ReflectComponent, Res, ResMut, With, World,
-    },
-    utils::HashSet,
-};
+use bevy::{ecs::schedule::run_enter_schedule, prelude::*, utils::HashSet};
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
@@ -52,14 +44,17 @@ impl Plugin for ClientSendPlugin {
 }
 
 fn client_disconnected(mut client_state: ResMut<NextState<ClientState>>) {
+    info!("Disconnected from server.");
     client_state.set(ClientState::Disconnected);
 }
 
 fn client_connecting(mut client_state: ResMut<NextState<ClientState>>) {
+    info!("Connecting to server...");
     client_state.set(ClientState::Connecting);
 }
 
 fn client_connected(mut client_state: ResMut<NextState<ClientState>>) {
+    info!("Connected to server.");
     client_state.set(ClientState::Connected);
 }
 
@@ -198,8 +193,14 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
                 let component_data = bin_to_compo(&data, &registry);
                 let registration = registry.get_with_name(name.as_str()).unwrap();
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
-                reflect_component
-                    .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+                let previous_value = reflect_component.reflect(world.entity(e_id));
+                let to_change = previous_value.is_none()
+                    || previous_value.unwrap().reflect_hash()
+                        != component_data.as_reflect().reflect_hash();
+                if to_change {
+                    reflect_component
+                        .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+                }
             });
         }
     }
