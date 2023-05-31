@@ -346,7 +346,7 @@ fn server_received_a_message(
                 let registration = registry.get_with_name(name.as_str()).unwrap();
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
                 let previous_value = reflect_component.reflect(world.entity(e_id));
-                if needs_to_change(previous_value, &component_data) {
+                if needs_to_change(previous_value, &*component_data) {
                     debug!(
                         "Server received message of type ComponentUpdated for entity {}v{} and component {}",
                         id.index(),
@@ -377,17 +377,14 @@ fn server_received_a_message(
     }
 }
 
-fn needs_to_change(
-    previous_value: Option<&dyn Reflect>,
-    component_data: &Box<dyn Reflect>,
-) -> bool {
+fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
     if previous_value.is_none() {
         return true;
     }
     !previous_value
         .unwrap()
-        .reflect_partial_eq(&**component_data)
-        .unwrap_or_else(|| true)
+        .reflect_partial_eq(component_data)
+        .unwrap_or(true)
 }
 
 fn repeat_except_for_client(msg_client_id: u64, server: &mut RenetServer, msg: &Message) {
