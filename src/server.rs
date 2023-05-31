@@ -4,10 +4,9 @@ use bevy_renet::renet::{
 };
 
 use crate::{
-    data::SyncTrackerRes,
     proto::Message,
     proto_serde::{bin_to_compo, compo_to_bin},
-    ServerState, SyncClientGeneratedEntity, SyncMark, SyncPusher,
+    ServerState, SyncClientGeneratedEntity, SyncMark, SyncPusher, SyncTrackerRes,
 };
 
 use super::SyncDown;

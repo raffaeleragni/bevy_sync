@@ -1,6 +1,6 @@
 mod setup;
 
-use crate::data::SyncComponent;
+use crate::prelude::SyncComponent;
 
 use self::setup::TestRun;
 
@@ -122,11 +122,11 @@ fn test_entity_deleted_from_client() {
 }
 
 #[derive(Component)]
-pub struct MyNonSynched;
+struct MyNonSynched;
 
 #[derive(Component, Reflect, FromReflect, Default, PartialEq, Serialize, Deserialize, Debug)]
 #[reflect(Component, FromReflect)]
-pub struct MySynched {
+struct MySynched {
     value: i32,
 }
 

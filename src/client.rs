@@ -2,10 +2,9 @@ use bevy::{ecs::schedule::run_enter_schedule, prelude::*, utils::HashSet};
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
-    data::SyncTrackerRes,
     proto::Message,
     proto_serde::{bin_to_compo, compo_to_bin},
-    ClientState, SyncMark, SyncPusher, SyncUp,
+    ClientState, SyncMark, SyncPusher, SyncTrackerRes, SyncUp,
 };
 
 pub(crate) struct ClientSendPlugin;
