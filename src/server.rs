@@ -345,6 +345,7 @@ fn server_received_a_message(
                 let registration = registry.get_with_name(name.as_str()).unwrap();
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
                 let previous_value = reflect_component.reflect(world.entity(e_id));
+                // TODO, WARN: Was not possible to replicate this situation with tests yet. This behavior is not covered.
                 if needs_to_change(previous_value, &*component_data) {
                     debug!(
                         "Server received message of type ComponentUpdated for entity {}v{} and component {}",

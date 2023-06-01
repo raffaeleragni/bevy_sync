@@ -7,7 +7,7 @@ use std::{
 use bevy::{
     ecs::component::ComponentId,
     prelude::*,
-    reflect::GetTypeRegistration,
+    reflect::{GetTypeRegistration, ReflectFromReflect},
     utils::{HashMap, HashSet},
 };
 use bevy_renet::{
@@ -73,7 +73,9 @@ pub struct SyncUp {
 }
 
 pub trait SyncComponent {
-    fn sync_component<T: Component + Reflect + GetTypeRegistration>(&mut self) -> &mut Self;
+    fn sync_component<T: Component + Reflect + FromReflect + GetTypeRegistration>(
+        &mut self,
+    ) -> &mut Self;
 }
 
 mod client;
@@ -126,8 +128,11 @@ fn sync_detect_client<T: Component + Reflect>(
 }
 
 impl SyncComponent for App {
-    fn sync_component<T: Component + Reflect + GetTypeRegistration>(&mut self) -> &mut Self {
+    fn sync_component<T: Component + Reflect + FromReflect + GetTypeRegistration>(
+        &mut self,
+    ) -> &mut Self {
         self.register_type::<T>();
+        self.register_type_data::<T, ReflectFromReflect>();
         let c_id = self.world.init_component::<T>();
         let mut data = self.world.resource_mut::<SyncTrackerRes>();
         data.sync_components.insert(c_id);

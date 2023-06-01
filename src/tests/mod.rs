@@ -5,7 +5,6 @@ use crate::prelude::SyncComponent;
 use self::setup::TestRun;
 
 use super::*;
-use bevy::reflect::ReflectFromReflect;
 use bevy_renet::renet::DefaultChannel;
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
@@ -125,7 +124,7 @@ fn test_entity_deleted_from_client() {
 struct MyNonSynched;
 
 #[derive(Component, Reflect, FromReflect, Default, PartialEq, Serialize, Deserialize, Debug)]
-#[reflect(Component, FromReflect)]
+#[reflect(Component)]
 struct MySynched {
     value: i32,
 }

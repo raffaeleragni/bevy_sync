@@ -29,12 +29,11 @@ pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistryInternal) -> Box<
         .allow_trailing_bytes();
     let mut bin_deser = bincode::Deserializer::from_slice(data, binoptions);
     let deserializer = ComponentDataDeserializer { registry };
-    let data = deserializer
-        .deserialize(&mut bin_deser)
-        .unwrap()
-        .data
-        .downcast::<DynamicStruct>()
-        .unwrap();
+    let data = deserializer.deserialize(&mut bin_deser).unwrap();
+    if !data.data.is::<DynamicStruct>() {
+        return data.data;
+    }
+    let data = data.data.downcast::<DynamicStruct>().unwrap();
     let registration = registry.get_with_name(data.name()).unwrap();
     let rfr = registry
         .get_type_data::<ReflectFromReflect>(registration.type_id())
@@ -91,7 +90,7 @@ impl<'a: 'de, 'de> Visitor<'de> for ComponentDataDeserializer<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use bevy::reflect::ReflectFromReflect;
+    use bevy::reflect::{GetTypeRegistration, ReflectFromReflect};
     use serde::Deserialize;
 
     #[derive(
@@ -103,20 +102,45 @@ mod test {
         name: String,
     }
 
-    #[test]
-    fn compo_data_serde() {
-        let compo_orig = MyCompo {
-            value: 3,
-            name: String::from("name"),
-        };
-
+    fn check_serialize_and_back<T>(compo_orig: T)
+    where
+        T: Reflect + GetTypeRegistration + PartialEq + std::fmt::Debug,
+    {
         let mut registry = TypeRegistryInternal::default();
-        registry.register::<MyCompo>();
+        registry.register::<T>();
 
         let data = compo_to_bin(compo_orig.clone_value(), &registry);
 
         let compo_result = bin_to_compo(&data, &registry);
-        let compo_result = compo_result.downcast::<MyCompo>().unwrap();
+        let compo_result = compo_result.downcast::<T>().unwrap();
+
+        assert_eq!(*compo_result, compo_orig);
+    }
+
+    #[test]
+    fn compo_data_serde() {
+        check_serialize_and_back::<MyCompo>(MyCompo {
+            value: 3,
+            name: String::from("name"),
+        });
+    }
+
+    #[test]
+    fn compo_data_serde_bevy_native_component() {
+        let compo_orig = Transform::default();
+
+        let mut registry = TypeRegistryInternal::default();
+        registry.register::<Transform>();
+        registry.register::<Vec3>();
+        registry.register::<Quat>();
+        registry.register_type_data::<Transform, ReflectFromReflect>();
+        registry.register_type_data::<Vec3, ReflectFromReflect>();
+        registry.register_type_data::<Quat, ReflectFromReflect>();
+
+        let data = compo_to_bin(compo_orig.clone_value(), &registry);
+
+        let compo_result = bin_to_compo(&data, &registry);
+        let compo_result = compo_result.downcast::<Transform>().unwrap();
 
         assert_eq!(*compo_result, compo_orig);
     }

@@ -207,6 +207,7 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
                 let component_data = bin_to_compo(&data, &registry);
                 let registration = registry.get_with_name(name.as_str()).unwrap();
                 let reflect_component = registration.data::<ReflectComponent>().unwrap();
+                // TODO, WARN: Was not possible to replicate this situation with tests yet. This behavior is not covered.
                 let previous_value = reflect_component.reflect(world.entity(e_id));
                 if needs_to_change(previous_value, &*component_data) {
                     debug!(
