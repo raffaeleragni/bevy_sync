@@ -345,7 +345,22 @@ fn server_received_a_message(
             server_entity_id: e_id,
             server_parent_id: p_id,
         } => {
-            cmd.entity(p_id).add_child(e_id);
+            cmd.add(move |world: &mut World| {
+                let Some(mut entity) = world.get_entity_mut(e_id) else {return};
+                let opt_parent = entity.get::<Parent>();
+                if opt_parent.is_none() || opt_parent.unwrap().get() != p_id {
+                    entity.set_parent(p_id);
+                    world.entity_mut(p_id).add_child(e_id);
+                }
+                repeat_except_for_client(
+                    client_id,
+                    &mut world.resource_mut::<RenetServer>(),
+                    &Message::EntityParented {
+                        server_entity_id: e_id,
+                        server_parent_id: p_id,
+                    },
+                );
+            });
         }
         Message::EntityDelete { id } => {
             debug!(

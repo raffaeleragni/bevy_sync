@@ -214,7 +214,14 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
         } => {
             let Some(&c_e_id) = track.server_to_client_entities.get(&e_id) else {return};
             let Some(&c_p_id) = track.server_to_client_entities.get(&p_id) else {return};
-            cmd.entity(c_p_id).add_child(c_e_id);
+            cmd.add(move |world: &mut World| {
+                let mut entity = world.entity_mut(c_e_id);
+                let opt_parent = entity.get::<Parent>();
+                if opt_parent.is_none() || opt_parent.unwrap().get() != c_p_id {
+                    entity.set_parent(p_id);
+                    world.entity_mut(c_p_id).add_child(c_e_id);
+                }
+            });
         }
         Message::EntityDelete { id } => {
             debug!(

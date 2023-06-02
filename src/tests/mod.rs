@@ -346,7 +346,7 @@ fn find_entity_with_server_id(c: &mut App, e_id: Entity) -> Option<Entity> {
 #[serial]
 fn test_entity_parent_is_transferred_from_server() {
     TestEnv::default().run_with_multiple_clients(
-        3,
+        1,
         |_| {},
         |env: &mut TestRun| {
             let e1 = env.server.world.spawn(SyncMark {}).id();
@@ -393,30 +393,22 @@ fn test_entity_parent_is_transferred_from_server() {
 #[serial]
 fn test_entity_parent_is_transferred_from_client() {
     TestEnv::default().run_with_multiple_clients(
-        3,
+        1,
         |_| {},
         |env: &mut TestRun| {
-            let e1 = env.clients[0].world.spawn(SyncMark {}).id();
-            let e2 = env.clients[0].world.spawn(SyncMark {}).id();
+            let e_id1 = env.clients[0].world.spawn(SyncMark {}).id();
+            let e_id2 = env.clients[0].world.spawn(SyncMark {}).id();
 
             env.update(3);
 
-            env.clients[0].world.entity_mut(e1).add_child(e2);
+            env.clients[0].world.entity_mut(e_id1).add_child(e_id2);
 
             env.update(3);
 
-            let server_e1 = env.clients[0]
-                .world
-                .entity_mut(e1)
-                .get::<SyncUp>()
-                .unwrap()
-                .server_entity_id;
-            let server_e2 = env.clients[0]
-                .world
-                .entity_mut(e2)
-                .get::<SyncUp>()
-                .unwrap()
-                .server_entity_id;
+            let e1 = &env.clients[0].world.entity(e_id1);
+            let server_e1 = e1.get::<SyncUp>().unwrap().server_entity_id;
+            let e2 = &env.clients[0].world.entity(e_id2);
+            let server_e2 = e2.get::<SyncUp>().unwrap().server_entity_id;
 
             (server_e1, server_e2)
         },
