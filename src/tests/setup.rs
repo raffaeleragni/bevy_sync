@@ -34,6 +34,17 @@ pub(crate) struct TestRun {
     pub(crate) clients: Vec<App>,
 }
 
+impl TestRun {
+    pub(crate) fn update(&mut self, count: u32) {
+        for _ in 0..count {
+            self.server.update();
+            for capp in &mut self.clients {
+                capp.update();
+            }
+        }
+    }
+}
+
 impl Default for TestEnv {
     fn default() -> Self {
         Self {
