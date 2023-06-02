@@ -320,6 +320,10 @@ fn server_received_a_message(
             // Need to update the map right away or else adjacent messages won't see each other entity
             track.server_to_client_entities.insert(e_id, e_id);
         }
+        Message::EntityParented {
+            server_entity_id,
+            server_parent_id,
+        } => {}
         Message::EntityDelete { id } => {
             debug!(
                 "Server received message of type EntityDelete for entity {}v{}",

@@ -329,3 +329,123 @@ fn test_init_sync_multiple_clients() {
         },
     );
 }
+fn find_entity_with_server_id(c: &mut App, e_id: Entity) -> Option<Entity> {
+    for (c_e, sup) in c
+        .world
+        .query_filtered::<(Entity, &SyncUp), With<SyncUp>>()
+        .iter(&c.world)
+    {
+        if sup.server_entity_id == e_id {
+            return Some(c_e);
+        }
+    }
+    None
+}
+
+#[test]
+#[serial]
+fn test_entity_parent_is_transferred_from_server() {
+    TestEnv::default().run_with_multiple_clients(
+        3,
+        |_| {},
+        |env: &mut TestRun| {
+            let e1 = env.server.world.spawn(SyncMark {}).id();
+            let e2 = env.server.world.spawn(SyncMark {}).id();
+            env.server.update();
+            env.server.world.entity_mut(e1).add_child(e2);
+            (e1, e2)
+        },
+        |env: &mut TestRun, _, entities: (Entity, Entity)| {
+            for capp in &mut env.clients {
+                let parent = find_entity_with_server_id(capp, entities.0)
+                    .expect("Parent not found on client");
+                let child = find_entity_with_server_id(capp, entities.1)
+                    .expect("Children not found on client");
+                assert_eq!(
+                    capp.world
+                        .entity(parent)
+                        .get::<Children>()
+                        .expect("Parent has no children component")
+                        .iter()
+                        .filter(|e| **e == child)
+                        .count(),
+                    1
+                );
+                assert_eq!(
+                    capp.world
+                        .entity(child)
+                        .get::<Parent>()
+                        .expect("Child has no parent component")
+                        .get(),
+                    parent
+                );
+            }
+
+            verify_no_messages_left_for_server(&mut env.server);
+            verify_no_messages_left_for_clients(&mut env.clients);
+        },
+    );
+}
+
+//#[test]
+#[serial]
+fn test_entity_parent_is_transferred_from_client() {
+    TestEnv::default().run_with_multiple_clients(
+        3,
+        |_| {},
+        |env: &mut TestRun| {
+            let e1 = env.clients[0].world.spawn(SyncMark {}).id();
+            let e2 = env.clients[0].world.spawn(SyncMark {}).id();
+            env.clients[0].world.entity_mut(e1).add_child(e2);
+
+            env.server.update();
+            env.clients[0].update();
+            env.server.update();
+            env.clients[0].update();
+            env.server.update();
+            env.clients[0].update();
+            env.server.update();
+            env.clients[0].update();
+            let server_e1 = env.clients[0]
+                .world
+                .entity_mut(e1)
+                .get::<SyncUp>()
+                .unwrap()
+                .server_entity_id;
+            let server_e2 = env.clients[0]
+                .world
+                .entity_mut(e2)
+                .get::<SyncUp>()
+                .unwrap()
+                .server_entity_id;
+            (server_e1, server_e2)
+        },
+        |env: &mut TestRun, _, entities: (Entity, Entity)| {
+            let parent = env.server.world.entity(entities.0).id();
+            let child = env.server.world.entity(entities.1).id();
+            assert_eq!(
+                env.server
+                    .world
+                    .entity(parent)
+                    .get::<Children>()
+                    .expect("Parent has no children component")
+                    .iter()
+                    .filter(|e| **e == child)
+                    .count(),
+                1
+            );
+            assert_eq!(
+                env.server
+                    .world
+                    .entity(child)
+                    .get::<Parent>()
+                    .expect("Child has no parent component")
+                    .get(),
+                parent
+            );
+
+            verify_no_messages_left_for_server(&mut env.server);
+            verify_no_messages_left_for_clients(&mut env.clients);
+        },
+    );
+}

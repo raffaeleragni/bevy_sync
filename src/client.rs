@@ -188,6 +188,10 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
                 });
             }
         }
+        Message::EntityParented {
+            server_entity_id,
+            server_parent_id,
+        } => {}
         Message::EntityDelete { id } => {
             debug!(
                 "Client received of type EntityDelete for server entity {}v{}",
