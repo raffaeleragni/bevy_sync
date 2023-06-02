@@ -36,6 +36,7 @@ impl Plugin for ServerSendPlugin {
             (
                 reply_back_to_client_generated_entity,
                 entity_created_on_server,
+                entity_parented_on_server,
                 entity_removed_from_server,
                 track_spawn_server,
                 react_on_changed_components,
@@ -110,6 +111,26 @@ fn entity_created_on_server(
         }
         let mut entity = commands.entity(id);
         entity.remove::<SyncMark>().insert(SyncDown {});
+    }
+}
+
+fn entity_parented_on_server(
+    opt_server: Option<ResMut<RenetServer>>,
+    query: Query<(Entity, &Parent), Changed<Parent>>,
+) {
+    let Some(mut server) = opt_server else { return };
+    for (e_id, p) in query.iter() {
+        for client_id in server.clients_id().into_iter() {
+            server.send_message(
+                client_id,
+                DefaultChannel::ReliableOrdered,
+                bincode::serialize(&Message::EntityParented {
+                    server_entity_id: e_id,
+                    server_parent_id: p.get(),
+                })
+                .unwrap(),
+            );
+        }
     }
 }
 
