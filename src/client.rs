@@ -32,6 +32,7 @@ impl Plugin for ClientSendPlugin {
             (
                 track_spawn_client,
                 entity_created_on_client,
+                entity_parented_on_client,
                 react_on_changed_components,
                 entity_removed_from_client,
                 poll_for_messages,
@@ -81,6 +82,25 @@ fn entity_created_on_client(
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
+        );
+    }
+}
+
+fn entity_parented_on_client(
+    opt_client: Option<ResMut<RenetClient>>,
+    query: Query<(&Parent, &SyncUp), Changed<Parent>>,
+    query_parent: Query<(Entity, &SyncUp), With<Children>>,
+) {
+    let Some(mut client) = opt_client else { return };
+    for (p, sup) in query.iter() {
+        let Ok(parent) = query_parent.get_component::<SyncUp>(p.get()) else {return};
+        client.send_message(
+            DefaultChannel::ReliableOrdered,
+            bincode::serialize(&Message::EntityParented {
+                server_entity_id: sup.server_entity_id,
+                server_parent_id: parent.server_entity_id,
+            })
+            .unwrap(),
         );
     }
 }
@@ -187,6 +207,21 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
                     server_entity_id: id,
                 });
             }
+        }
+        Message::EntityParented {
+            server_entity_id: e_id,
+            server_parent_id: p_id,
+        } => {
+            let Some(&c_e_id) = track.server_to_client_entities.get(&e_id) else {return};
+            let Some(&c_p_id) = track.server_to_client_entities.get(&p_id) else {return};
+            cmd.add(move |world: &mut World| {
+                let mut entity = world.entity_mut(c_e_id);
+                let opt_parent = entity.get::<Parent>();
+                if opt_parent.is_none() || opt_parent.unwrap().get() != c_p_id {
+                    entity.set_parent(p_id);
+                    world.entity_mut(c_p_id).add_child(c_e_id);
+                }
+            });
         }
         Message::EntityDelete { id } => {
             debug!(
