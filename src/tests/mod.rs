@@ -1,14 +1,12 @@
 mod setup;
-
-use crate::prelude::SyncComponent;
-
 use self::setup::TestRun;
 
-use super::*;
-use bevy_renet::renet::DefaultChannel;
+use crate::prelude::*;
+use bevy::prelude::*;
+use bevy_renet::renet::*;
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
-use setup::TestEnv;
+use setup::*;
 
 fn all_client_entities_are_in_sync<T>(s: &mut App, c: &mut App, _: T, entity_count: u32) {
     let mut count_check = 0;
