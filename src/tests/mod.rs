@@ -387,7 +387,7 @@ fn test_entity_parent_is_transferred_from_server() {
     );
 }
 
-//#[test]
+#[test]
 #[serial]
 fn test_entity_parent_is_transferred_from_client() {
     TestEnv::default().run_with_multiple_clients(
@@ -396,6 +396,16 @@ fn test_entity_parent_is_transferred_from_client() {
         |env: &mut TestRun| {
             let e1 = env.clients[0].world.spawn(SyncMark {}).id();
             let e2 = env.clients[0].world.spawn(SyncMark {}).id();
+
+            env.server.update();
+            env.clients[0].update();
+            env.server.update();
+            env.clients[0].update();
+            env.server.update();
+            env.clients[0].update();
+            env.server.update();
+            env.clients[0].update();
+
             env.clients[0].world.entity_mut(e1).add_child(e2);
 
             env.server.update();
@@ -406,6 +416,7 @@ fn test_entity_parent_is_transferred_from_client() {
             env.clients[0].update();
             env.server.update();
             env.clients[0].update();
+
             let server_e1 = env.clients[0]
                 .world
                 .entity_mut(e1)
@@ -418,11 +429,14 @@ fn test_entity_parent_is_transferred_from_client() {
                 .get::<SyncUp>()
                 .unwrap()
                 .server_entity_id;
+
+            env.clients[0].world.entity_mut(e1).add_child(e2);
+
             (server_e1, server_e2)
         },
         |env: &mut TestRun, _, entities: (Entity, Entity)| {
-            let parent = env.server.world.entity(entities.0).id();
-            let child = env.server.world.entity(entities.1).id();
+            let parent = entities.0;
+            let child = entities.1;
             assert_eq!(
                 env.server
                     .world

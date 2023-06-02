@@ -342,9 +342,11 @@ fn server_received_a_message(
             track.server_to_client_entities.insert(e_id, e_id);
         }
         Message::EntityParented {
-            server_entity_id,
-            server_parent_id,
-        } => {}
+            server_entity_id: e_id,
+            server_parent_id: p_id,
+        } => {
+            cmd.entity(p_id).add_child(e_id);
+        }
         Message::EntityDelete { id } => {
             debug!(
                 "Server received message of type EntityDelete for entity {}v{}",

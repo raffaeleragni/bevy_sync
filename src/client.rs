@@ -32,6 +32,7 @@ impl Plugin for ClientSendPlugin {
             (
                 track_spawn_client,
                 entity_created_on_client,
+                entity_parented_on_client,
                 react_on_changed_components,
                 entity_removed_from_client,
                 poll_for_messages,
@@ -81,6 +82,25 @@ fn entity_created_on_client(
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
+        );
+    }
+}
+
+fn entity_parented_on_client(
+    opt_client: Option<ResMut<RenetClient>>,
+    query: Query<(&Parent, &SyncUp), Changed<Parent>>,
+    query_parent: Query<(Entity, &SyncUp), With<Children>>,
+) {
+    let Some(mut client) = opt_client else { return };
+    for (p, sup) in query.iter() {
+        let Ok(parent) = query_parent.get_component::<SyncUp>(p.get()) else {return};
+        client.send_message(
+            DefaultChannel::ReliableOrdered,
+            bincode::serialize(&Message::EntityParented {
+                server_entity_id: sup.server_entity_id,
+                server_parent_id: parent.server_entity_id,
+            })
+            .unwrap(),
         );
     }
 }
