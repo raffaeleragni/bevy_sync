@@ -1,12 +1,18 @@
 mod setup;
 use self::setup::TestRun;
 
-use bevy::prelude::*;
-use bevy_renet::renet::*;
-use bevy_sync::prelude::*;
+use bevy::{
+    prelude::{
+        App, BuildWorldChildren, Children, Component, Entity, Parent, ReflectComponent, With,
+        Without,
+    },
+    reflect::{FromReflect, Reflect},
+};
+use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
+use bevy_sync::{SyncComponent, SyncDown, SyncMark, SyncUp};
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
-use setup::*;
+use setup::TestEnv;
 
 fn all_client_entities_are_in_sync<T>(s: &mut App, c: &mut App, _: T, entity_count: u32) {
     let mut count_check = 0;

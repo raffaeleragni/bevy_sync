@@ -1,11 +1,8 @@
 use std::any::type_name;
 
-use bevy::{
-    prelude::*,
-    reflect::{
-        serde::{ReflectSerializer, UntypedReflectDeserializer},
-        DynamicStruct, ReflectFromReflect, TypeRegistryInternal,
-    },
+use bevy::reflect::{
+    serde::{ReflectSerializer, UntypedReflectDeserializer},
+    DynamicStruct, Reflect, ReflectFromReflect, TypeRegistryInternal,
 };
 
 use bincode::{DefaultOptions, Options};
@@ -89,9 +86,15 @@ impl<'a: 'de, 'de> Visitor<'de> for ComponentDataDeserializer<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use bevy::reflect::{GetTypeRegistration, ReflectFromReflect};
-    use serde::Deserialize;
+    use bevy::{
+        prelude::{Component, Quat, ReflectComponent, Transform, Vec3},
+        reflect::{
+            FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistryInternal,
+        },
+    };
+    use serde::{Deserialize, Serialize};
+
+    use crate::proto_serde::{bin_to_compo, compo_to_bin};
 
     #[derive(
         Component, Reflect, FromReflect, Default, PartialEq, Serialize, Deserialize, Debug,

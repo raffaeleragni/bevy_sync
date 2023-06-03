@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::prelude::Entity;
 use serde::{Deserialize, Serialize};
 
 pub(crate) const PROTOCOL_ID: u64 = 1;

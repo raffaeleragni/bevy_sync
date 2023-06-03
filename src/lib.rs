@@ -16,9 +16,9 @@ Uses:
 ## Example
 
 ```rust
-use bevy::prelude::*;
-use bevy_sync::prelude::*;
 use std::net::Ipv4Addr;
+use bevy::{prelude::{App, Transform}, MinimalPlugins,};
+use bevy_sync::{ServerPlugin, SyncComponent, SyncMark, SyncPlugin};
 
 let mut app = App::new();
 app.add_plugins(MinimalPlugins);
@@ -44,8 +44,12 @@ pub mod prelude {
     };
 }
 
-use bevy::{prelude::*, reflect::*};
 use std::net::IpAddr;
+
+use bevy::{
+    prelude::{Component, Entity, ReflectComponent, States},
+    reflect::{FromReflect, GetTypeRegistration, Reflect},
+};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
 pub enum ServerState {

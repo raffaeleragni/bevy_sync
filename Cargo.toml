@@ -2,6 +2,16 @@
 name = "bevy_sync"
 version = "0.1.0"
 edition = "2021"
+authors = ["Raffaele Ragni <raffaele.ragni@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "Plugin for synchronizing entities and components between server and its clients."
+homepage = "https://github.com/raffaeleragni/bevy_sync"
+repository = "https://github.com/raffaeleragni/bevy_sync"
+documentation = "https://github.com/raffaeleragni/bevy_sync/blob/master/README.md"
+readme = "README.md"
+keywords = ["bevy", "netcode", "synchronization"]
+categories = ["game-development", "network-programming"]
+include = ["/src", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,4 +23,4 @@ serde = { version = "1.0.160", features = ["derive"] }
 
 [dev-dependencies]
 portpicker = "0.1.1"
-serial_test = "*"
+serial_test = "2.0.0"

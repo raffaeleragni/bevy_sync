@@ -6,8 +6,7 @@ use std::{
 
 use bevy::{prelude::App, transform::TransformBundle, MinimalPlugins};
 use bevy_renet::renet::RenetClient;
-
-use bevy_sync::prelude::*;
+use bevy_sync::{ClientPlugin, ServerPlugin, SyncPlugin};
 
 #[derive(Debug)]
 pub(crate) struct TestError(String);
