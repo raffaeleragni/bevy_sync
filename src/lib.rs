@@ -98,6 +98,3 @@ mod lib_priv;
 mod proto;
 mod proto_serde;
 mod server;
-
-#[cfg(test)]
-mod tests;

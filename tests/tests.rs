@@ -1,9 +1,9 @@
 mod setup;
 use self::setup::TestRun;
 
-use crate::prelude::*;
 use bevy::prelude::*;
 use bevy_renet::renet::*;
+use bevy_sync::prelude::*;
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
 use setup::*;
