@@ -2,9 +2,9 @@ use bevy::{
     ecs::schedule::run_enter_schedule,
     prelude::{
         debug, info, resource_removed, state_exists_and_equals, Added, App, AppTypeRegistry,
-        BuildWorldChildren, Changed, Children, Commands, CoreSet, Entity, IntoSystemAppConfig,
-        IntoSystemConfig, IntoSystemConfigs, NextState, OnExit, OnUpdate, Parent, Plugin, Query,
-        ReflectComponent, Res, ResMut, With, World,
+        BuildWorldChildren, Changed, Children, Commands, CoreSet, DetectChangesMut, Entity,
+        IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnExit, OnUpdate,
+        Parent, Plugin, Query, ReflectComponent, Res, ResMut, With, World,
     },
     reflect::Reflect,
     utils::HashSet,
@@ -150,6 +150,10 @@ fn react_on_changed_components(
     let registry = registry.clone();
     let registry = registry.read();
     while let Some(change) = track.components.pop_front() {
+        debug!(
+            "Component was changed on client: {}",
+            change.data.type_name()
+        );
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::ComponentUpdated {
@@ -262,8 +266,12 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
                         id.generation(),
                         name
                     );
-                    reflect_component
-                        .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+                    let entity = &mut world.entity_mut(e_id);
+                    if let Some(mut component) = reflect_component.reflect_mut(entity) {
+                        component.bypass_change_detection().apply(component_data.as_reflect());
+                    } else {
+                        reflect_component.insert(entity, component_data.as_reflect());
+                    }
                 } else {
                     debug!(
                         "Skipping client received message of type ComponentUpdated for entity {}v{} and component {}",

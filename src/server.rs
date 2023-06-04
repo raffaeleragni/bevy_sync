@@ -2,9 +2,9 @@ use bevy::{
     ecs::schedule::run_enter_schedule,
     prelude::{
         debug, info, resource_added, resource_removed, state_exists_and_equals, Added, App,
-        AppTypeRegistry, BuildWorldChildren, Changed, Commands, CoreSet, Entity, EventReader,
-        IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnExit, OnUpdate,
-        Parent, Plugin, Query, ReflectComponent, Res, ResMut, With, World,
+        AppTypeRegistry, BuildWorldChildren, Changed, Commands, CoreSet, DetectChangesMut, Entity,
+        EventReader, IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnExit,
+        OnUpdate, Parent, Plugin, Query, ReflectComponent, Res, ResMut, With, World,
     },
     reflect::Reflect,
     utils::HashSet,
@@ -242,10 +242,11 @@ fn react_on_changed_components(
 }
 
 fn send_initial_sync(client_id: u64, world: &mut World) {
-    debug!("Sending initial sync to client id: {}", client_id);
+    info!("Sending initial sync to client id: {}", client_id);
     // exclusive access to world while looping through all objects, this can be blocking/freezing for the server
     let mut initial_sync = build_initial_sync(world);
     let mut server = world.resource_mut::<RenetServer>();
+    debug!("Initial sync size: {}", initial_sync.len());
     for msg in initial_sync.drain(..) {
         let msg_bin = bincode::serialize(&msg).unwrap();
         server.send_message(client_id, DefaultChannel::ReliableOrdered, msg_bin);
@@ -406,8 +407,12 @@ fn server_received_a_message(
                         id.generation(),
                         name
                     );
-                    reflect_component
-                        .apply_or_insert(&mut world.entity_mut(e_id), component_data.as_reflect());
+                    let entity = &mut world.entity_mut(e_id);
+                    if let Some(mut component) = reflect_component.reflect_mut(entity) {
+                        component.bypass_change_detection().apply(component_data.as_reflect());
+                    } else {
+                        reflect_component.insert(entity, component_data.as_reflect());
+                    }
                     repeat_except_for_client(
                         client_id,
                         &mut world.resource_mut::<RenetServer>(),

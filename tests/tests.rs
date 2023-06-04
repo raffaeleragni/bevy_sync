@@ -224,6 +224,54 @@ fn test_marked_component_is_transferred_from_server() {
 
 #[test]
 #[serial]
+fn test_marked_component_is_transferred_from_server_then_changed() {
+    TestEnv::default().run_with_multiple_clients(
+        1,
+        |_| {},
+        |env: &mut TestRun| {
+            setup_registration(&mut env.server);
+            setup_registration(&mut env.clients[0]);
+            let e_id = env.server.world.spawn(SyncMark {}).id();
+            env.update(3);
+
+            env.server
+                .world
+                .entity_mut(e_id)
+                .insert(MySynched { value: 7 });
+            env.update(3);
+
+            env.server
+                .world
+                .entity_mut(e_id)
+                .get_mut::<MySynched>()
+                .unwrap()
+                .value = 3;
+            env.update(3);
+
+            1
+        },
+        |env, _, entity_count: u32| {
+            let mut count_check = 0;
+            for (e, c) in env.clients[0]
+                .world
+                .query::<(&SyncUp, &MySynched)>()
+                .iter(&env.clients[0].world)
+            {
+                assert!(env.server.world.entities().contains(e.server_entity_id));
+                assert_eq!(c.value, 3);
+                env.server
+                    .world
+                    .entity(e.server_entity_id)
+                    .get::<SyncDown>();
+                count_check += 1;
+            }
+            assert_eq!(count_check, entity_count);
+        },
+    );
+}
+
+#[test]
+#[serial]
 fn test_marked_component_is_transferred_from_client() {
     TestEnv::default().run_with_single_client(
         |_, _| {},
@@ -248,6 +296,46 @@ fn test_marked_component_is_transferred_from_client() {
             let e = s.world.get_entity(id).unwrap();
             let compo = e.get::<MySynched>().unwrap();
             assert_eq!(compo.value, 7);
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn test_marked_component_is_transferred_from_client_then_changed() {
+    TestEnv::default().run_with_multiple_clients(
+        1,
+        |_| {},
+        |env: &mut TestRun| {
+            setup_registration(&mut env.server);
+            setup_registration(&mut env.clients[0]);
+            let e_id = env.clients[0].world.spawn(SyncMark {}).id();
+            env.update(3);
+
+            let mut e = env.clients[0].world.entity_mut(e_id);
+            e.insert(MySynched { value: 7 });
+            env.update(3);
+
+            env.clients[0]
+                .world
+                .entity_mut(e_id)
+                .get_mut::<MySynched>()
+                .unwrap()
+                .value = 3;
+            env.update(3);
+
+            let server_e_id = env.clients[0]
+                .world
+                .entity_mut(e_id)
+                .get::<SyncUp>()
+                .unwrap()
+                .server_entity_id;
+            server_e_id
+        },
+        |env: &mut TestRun, _, id: Entity| {
+            let e = env.server.world.get_entity(id).unwrap();
+            let compo = e.get::<MySynched>().unwrap();
+            assert_eq!(compo.value, 3);
         },
     );
 }
@@ -333,6 +421,7 @@ fn test_init_sync_multiple_clients() {
         },
     );
 }
+
 fn find_entity_with_server_id(c: &mut App, e_id: Entity) -> Option<Entity> {
     for (c_e, sup) in c
         .world
