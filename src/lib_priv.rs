@@ -6,10 +6,14 @@ use std::{
 
 use bevy::{
     ecs::component::ComponentId,
-    prelude::{App, Changed, Component, Entity, Plugin, Query, ResMut, Resource, With},
+    prelude::{
+        debug, App, AppTypeRegistry, Changed, Component, Entity, Plugin, Query, ReflectComponent,
+        ResMut, Resource, With, World,
+    },
     reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
     utils::{HashMap, HashSet},
 };
+
 use bevy_renet::{
     renet::{
         transport::{
@@ -23,13 +27,19 @@ use bevy_renet::{
 };
 
 use crate::{
-    client::ClientSendPlugin, proto::PROTOCOL_ID, server::ServerSendPlugin, ClientPlugin,
-    ServerPlugin, SyncComponent, SyncDown, SyncMark, SyncPlugin, SyncUp,
+    client::ClientSendPlugin, proto::PROTOCOL_ID, proto_serde::bin_to_compo,
+    server::ServerSendPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncMark,
+    SyncPlugin, SyncUp,
 };
 
-pub(crate) struct ComponentChange {
+#[derive(PartialEq, Eq, Hash)]
+pub(crate) struct ComponentChangeId {
     pub(crate) id: Entity,
     pub(crate) name: String,
+}
+
+pub(crate) struct ComponentChange {
+    pub(crate) change_id: ComponentChangeId,
     pub(crate) data: Box<dyn Reflect>,
 }
 
@@ -41,33 +51,90 @@ pub(crate) struct ComponentChange {
 pub(crate) struct SyncTrackerRes {
     pub(crate) server_to_client_entities: HashMap<Entity, Entity>,
     pub(crate) sync_components: HashSet<ComponentId>,
+    pub(crate) changed_components: VecDeque<ComponentChange>,
+    pushed_component_from_network: HashSet<ComponentChangeId>,
 }
 
-pub(crate) struct SyncDataPlugin;
+impl SyncTrackerRes {
+    pub(crate) fn signal_component_changed(&mut self, id: Entity, data: Box<dyn Reflect>) {
+        let name = data.type_name().into();
+        let change_id = ComponentChangeId { id, name };
+        if self.pushed_component_from_network.contains(&change_id) {
+            self.pushed_component_from_network.remove(&change_id);
+            return;
+        }
+        self.changed_components
+            .push_back(ComponentChange { change_id, data });
+    }
 
-impl Plugin for SyncDataPlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
-        app.init_resource::<SyncTrackerRes>();
+    pub(crate) fn apply_component_change_from_network(
+        e_id: Entity,
+        name: String,
+        data: Vec<u8>,
+        world: &mut World,
+    ) -> bool {
+        let registry = world.resource::<AppTypeRegistry>().clone();
+        let registry = registry.read();
+        let component_data = bin_to_compo(&data, &registry);
+        let registration = registry.get_with_name(name.as_str()).unwrap();
+        let reflect_component = registration.data::<ReflectComponent>().unwrap();
+        let previous_value = reflect_component.reflect(world.entity(e_id));
+        if SyncTrackerRes::needs_to_change(previous_value, &*component_data) {
+            world
+                .resource_mut::<SyncTrackerRes>()
+                .pushed_component_from_network
+                .insert(ComponentChangeId {
+                    id: e_id,
+                    name: name.clone(),
+                });
+            let entity = &mut world.entity_mut(e_id);
+            reflect_component.apply_or_insert(entity, component_data.as_reflect());
+            debug!(
+                "Changed component from network: {}v{} - {}",
+                e_id.index(),
+                e_id.generation(),
+                name.clone()
+            );
+            true
+        } else {
+            debug!(
+                "Skipped component from network: {}v{} - {}",
+                e_id.index(),
+                e_id.generation(),
+                name.clone()
+            );
+            false
+        }
+    }
+
+    fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
+        if previous_value.is_none() {
+            return true;
+        }
+        !previous_value
+            .unwrap()
+            .reflect_partial_eq(component_data)
+            .unwrap_or(true)
     }
 }
 
 #[allow(clippy::type_complexity)]
 fn sync_detect_server<T: Component + Reflect>(
-    mut push: ResMut<SyncPusher>,
+    mut push: ResMut<SyncTrackerRes>,
     q: Query<(Entity, &T), (With<SyncDown>, Changed<T>)>,
 ) {
     for (e_id, component) in q.iter() {
-        push.push(e_id, component.clone_value());
+        push.signal_component_changed(e_id, component.clone_value());
     }
 }
 
 #[allow(clippy::type_complexity)]
 fn sync_detect_client<T: Component + Reflect>(
-    mut push: ResMut<SyncPusher>,
+    mut push: ResMut<SyncTrackerRes>,
     q: Query<(&SyncUp, &T), (With<SyncUp>, Changed<T>)>,
 ) {
     for (sup, component) in q.iter() {
-        push.push(sup.server_entity_id, component.clone_value());
+        push.signal_component_changed(sup.server_entity_id, component.clone_value());
     }
 }
 
@@ -85,20 +152,6 @@ impl SyncComponent for App {
         self
     }
 }
-#[derive(Resource, Default)]
-pub(crate) struct SyncPusher {
-    pub(crate) components: VecDeque<ComponentChange>,
-}
-
-impl SyncPusher {
-    pub(crate) fn push(&mut self, e_id: Entity, component: Box<dyn Reflect>) {
-        self.components.push_back(ComponentChange {
-            id: e_id,
-            name: component.type_name().into(),
-            data: component,
-        });
-    }
-}
 
 #[derive(Component)]
 pub(crate) struct SyncClientGeneratedEntity {
@@ -109,8 +162,7 @@ pub(crate) struct SyncClientGeneratedEntity {
 impl Plugin for SyncPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<SyncMark>();
-        app.init_resource::<SyncPusher>();
-        app.add_plugin(SyncDataPlugin);
+        app.init_resource::<SyncTrackerRes>();
     }
 }
 

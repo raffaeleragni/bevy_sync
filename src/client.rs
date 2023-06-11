@@ -2,20 +2,17 @@ use bevy::{
     ecs::schedule::run_enter_schedule,
     prelude::{
         debug, info, resource_removed, state_exists_and_equals, Added, App, AppTypeRegistry,
-        BuildWorldChildren, Changed, Children, Commands, CoreSet, DetectChangesMut, Entity,
-        IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnExit, OnUpdate,
-        Parent, Plugin, Query, ReflectComponent, Res, ResMut, With, World,
+        BuildWorldChildren, Changed, Children, Commands, CoreSet, Entity, IntoSystemAppConfig,
+        IntoSystemConfig, IntoSystemConfigs, NextState, OnExit, OnUpdate, Parent, Plugin, Query,
+        Res, ResMut, With, World,
     },
-    reflect::Reflect,
     utils::HashSet,
 };
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
-    lib_priv::{SyncPusher, SyncTrackerRes},
-    proto::Message,
-    proto_serde::{bin_to_compo, compo_to_bin},
-    ClientState, SyncMark, SyncUp,
+    lib_priv::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, ClientState, SyncMark,
+    SyncUp,
 };
 
 pub(crate) struct ClientSendPlugin;
@@ -144,12 +141,12 @@ fn entity_removed_from_client(
 fn react_on_changed_components(
     registry: Res<AppTypeRegistry>,
     opt_client: Option<ResMut<RenetClient>>,
-    mut track: ResMut<SyncPusher>,
+    mut track: ResMut<SyncTrackerRes>,
 ) {
     let Some(mut client) = opt_client else { return; };
     let registry = registry.clone();
     let registry = registry.read();
-    while let Some(change) = track.components.pop_front() {
+    while let Some(change) = track.changed_components.pop_front() {
         debug!(
             "Component was changed on client: {}",
             change.data.type_name()
@@ -157,8 +154,8 @@ fn react_on_changed_components(
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::ComponentUpdated {
-                id: change.id,
-                name: change.name.clone(),
+                id: change.change_id.id,
+                name: change.change_id.name.clone(),
                 data: compo_to_bin(change.data.clone_value(), &registry),
             })
             .unwrap(),
@@ -252,45 +249,8 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
             let mut entity = cmd.entity(e_id);
             entity.add(move |_: Entity, world: &mut World| {
-                let registry = world.resource::<AppTypeRegistry>().clone();
-                let registry = registry.read();
-                let component_data = bin_to_compo(&data, &registry);
-                let registration = registry.get_with_name(name.as_str()).unwrap();
-                let reflect_component = registration.data::<ReflectComponent>().unwrap();
-                // TODO, WARN: Was not possible to replicate this situation with tests yet. This behavior is not covered.
-                let previous_value = reflect_component.reflect(world.entity(e_id));
-                if needs_to_change(previous_value, &*component_data) {
-                    debug!(
-                        "Client received message of type ComponentUpdated for entity {}v{} and component {}",
-                        id.index(),
-                        id.generation(),
-                        name
-                    );
-                    let entity = &mut world.entity_mut(e_id);
-                    if let Some(mut component) = reflect_component.reflect_mut(entity) {
-                        component.bypass_change_detection().apply(component_data.as_reflect());
-                    } else {
-                        reflect_component.insert(entity, component_data.as_reflect());
-                    }
-                } else {
-                    debug!(
-                        "Skipping client received message of type ComponentUpdated for entity {}v{} and component {}",
-                        id.index(),
-                        id.generation(),
-                        name
-                    );
-                }
+                SyncTrackerRes::apply_component_change_from_network(e_id, name, data, world);
             });
         }
     }
-}
-
-fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
-    if previous_value.is_none() {
-        return true;
-    }
-    !previous_value
-        .unwrap()
-        .reflect_partial_eq(component_data)
-        .unwrap_or(true)
 }
