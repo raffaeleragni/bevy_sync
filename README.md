@@ -7,3 +7,8 @@ Plugin for synchronizing entities and components between server and its clients.
 Uses `bevy_renet`.
 
 Current state is in development.
+
+[X] Entity synchronization
+[X] Component synchronization
+[X] Parent/Child entity synchronization
+[] Asset synchronization
