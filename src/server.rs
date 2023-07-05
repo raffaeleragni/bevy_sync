@@ -2,10 +2,12 @@ use bevy::{
     ecs::schedule::run_enter_schedule,
     prelude::{
         debug, info, resource_added, resource_removed, state_exists_and_equals, Added, App,
-        AppTypeRegistry, BuildWorldChildren, Changed, Commands, CoreSet, Entity, EventReader,
-        IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState, OnExit, OnUpdate,
-        Parent, Plugin, Query, ReflectComponent, Res, ResMut, With, World,
+        AppTypeRegistry, AssetEvent, Assets, BuildWorldChildren, Changed, Commands, CoreSet,
+        Entity, EventReader, IntoSystemAppConfig, IntoSystemConfig, IntoSystemConfigs, NextState,
+        OnExit, OnUpdate, Parent, Plugin, Query, ReflectComponent, Res, ResMut, StandardMaterial,
+        With, World,
     },
+    reflect::Reflect,
     utils::HashSet,
 };
 use bevy_renet::renet::{
@@ -50,6 +52,7 @@ impl Plugin for ServerSendPlugin {
                 entity_removed_from_server,
                 track_spawn_server,
                 react_on_changed_components,
+                react_on_changed_materials,
             )
                 .chain()
                 .in_set(OnUpdate(ServerState::Connected)),
@@ -240,6 +243,36 @@ fn react_on_changed_components(
     }
 }
 
+fn react_on_changed_materials(
+    registry: Res<AppTypeRegistry>,
+    opt_server: Option<ResMut<RenetServer>>,
+    materials: Res<Assets<StandardMaterial>>,
+    mut events: EventReader<AssetEvent<StandardMaterial>>,
+) {
+    let Some(mut server) = opt_server else { return; };
+    let registry = registry.clone();
+    let registry = registry.read();
+    for event in &mut events {
+        match event {
+            AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
+                let Some(material) = materials.get(handle) else { return; };
+                for cid in server.clients_id().into_iter() {
+                    server.send_message(
+                        cid,
+                        DefaultChannel::ReliableOrdered,
+                        bincode::serialize(&Message::StandardMaterialUpdated {
+                            id: handle.id(),
+                            material: compo_to_bin(material.clone_value(), &registry),
+                        })
+                        .unwrap(),
+                    );
+                }
+            }
+            AssetEvent::Removed { handle: _ } => {}
+        }
+    }
+}
+
 fn send_initial_sync(client_id: u64, world: &mut World) {
     info!("Sending initial sync to client id: {}", client_id);
     // exclusive access to world while looping through all objects, this can be blocking/freezing for the server
@@ -408,6 +441,7 @@ fn server_received_a_message(
                 }
             });
         }
+        Message::StandardMaterialUpdated { id: _, material: _ } => todo!(),
     }
 }
 

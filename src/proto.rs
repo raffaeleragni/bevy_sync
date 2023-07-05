@@ -1,4 +1,4 @@
-use bevy::prelude::Entity;
+use bevy::{asset::HandleId, prelude::Entity};
 use serde::{Deserialize, Serialize};
 
 pub(crate) const PROTOCOL_ID: u64 = 1;
@@ -27,4 +27,8 @@ pub(crate) enum Message {
         name: String,
         data: Vec<u8>,
     } = 5,
+    StandardMaterialUpdated {
+        id: HandleId,
+        material: Vec<u8>,
+    } = 6,
 }

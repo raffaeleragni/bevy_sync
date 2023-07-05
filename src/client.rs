@@ -252,5 +252,8 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
                 SyncTrackerRes::apply_component_change_from_network(e_id, name, data, world);
             });
         }
+        Message::StandardMaterialUpdated { id, material } => cmd.add(move |world: &mut World| {
+            SyncTrackerRes::apply_material_change_from_network(id, &material, world);
+        }),
     }
 }

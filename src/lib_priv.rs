@@ -1,14 +1,16 @@
 use std::{
+    any::TypeId,
     collections::VecDeque,
     net::{IpAddr, SocketAddr, UdpSocket},
     time::SystemTime,
 };
 
 use bevy::{
+    asset::HandleId,
     ecs::component::ComponentId,
     prelude::{
-        debug, App, AppTypeRegistry, Changed, Component, Entity, Plugin, Query, ReflectComponent,
-        ResMut, Resource, With, World,
+        debug, AlphaMode, App, AppTypeRegistry, Assets, Changed, Color, Component, Entity, Handle,
+        Image, Plugin, Query, ReflectComponent, ResMut, Resource, StandardMaterial, With, World,
     },
     reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
     utils::{HashMap, HashSet},
@@ -107,6 +109,19 @@ impl SyncTrackerRes {
         }
     }
 
+    pub(crate) fn apply_material_change_from_network(
+        id: HandleId,
+        material: &[u8],
+        world: &mut World,
+    ) {
+        let registry = world.resource::<AppTypeRegistry>().clone();
+        let registry = registry.read();
+        let component_data = bin_to_compo(material, &registry);
+        let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
+        let mat = *component_data.downcast::<StandardMaterial>().unwrap();
+        let _ = materials.set(id, mat);
+    }
+
     fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
         if previous_value.is_none() {
             return true;
@@ -149,6 +164,16 @@ impl SyncComponent for App {
         data.sync_components.insert(c_id);
         self.add_system(sync_detect_server::<T>);
         self.add_system(sync_detect_client::<T>);
+
+        if TypeId::of::<T>() == TypeId::of::<Handle<StandardMaterial>>() {
+            self.register_type_data::<StandardMaterial, ReflectFromReflect>();
+            self.register_type::<Color>();
+            self.register_type::<Image>();
+            self.register_type::<Handle<Image>>();
+            self.register_type::<Option<Handle<Image>>>();
+            self.register_type::<AlphaMode>();
+        }
+
         self
     }
 }
