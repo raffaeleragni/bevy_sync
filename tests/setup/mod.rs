@@ -5,7 +5,8 @@ use std::{
 };
 
 use bevy::{
-    prelude::{App, Component, ReflectComponent},
+    pbr::PbrPlugin,
+    prelude::*,
     reflect::{FromReflect, GetTypeRegistration, Reflect},
     transform::TransformBundle,
     MinimalPlugins,
@@ -127,8 +128,7 @@ impl TestRun {
 
 fn create_server() -> Result<App, Box<dyn Error>> {
     let mut sapp = App::new();
-    sapp.add_plugins(MinimalPlugins);
-    sapp.add_plugin(SyncPlugin);
+    add_plugins(&mut sapp);
     // Start a non synched entity only on server so the id is intentionally offseted between server and client
     sapp.world.spawn(TransformBundle::default());
     Ok(sapp)
@@ -136,9 +136,17 @@ fn create_server() -> Result<App, Box<dyn Error>> {
 
 fn create_client() -> Result<App, Box<dyn Error>> {
     let mut capp = App::new();
-    capp.add_plugins(MinimalPlugins);
-    capp.add_plugin(SyncPlugin);
+    add_plugins(&mut capp);
     Ok(capp)
+}
+
+fn add_plugins(app: &mut App) {
+    app.add_plugins(MinimalPlugins);
+    app.add_plugin(AssetPlugin::default());
+    app.add_asset::<Shader>().add_debug_asset::<Shader>();
+    app.add_plugin(PbrPlugin::default());
+
+    app.add_plugin(SyncPlugin);
 }
 
 fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut Vec<App>) -> Result<(), Box<dyn Error>> {
