@@ -29,8 +29,8 @@ use bevy_renet::{
 };
 
 use crate::{
-    client::ClientSendPlugin, proto::PROTOCOL_ID, proto_serde::bin_to_compo,
-    server::ServerSendPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncMark,
+    client::ClientSyncPlugin, proto::PROTOCOL_ID, proto_serde::bin_to_compo,
+    server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncMark,
     SyncPlugin, SyncUp,
 };
 
@@ -198,7 +198,7 @@ impl Plugin for ServerPlugin {
         app.add_plugin(NetcodeServerPlugin);
         app.insert_resource(create_server(self.ip, self.port));
 
-        app.add_plugin(ServerSendPlugin);
+        app.add_plugin(ServerSyncPlugin);
     }
 }
 
@@ -209,7 +209,7 @@ impl Plugin for ClientPlugin {
         app.add_plugin(NetcodeClientPlugin);
         app.insert_resource(create_client(self.ip, self.port));
 
-        app.add_plugin(ClientSendPlugin);
+        app.add_plugin(ClientSyncPlugin);
     }
 }
 
