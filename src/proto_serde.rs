@@ -31,7 +31,7 @@ pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistryInternal) -> Box<
         return data.data;
     }
     let data = data.data.downcast::<DynamicStruct>().unwrap();
-    let registration = registry.get_with_name(data.name()).unwrap();
+    let registration = registry.get_with_name(data.type_name()).unwrap();
     let rfr = registry
         .get_type_data::<ReflectFromReflect>(registration.type_id())
         .unwrap();
@@ -87,19 +87,14 @@ impl<'a: 'de, 'de> Visitor<'de> for ComponentDataDeserializer<'a> {
 #[cfg(test)]
 mod test {
     use bevy::{
-        prelude::{Component, Quat, ReflectComponent, Transform, Vec3},
-        reflect::{
-            FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistryInternal,
-        },
+        prelude::{Component, Quat, Transform, Vec3},
+        reflect::{GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistryInternal},
     };
     use serde::{Deserialize, Serialize};
 
     use crate::proto_serde::{bin_to_compo, compo_to_bin};
 
-    #[derive(
-        Component, Reflect, FromReflect, Default, PartialEq, Serialize, Deserialize, Debug,
-    )]
-    #[reflect(Component, FromReflect)]
+    #[derive(Component, Default, PartialEq, Serialize, Deserialize, Debug, Reflect)]
     struct MyCompo {
         value: i32,
         name: String,

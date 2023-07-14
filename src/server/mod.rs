@@ -1,4 +1,4 @@
-use bevy::{ecs::schedule::run_enter_schedule, prelude::*, reflect::Reflect, utils::HashSet};
+use bevy::{prelude::*, reflect::Reflect, utils::HashSet};
 use bevy_renet::renet::{
     transport::NetcodeServerTransport, DefaultChannel, RenetServer, ServerEvent,
 };
@@ -22,20 +22,21 @@ impl Plugin for ServerSyncPlugin {
 
         app.add_state::<ServerState>();
         app.add_systems(
-            (
-                server_disconnected
-                    .run_if(state_exists_and_equals(ServerState::Connected))
-                    .run_if(resource_removed::<NetcodeServerTransport>()),
-                server_connected
-                    .run_if(resource_added::<NetcodeServerTransport>())
-                    .run_if(state_exists_and_equals(ServerState::Disconnected)),
-            )
-                .before(run_enter_schedule::<ServerState>)
-                .in_base_set(CoreSet::StateTransitions),
+            Update,
+            server_connected
+                .run_if(state_exists_and_equals(ServerState::Disconnected))
+                .run_if(resource_added::<NetcodeServerTransport>()),
+        );
+        app.add_systems(
+            Update,
+            server_disconnected
+                .run_if(state_exists_and_equals(ServerState::Connected))
+                .run_if(resource_removed::<NetcodeServerTransport>()),
         );
 
-        app.add_system(server_reset.in_schedule(OnExit(ServerState::Connected)));
+        app.add_systems(OnExit(ServerState::Connected), server_reset);
         app.add_systems(
+            Update,
             (
                 reply_back_to_client_generated_entity,
                 entity_created_on_server,
@@ -46,12 +47,14 @@ impl Plugin for ServerSyncPlugin {
                 react_on_changed_materials,
             )
                 .chain()
-                .in_set(OnUpdate(ServerState::Connected)),
+                .run_if(resource_exists::<RenetServer>())
+                .run_if(state_exists_and_equals(ServerState::Connected)),
         );
         app.add_systems(
+            Update,
             (client_connected, receiver::poll_for_messages)
                 .chain()
-                .in_set(OnUpdate(ServerState::Connected)),
+                .run_if(state_exists_and_equals(ServerState::Connected)),
         );
     }
 }
@@ -96,10 +99,9 @@ fn server_reset(mut cmd: Commands) {
 
 fn entity_created_on_server(
     mut commands: Commands,
-    opt_server: Option<ResMut<RenetServer>>,
+    mut server: ResMut<RenetServer>,
     mut query: Query<Entity, Added<SyncMark>>,
 ) {
-    let Some(mut server) = opt_server else { return };
     for id in query.iter_mut() {
         debug!(
             "New entity created on server: {}v{}",
@@ -119,10 +121,9 @@ fn entity_created_on_server(
 }
 
 fn entity_parented_on_server(
-    opt_server: Option<ResMut<RenetServer>>,
+    mut server: ResMut<RenetServer>,
     query: Query<(Entity, &Parent), Changed<Parent>>,
 ) {
-    let Some(mut server) = opt_server else { return };
     for (e_id, p) in query.iter() {
         for client_id in server.clients_id().into_iter() {
             server.send_message(
@@ -140,10 +141,9 @@ fn entity_parented_on_server(
 
 fn reply_back_to_client_generated_entity(
     mut commands: Commands,
-    opt_server: Option<ResMut<RenetServer>>,
+    mut server: ResMut<RenetServer>,
     mut query: Query<(Entity, &SyncClientGeneratedEntity), Added<SyncClientGeneratedEntity>>,
 ) {
-    let Some(mut server) = opt_server else { return };
     for (entity_id, marker_component) in query.iter_mut() {
         debug!(
             "Replying to client generated entity for: {}v{}",
@@ -176,7 +176,7 @@ fn reply_back_to_client_generated_entity(
 }
 
 fn entity_removed_from_server(
-    opt_server: Option<ResMut<RenetServer>>,
+    mut server: ResMut<RenetServer>,
     mut track: ResMut<SyncTrackerRes>,
     query: Query<Entity, With<SyncDown>>,
 ) {
@@ -189,7 +189,6 @@ fn entity_removed_from_server(
             true
         }
     });
-    let Some(mut server) = opt_server else { return };
     for &id in despawned_entities.iter() {
         debug!(
             "Entity was removed from server: {}v{}",
@@ -208,10 +207,9 @@ fn entity_removed_from_server(
 
 fn react_on_changed_components(
     registry: Res<AppTypeRegistry>,
-    opt_server: Option<ResMut<RenetServer>>,
+    mut server: ResMut<RenetServer>,
     mut track: ResMut<SyncTrackerRes>,
 ) {
-    let Some(mut server) = opt_server else { return; };
     let registry = registry.clone();
     let registry = registry.read();
     while let Some(change) = track.changed_components.pop_front() {
@@ -236,11 +234,10 @@ fn react_on_changed_components(
 
 fn react_on_changed_materials(
     registry: Res<AppTypeRegistry>,
-    opt_server: Option<ResMut<RenetServer>>,
+    mut server: ResMut<RenetServer>,
     materials: Res<Assets<StandardMaterial>>,
     mut events: EventReader<AssetEvent<StandardMaterial>>,
 ) {
-    let Some(mut server) = opt_server else { return; };
     let registry = registry.clone();
     let registry = registry.read();
     for event in &mut events {

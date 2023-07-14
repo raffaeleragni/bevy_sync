@@ -10,7 +10,8 @@ use bevy::{
     ecs::component::ComponentId,
     prelude::{
         debug, AlphaMode, App, AppTypeRegistry, Assets, Changed, Color, Component, Entity, Handle,
-        Image, Plugin, Query, ReflectComponent, ResMut, Resource, StandardMaterial, With, World,
+        Image, ParallaxMappingMethod, Plugin, Query, ReflectComponent, ResMut, Resource,
+        StandardMaterial, Update, With, World,
     },
     reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
     utils::{HashMap, HashSet},
@@ -162,8 +163,8 @@ impl SyncComponent for App {
         let c_id = self.world.init_component::<T>();
         let mut data = self.world.resource_mut::<SyncTrackerRes>();
         data.sync_components.insert(c_id);
-        self.add_system(sync_detect_server::<T>);
-        self.add_system(sync_detect_client::<T>);
+        self.add_systems(Update, sync_detect_server::<T>);
+        self.add_systems(Update, sync_detect_client::<T>);
 
         if TypeId::of::<T>() == TypeId::of::<Handle<StandardMaterial>>() {
             self.register_type_data::<StandardMaterial, ReflectFromReflect>();
@@ -172,6 +173,7 @@ impl SyncComponent for App {
             self.register_type::<Handle<Image>>();
             self.register_type::<Option<Handle<Image>>>();
             self.register_type::<AlphaMode>();
+            self.register_type::<ParallaxMappingMethod>();
         }
 
         self
@@ -193,23 +195,23 @@ impl Plugin for SyncPlugin {
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(RenetServerPlugin);
+        app.add_plugins(RenetServerPlugin);
         app.insert_resource(RenetServer::new(ConnectionConfig::default()));
-        app.add_plugin(NetcodeServerPlugin);
+        app.add_plugins(NetcodeServerPlugin);
         app.insert_resource(create_server(self.ip, self.port));
 
-        app.add_plugin(ServerSyncPlugin);
+        app.add_plugins(ServerSyncPlugin);
     }
 }
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(RenetClientPlugin);
+        app.add_plugins(RenetClientPlugin);
         app.insert_resource(RenetClient::new(ConnectionConfig::default()));
-        app.add_plugin(NetcodeClientPlugin);
+        app.add_plugins(NetcodeClientPlugin);
         app.insert_resource(create_client(self.ip, self.port));
 
-        app.add_plugin(ClientSyncPlugin);
+        app.add_plugins(ClientSyncPlugin);
     }
 }
 

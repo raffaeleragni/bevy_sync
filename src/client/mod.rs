@@ -1,4 +1,4 @@
-use bevy::{ecs::schedule::run_enter_schedule, prelude::*, utils::HashSet};
+use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
@@ -14,22 +14,29 @@ impl Plugin for ClientSyncPlugin {
         app.init_resource::<SyncTrackerRes>();
 
         app.add_state::<ClientState>();
+
         app.add_systems(
-            (
-                client_disconnected.run_if(resource_removed::<NetcodeClientTransport>()),
-                client_connecting
-                    .run_if(bevy_renet::transport::client_connecting)
-                    .run_if(state_exists_and_equals(ClientState::Disconnected)),
-                client_connected
-                    .run_if(bevy_renet::transport::client_connected)
-                    .run_if(state_exists_and_equals(ClientState::Connecting)),
-            )
-                .before(run_enter_schedule::<ClientState>)
-                .in_base_set(CoreSet::StateTransitions),
+            Update,
+            client_connected
+                .run_if(state_exists_and_equals(ClientState::Connecting))
+                .run_if(bevy_renet::transport::client_connected),
+        );
+        app.add_systems(
+            Update,
+            client_connecting
+                .run_if(state_exists_and_equals(ClientState::Disconnected))
+                .run_if(bevy_renet::transport::client_connecting),
+        );
+        app.add_systems(
+            Update,
+            client_disconnected
+                .run_if(state_exists_and_equals(ClientState::Disconnected))
+                .run_if(resource_removed::<NetcodeClientTransport>()),
         );
 
-        app.add_system(client_reset.in_schedule(OnExit(ClientState::Connected)));
+        app.add_systems(OnExit(ClientState::Connected), client_reset);
         app.add_systems(
+            Update,
             (
                 track_spawn_client,
                 entity_created_on_client,
@@ -39,7 +46,8 @@ impl Plugin for ClientSyncPlugin {
                 receiver::poll_for_messages,
             )
                 .chain()
-                .in_set(OnUpdate(ClientState::Connected)),
+                .run_if(resource_exists::<RenetClient>())
+                .run_if(state_exists_and_equals(ClientState::Connected)),
         );
     }
 }
@@ -75,10 +83,9 @@ fn track_spawn_client(
 }
 
 fn entity_created_on_client(
-    opt_client: Option<ResMut<RenetClient>>,
+    mut client: ResMut<RenetClient>,
     mut query: Query<Entity, Added<SyncMark>>,
 ) {
-    let Some(mut client) = opt_client else { return };
     for id in query.iter_mut() {
         client.send_message(
             DefaultChannel::ReliableOrdered,
@@ -88,11 +95,10 @@ fn entity_created_on_client(
 }
 
 fn entity_parented_on_client(
-    opt_client: Option<ResMut<RenetClient>>,
+    mut client: ResMut<RenetClient>,
     query: Query<(&Parent, &SyncUp), Changed<Parent>>,
     query_parent: Query<(Entity, &SyncUp), With<Children>>,
 ) {
-    let Some(mut client) = opt_client else { return };
     for (p, sup) in query.iter() {
         let Ok(parent) = query_parent.get_component::<SyncUp>(p.get()) else {return};
         client.send_message(
@@ -107,7 +113,7 @@ fn entity_parented_on_client(
 }
 
 fn entity_removed_from_client(
-    opt_client: Option<ResMut<RenetClient>>,
+    mut client: ResMut<RenetClient>,
     mut track: ResMut<SyncTrackerRes>,
     query: Query<Entity, With<SyncUp>>,
 ) {
@@ -122,7 +128,6 @@ fn entity_removed_from_client(
                 true
             }
         });
-    let Some(mut client) = opt_client else { return };
     for &id in despawned_entities.iter() {
         client.send_message(
             DefaultChannel::ReliableOrdered,
@@ -133,10 +138,9 @@ fn entity_removed_from_client(
 
 fn react_on_changed_components(
     registry: Res<AppTypeRegistry>,
-    opt_client: Option<ResMut<RenetClient>>,
+    mut client: ResMut<RenetClient>,
     mut track: ResMut<SyncTrackerRes>,
 ) {
-    let Some(mut client) = opt_client else { return; };
     let registry = registry.clone();
     let registry = registry.read();
     while let Some(change) = track.changed_components.pop_front() {

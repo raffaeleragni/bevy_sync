@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Component)]
 pub(crate) struct MyNonSynched;
 
-#[derive(Component, Reflect, FromReflect, Default, PartialEq, Serialize, Deserialize, Debug)]
+#[derive(Component, Reflect, Default, PartialEq, Serialize, Deserialize, Debug)]
 #[reflect(Component)]
 pub(crate) struct MySynched {
     pub(crate) value: i32,
@@ -76,8 +76,8 @@ impl Default for TestRun {
         Self {
             port: portpicker::pick_unused_port().expect("No ports free"),
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            startup_max_wait_updates: 3,
-            updates_per_run: 3,
+            startup_max_wait_updates: 4,
+            updates_per_run: 4,
         }
     }
 }
@@ -142,21 +142,21 @@ fn create_client() -> Result<App, Box<dyn Error>> {
 
 fn add_plugins(app: &mut App) {
     app.add_plugins(MinimalPlugins);
-    app.add_plugin(AssetPlugin::default());
+    app.add_plugins(AssetPlugin::default());
     app.add_asset::<Shader>().add_debug_asset::<Shader>();
-    app.add_plugin(PbrPlugin::default());
+    app.add_plugins(PbrPlugin::default());
 
-    app.add_plugin(SyncPlugin);
+    app.add_plugins(SyncPlugin);
 }
 
 fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut Vec<App>) -> Result<(), Box<dyn Error>> {
-    sapp.add_plugin(ServerPlugin {
+    sapp.add_plugins(ServerPlugin {
         ip: env.ip,
         port: env.port,
     });
 
     for capp in capps {
-        capp.add_plugin(ClientPlugin {
+        capp.add_plugins(ClientPlugin {
             ip: env.ip,
             port: env.port,
         });
