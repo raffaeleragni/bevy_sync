@@ -76,11 +76,11 @@ fn test_entity_parent_is_transferred_from_client() {
             let e_id1 = env.clients[0].world.spawn(SyncMark {}).id();
             let e_id2 = env.clients[0].world.spawn(SyncMark {}).id();
 
-            env.update(3);
+            env.update(4);
 
             env.clients[0].world.entity_mut(e_id1).add_child(e_id2);
 
-            env.update(3);
+            env.update(4);
 
             let e1 = &env.clients[0].world.entity(e_id1);
             let server_e1 = e1.get::<SyncUp>().unwrap().server_entity_id;

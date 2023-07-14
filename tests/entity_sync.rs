@@ -90,7 +90,7 @@ fn test_entity_deleted_from_client() {
         TestRun::no_pre_setup,
         |env| {
             let e_id = env.clients[0].world.spawn(SyncMark {}).id();
-            env.update(4);
+            env.update(5);
             let e = env.clients[0].world.entity_mut(e_id);
             let server_e_id = e.get::<SyncUp>().unwrap().server_entity_id;
             e.despawn();

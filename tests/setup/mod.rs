@@ -76,8 +76,8 @@ impl Default for TestRun {
         Self {
             port: portpicker::pick_unused_port().expect("No ports free"),
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-            startup_max_wait_updates: 3,
-            updates_per_run: 3,
+            startup_max_wait_updates: 4,
+            updates_per_run: 4,
         }
     }
 }
