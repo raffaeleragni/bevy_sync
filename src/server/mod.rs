@@ -1,4 +1,4 @@
-use bevy::{ecs::schedule::run_enter_schedule, prelude::*, reflect::Reflect, utils::HashSet};
+use bevy::{prelude::*, reflect::Reflect, utils::HashSet};
 use bevy_renet::renet::{
     transport::NetcodeServerTransport, DefaultChannel, RenetServer, ServerEvent,
 };
@@ -22,20 +22,21 @@ impl Plugin for ServerSyncPlugin {
 
         app.add_state::<ServerState>();
         app.add_systems(
-            (
-                server_disconnected
-                    .run_if(state_exists_and_equals(ServerState::Connected))
-                    .run_if(resource_removed::<NetcodeServerTransport>()),
-                server_connected
-                    .run_if(resource_added::<NetcodeServerTransport>())
-                    .run_if(state_exists_and_equals(ServerState::Disconnected)),
-            )
-                .before(run_enter_schedule::<ServerState>)
-                .in_base_set(CoreSet::StateTransitions),
+            Update,
+            server_connected
+                .run_if(state_exists_and_equals(ServerState::Disconnected))
+                .run_if(resource_added::<NetcodeServerTransport>()),
+        );
+        app.add_systems(
+            Update,
+            server_disconnected
+                .run_if(state_exists_and_equals(ServerState::Connected))
+                .run_if(resource_removed::<NetcodeServerTransport>()),
         );
 
-        app.add_system(server_reset.in_schedule(OnExit(ServerState::Connected)));
+        app.add_systems(OnExit(ServerState::Connected), server_reset);
         app.add_systems(
+            Update,
             (
                 reply_back_to_client_generated_entity,
                 entity_created_on_server,
@@ -46,12 +47,13 @@ impl Plugin for ServerSyncPlugin {
                 react_on_changed_materials,
             )
                 .chain()
-                .in_set(OnUpdate(ServerState::Connected)),
+                .run_if(state_exists_and_equals(ServerState::Connected)),
         );
         app.add_systems(
+            Update,
             (client_connected, receiver::poll_for_messages)
                 .chain()
-                .in_set(OnUpdate(ServerState::Connected)),
+                .run_if(state_exists_and_equals(ServerState::Connected)),
         );
     }
 }

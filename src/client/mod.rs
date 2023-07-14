@@ -1,4 +1,4 @@
-use bevy::{ecs::schedule::run_enter_schedule, prelude::*, utils::HashSet};
+use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
@@ -14,22 +14,29 @@ impl Plugin for ClientSyncPlugin {
         app.init_resource::<SyncTrackerRes>();
 
         app.add_state::<ClientState>();
+
         app.add_systems(
-            (
-                client_disconnected.run_if(resource_removed::<NetcodeClientTransport>()),
-                client_connecting
-                    .run_if(bevy_renet::transport::client_connecting)
-                    .run_if(state_exists_and_equals(ClientState::Disconnected)),
-                client_connected
-                    .run_if(bevy_renet::transport::client_connected)
-                    .run_if(state_exists_and_equals(ClientState::Connecting)),
-            )
-                .before(run_enter_schedule::<ClientState>)
-                .in_base_set(CoreSet::StateTransitions),
+            Update,
+            client_connected
+                .run_if(state_exists_and_equals(ClientState::Connecting))
+                .run_if(bevy_renet::transport::client_connected),
+        );
+        app.add_systems(
+            Update,
+            client_connecting
+                .run_if(state_exists_and_equals(ClientState::Disconnected))
+                .run_if(bevy_renet::transport::client_connecting),
+        );
+        app.add_systems(
+            Update,
+            client_disconnected
+                .run_if(state_exists_and_equals(ClientState::Disconnected))
+                .run_if(resource_removed::<NetcodeClientTransport>()),
         );
 
-        app.add_system(client_reset.in_schedule(OnExit(ClientState::Connected)));
+        app.add_systems(OnExit(ClientState::Connected), client_reset);
         app.add_systems(
+            Update,
             (
                 track_spawn_client,
                 entity_created_on_client,
@@ -39,7 +46,7 @@ impl Plugin for ClientSyncPlugin {
                 receiver::poll_for_messages,
             )
                 .chain()
-                .in_set(OnUpdate(ClientState::Connected)),
+                .run_if(state_exists_and_equals(ClientState::Connected)),
         );
     }
 }
