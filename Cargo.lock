@@ -812,6 +812,7 @@ dependencies = [
 [[package]]
 name = "bevy_renet"
 version = "0.0.8"
+source = "git+https://github.com/lucaspoffo/renet?rev=c17994c2f2412ed52b86629bf89c62866293bd19#c17994c2f2412ed52b86629bf89c62866293bd19"
 dependencies = [
  "bevy",
  "renet",
@@ -2928,6 +2929,7 @@ checksum = "216080ab382b992234dda86873c18d4c48358f5cfcb70fd693d7f6f2131b628b"
 [[package]]
 name = "renet"
 version = "0.0.12"
+source = "git+https://github.com/lucaspoffo/renet?rev=c17994c2f2412ed52b86629bf89c62866293bd19#c17994c2f2412ed52b86629bf89c62866293bd19"
 dependencies = [
  "bevy_ecs",
  "bytes",
@@ -2939,6 +2941,7 @@ dependencies = [
 [[package]]
 name = "renetcode"
 version = "0.0.8"
+source = "git+https://github.com/lucaspoffo/renet?rev=c17994c2f2412ed52b86629bf89c62866293bd19#c17994c2f2412ed52b86629bf89c62866293bd19"
 dependencies = [
  "chacha20poly1305",
  "log",
