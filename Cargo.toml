@@ -17,7 +17,7 @@ include = ["/src", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [dependencies]
 bevy = { version = "0.11.0" }
-bevy_renet = { git = "https://github.com/lucaspoffo/renet", rev = "c17994c2f2412ed52b86629bf89c62866293bd19" }
+bevy_renet = "0.0.9"
 bincode = "1.3.3"
 serde = { version = "1.0.160", features = ["derive"] }
 
