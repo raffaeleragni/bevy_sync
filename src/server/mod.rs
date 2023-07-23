@@ -4,7 +4,7 @@ use bevy_renet::renet::{
 };
 
 use crate::{
-    lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
+    lib_priv::{sync_material_enabled, SyncClientGeneratedEntity, SyncTrackerRes},
     proto::Message,
     proto_serde::compo_to_bin,
     ServerState, SyncMark,
@@ -44,7 +44,7 @@ impl Plugin for ServerSyncPlugin {
                 entity_removed_from_server,
                 track_spawn_server,
                 react_on_changed_components,
-                react_on_changed_materials,
+                react_on_changed_materials.run_if(sync_material_enabled),
             )
                 .chain()
                 .run_if(resource_exists::<RenetServer>())

@@ -10,7 +10,7 @@ use bevy::{
     ecs::component::ComponentId,
     prelude::{
         debug, AlphaMode, App, AppTypeRegistry, Assets, Changed, Color, Component, Entity, Handle,
-        Image, ParallaxMappingMethod, Plugin, Query, ReflectComponent, ResMut, Resource,
+        Image, ParallaxMappingMethod, Plugin, Query, ReflectComponent, Res, ResMut, Resource,
         StandardMaterial, Update, With, World,
     },
     reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
@@ -56,6 +56,7 @@ pub(crate) struct SyncTrackerRes {
     pub(crate) sync_components: HashSet<ComponentId>,
     pub(crate) changed_components: VecDeque<ComponentChange>,
     pushed_component_from_network: HashSet<ComponentChangeId>,
+    sync_materials: bool,
 }
 
 impl SyncTrackerRes {
@@ -178,6 +179,11 @@ impl SyncComponent for App {
 
         self
     }
+
+    fn sync_materials(&mut self, enable: bool) {
+        let mut tracker = self.world.resource_mut::<SyncTrackerRes>();
+        tracker.sync_materials = enable;
+    }
 }
 
 #[derive(Component)]
@@ -244,4 +250,8 @@ fn create_client(ip: IpAddr, port: u16) -> NetcodeClientTransport {
         user_data: None,
     };
     NetcodeClientTransport::new(now, authentication, socket).unwrap()
+}
+
+pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {
+    tracker.sync_materials
 }

@@ -2,6 +2,7 @@ mod assert;
 mod setup;
 
 use bevy::prelude::*;
+use bevy_sync::SyncComponent;
 use serial_test::serial;
 use setup::TestRun;
 
@@ -12,6 +13,7 @@ fn sync_material() {
         1,
         |env| {
             env.setup_registration::<Handle<StandardMaterial>>();
+            env.server.sync_materials(true);
         },
         |env| {
             let s = &mut env.server;
