@@ -13,11 +13,14 @@ fn main() {
     client.add_plugins(SyncPlugin);
     client.add_plugins(ClientPlugin { ip, port });
 
+    client.sync_component::<Name>();
     client.sync_component::<Aabb>();
     client.sync_component::<Visibility>();
     client.sync_component::<Transform>();
     client.sync_component::<Wireframe>();
+    client.sync_component::<PointLight>();
     client.sync_component::<Handle<StandardMaterial>>();
+    client.sync_component::<Handle<Mesh>>();
     client.sync_materials(true);
 
     client.add_systems(Startup, load_world);

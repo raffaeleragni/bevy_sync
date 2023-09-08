@@ -56,6 +56,7 @@ pub(crate) struct SyncTrackerRes {
     pub(crate) sync_components: HashSet<ComponentId>,
     pub(crate) changed_components: VecDeque<ComponentChange>,
     pushed_component_from_network: HashSet<ComponentChangeId>,
+    material_handles: HashMap<HandleId, Handle<StandardMaterial>>,
     sync_materials: bool,
 }
 
@@ -121,7 +122,10 @@ impl SyncTrackerRes {
         let component_data = bin_to_compo(material, &registry);
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
-        let _ = materials.set(id, mat);
+        let handle = materials.set(id, mat);
+        let mut track = world.resource_mut::<SyncTrackerRes>();
+        // need to keep a reference somewhere else the material will be destroyed right away
+        track.material_handles.insert(id, handle);
     }
 
     fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {

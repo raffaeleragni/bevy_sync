@@ -16,11 +16,14 @@ fn main() {
     host.add_plugins(SyncPlugin);
     host.add_plugins(ServerPlugin { ip, port });
 
+    host.sync_component::<Name>();
     host.sync_component::<Aabb>();
     host.sync_component::<Visibility>();
     host.sync_component::<Transform>();
     host.sync_component::<Wireframe>();
+    host.sync_component::<PointLight>();
     host.sync_component::<Handle<StandardMaterial>>();
+    host.sync_component::<Handle<Mesh>>();
     host.sync_materials(true);
 
     host.add_systems(Startup, load_world);
@@ -41,6 +44,7 @@ fn load_world(
             ..default()
         },
         SyncMark,
+        Name::new("Ground"),
     ));
     commands.spawn((
         PbrBundle {
@@ -51,6 +55,7 @@ fn load_world(
         },
         Wireframe,
         SyncMark,
+        Name::new("Cube"),
     ));
     commands.spawn((
         PointLightBundle {
@@ -58,6 +63,7 @@ fn load_world(
             ..default()
         },
         SyncMark,
+        Name::new("Light"),
     ));
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
