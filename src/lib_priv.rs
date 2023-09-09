@@ -152,6 +152,10 @@ impl SyncTrackerRes {
             .reflect_partial_eq(component_data)
             .unwrap_or(true)
     }
+
+    pub(crate) fn sync_materials_enabled(&self) -> bool {
+        self.sync_materials
+    }
 }
 
 #[allow(clippy::type_complexity)]

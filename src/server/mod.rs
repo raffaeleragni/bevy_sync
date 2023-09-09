@@ -328,5 +328,15 @@ fn build_initial_sync(world: &World) -> Vec<Message> {
         }
     }
 
+    if track.sync_materials_enabled() {
+        let materials = world.resource::<Assets<StandardMaterial>>();
+        for (id, material) in materials.iter() {
+            result.push(Message::StandardMaterialUpdated {
+                id,
+                material: compo_to_bin(material.clone_value(), &registry),
+            });
+        }
+    }
+
     result
 }
