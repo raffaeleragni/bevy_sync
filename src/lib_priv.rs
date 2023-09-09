@@ -56,6 +56,7 @@ pub(crate) struct SyncTrackerRes {
     pub(crate) sync_components: HashSet<ComponentId>,
     pub(crate) changed_components: VecDeque<ComponentChange>,
     pushed_component_from_network: HashSet<ComponentChangeId>,
+    pushed_handles_from_network: HashSet<HandleId>,
     material_handles: HashMap<HandleId, Handle<StandardMaterial>>,
     sync_materials: bool,
 }
@@ -70,6 +71,14 @@ impl SyncTrackerRes {
         }
         self.changed_components
             .push_back(ComponentChange { change_id, data });
+    }
+
+    pub(crate) fn skip_network_handle_change(&mut self, id: HandleId) -> bool {
+        if self.pushed_handles_from_network.contains(&id) {
+            self.pushed_handles_from_network.remove(&id);
+            return true;
+        }
+        false
     }
 
     pub(crate) fn apply_component_change_from_network(
@@ -117,15 +126,21 @@ impl SyncTrackerRes {
         material: &[u8],
         world: &mut World,
     ) {
+        world
+            .resource_mut::<SyncTrackerRes>()
+            .pushed_handles_from_network
+            .insert(id);
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let component_data = bin_to_compo(material, &registry);
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
         let handle = materials.set(id, mat);
-        let mut track = world.resource_mut::<SyncTrackerRes>();
         // need to keep a reference somewhere else the material will be destroyed right away
-        track.material_handles.insert(id, handle);
+        world
+            .resource_mut::<SyncTrackerRes>()
+            .material_handles
+            .insert(id, handle);
     }
 
     fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {

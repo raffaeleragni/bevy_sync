@@ -1,4 +1,7 @@
-use std::net::{IpAddr, Ipv4Addr};
+use std::{
+    env,
+    net::{IpAddr, Ipv4Addr},
+};
 
 use bevy::{
     pbr::wireframe::{Wireframe, WireframeConfig},
@@ -8,6 +11,10 @@ use bevy::{
 use bevy_sync::{ServerPlugin, SyncComponent, SyncMark, SyncPlugin};
 
 fn main() {
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", "bevy_sync=debug")
+    }
+
     let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
     let port = 4000;
     let mut host = App::new();

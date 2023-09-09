@@ -1,9 +1,16 @@
-use std::net::{IpAddr, Ipv4Addr};
+use std::{
+    env,
+    net::{IpAddr, Ipv4Addr},
+};
 
 use bevy::{pbr::wireframe::Wireframe, prelude::*, render::primitives::Aabb};
 use bevy_sync::{ClientPlugin, SyncComponent, SyncPlugin};
 
 fn main() {
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", "bevy_sync=debug")
+    }
+
     let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
     let port = 4000;
 

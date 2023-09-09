@@ -233,6 +233,7 @@ fn react_on_changed_components(
 }
 
 fn react_on_changed_materials(
+    mut track: ResMut<SyncTrackerRes>,
     registry: Res<AppTypeRegistry>,
     mut server: ResMut<RenetServer>,
     materials: Res<Assets<StandardMaterial>>,
@@ -244,6 +245,9 @@ fn react_on_changed_materials(
         match event {
             AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
                 let Some(material) = materials.get(handle) else { return; };
+                if track.skip_network_handle_change(handle.id()) {
+                    return;
+                }
                 for cid in server.clients_id().into_iter() {
                     server.send_message(
                         cid,
