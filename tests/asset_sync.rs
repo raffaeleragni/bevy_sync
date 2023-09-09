@@ -70,3 +70,36 @@ fn sync_material_from_client() {
         },
     );
 }
+
+#[test]
+#[serial]
+fn sync_material_from_client_to_client_across_server() {
+    TestRun::default().run(
+        2,
+        |env| {
+            env.setup_registration::<Handle<StandardMaterial>>();
+            env.server.sync_materials(true);
+            env.clients[0].sync_materials(true);
+        },
+        |env| {
+            let app = &mut env.clients[0];
+            let mut materials = app.world.resource_mut::<Assets<StandardMaterial>>();
+            let material = materials.add(StandardMaterial {
+                base_color: Color::RED,
+                ..Default::default()
+            });
+
+            let id = material.id();
+            app.world.spawn(material);
+
+            id
+        },
+        |env, _, id| {
+            let app = &mut env.clients[1];
+            let materials = app.world.resource_mut::<Assets<StandardMaterial>>();
+            let handle = materials.get_handle(id);
+            let material = materials.get(&handle).unwrap();
+            assert_eq!(material.base_color, Color::RED);
+        },
+    );
+}
