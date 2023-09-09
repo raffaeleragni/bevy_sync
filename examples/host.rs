@@ -8,7 +8,7 @@ use bevy::{
     prelude::*,
     render::primitives::Aabb,
 };
-use bevy_sync::{ServerPlugin, SyncComponent, SyncMark, SyncPlugin};
+use bevy_sync::{ServerPlugin, SyncComponent, SyncExclude, SyncMark, SyncPlugin};
 
 fn main() {
     if env::var("RUST_LOG").is_err() {
@@ -52,6 +52,7 @@ fn load_world(
         },
         SyncMark,
         Name::new("Ground"),
+        SyncExclude::<Name>::default(),
     ));
     commands.spawn((
         PbrBundle {

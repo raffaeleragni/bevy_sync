@@ -3,9 +3,9 @@ mod setup;
 
 use bevy::{
     asset::HandleId,
-    prelude::{Assets, Color, Handle, StandardMaterial},
+    prelude::{Assets, Color, Entity, Handle, StandardMaterial, With},
 };
-use bevy_sync::{SyncComponent, SyncMark};
+use bevy_sync::{SyncComponent, SyncExclude, SyncMark};
 use serial_test::serial;
 use setup::{MySynched, TestEnv, TestRun};
 
@@ -87,6 +87,41 @@ fn test_init_sync_multiple_clients() {
 
             assert::no_messages_left_for_server(&mut env.server);
             assert::no_messages_left_for_clients(&mut env.clients);
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn test_initial_world_sync_not_transfer_excluded_components() {
+    TestRun::default().run(
+        1,
+        |env| {
+            env.setup_registration::<MySynched>();
+            env.setup_registration::<Handle<StandardMaterial>>();
+            env.server.sync_materials(true);
+            let e_id = env
+                .server
+                .world
+                .spawn((SyncMark {}, SyncExclude::<MySynched>::default()))
+                .id();
+
+            let mut e = env.server.world.entity_mut(e_id);
+            e.insert(MySynched { value: 7 });
+
+            0
+        },
+        TestRun::no_setup,
+        |env, _, _| {
+            let mut count_check = 0;
+            for _ in env.clients[0]
+                .world
+                .query_filtered::<Entity, With<MySynched>>()
+                .iter(&env.clients[0].world)
+            {
+                count_check += 1;
+            }
+            assert_eq!(count_check, 0);
         },
     );
 }

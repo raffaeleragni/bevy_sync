@@ -303,6 +303,13 @@ fn build_initial_sync(world: &World) -> Vec<Message> {
             .components()
             .filter(|&c_id| track.sync_components.contains(&c_id))
         {
+            let c_exclude_id = track
+                .exclude_components
+                .get(&c_id)
+                .expect("Sync component not setup correctly, missing SyncExclude<T>");
+            if arch.contains(*c_exclude_id) {
+                continue;
+            }
             let c_info = world
                 .components()
                 .get_info(c_id)

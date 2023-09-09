@@ -54,6 +54,7 @@ pub(crate) struct ComponentChange {
 pub(crate) struct SyncTrackerRes {
     pub(crate) server_to_client_entities: HashMap<Entity, Entity>,
     pub(crate) sync_components: HashSet<ComponentId>,
+    pub(crate) exclude_components: HashMap<ComponentId, ComponentId>,
     pub(crate) changed_components: VecDeque<ComponentChange>,
     pushed_component_from_network: HashSet<ComponentChangeId>,
     pushed_handles_from_network: HashSet<HandleId>,
@@ -185,8 +186,10 @@ impl SyncComponent for App {
         self.register_type::<T>();
         self.register_type_data::<T, ReflectFromReflect>();
         let c_id = self.world.init_component::<T>();
-        let mut data = self.world.resource_mut::<SyncTrackerRes>();
-        data.sync_components.insert(c_id);
+        let c_exclude_id = self.world.init_component::<SyncExclude<T>>();
+        let mut track = self.world.resource_mut::<SyncTrackerRes>();
+        track.sync_components.insert(c_id);
+        track.exclude_components.insert(c_id, c_exclude_id);
         self.add_systems(Update, sync_detect_server::<T>);
         self.add_systems(Update, sync_detect_client::<T>);
 
