@@ -13,4 +13,13 @@ Current state is in development.
 - [X] Parent/Child entity synchronization
 - [ ] Asset synchronization
   - [ ] Mesh
-  - [ ] SimpleMaterial
+  - [X] SimpleMaterial
+
+## Examples
+
+Run both examples so the they connect to each other:
+
+- `cargo run --example host`
+- `cargo run --example client`
+
+Then open the editor and change a component value in one to see it reflected in the other.
