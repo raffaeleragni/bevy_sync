@@ -102,7 +102,9 @@ fn server_received_a_message(
                 }
             });
         }
-        Message::StandardMaterialUpdated { id: _, material: _ } => todo!(),
+        Message::StandardMaterialUpdated { id, material } => cmd.add(move |world: &mut World| {
+            SyncTrackerRes::apply_material_change_from_network(id, &material, world);
+        }),
     }
 }
 

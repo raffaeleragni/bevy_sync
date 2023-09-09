@@ -2,8 +2,10 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
-    lib_priv::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, ClientState, SyncMark,
-    SyncUp,
+    lib_priv::{sync_material_enabled, SyncTrackerRes},
+    proto::Message,
+    proto_serde::compo_to_bin,
+    ClientState, SyncMark, SyncUp,
 };
 
 mod receiver;
@@ -42,6 +44,7 @@ impl Plugin for ClientSyncPlugin {
                 entity_created_on_client,
                 entity_parented_on_client,
                 react_on_changed_components,
+                react_on_changed_materials.run_if(sync_material_enabled),
                 entity_removed_from_client,
                 receiver::poll_for_messages,
             )
@@ -157,5 +160,31 @@ fn react_on_changed_components(
             })
             .unwrap(),
         );
+    }
+}
+
+fn react_on_changed_materials(
+    registry: Res<AppTypeRegistry>,
+    mut client: ResMut<RenetClient>,
+    materials: Res<Assets<StandardMaterial>>,
+    mut events: EventReader<AssetEvent<StandardMaterial>>,
+) {
+    let registry = registry.clone();
+    let registry = registry.read();
+    for event in &mut events {
+        match event {
+            AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
+                let Some(material) = materials.get(handle) else { return; };
+                client.send_message(
+                    DefaultChannel::ReliableOrdered,
+                    bincode::serialize(&Message::StandardMaterialUpdated {
+                        id: handle.id(),
+                        material: compo_to_bin(material.clone_value(), &registry),
+                    })
+                    .unwrap(),
+                );
+            }
+            AssetEvent::Removed { handle: _ } => {}
+        }
     }
 }
