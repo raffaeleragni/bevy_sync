@@ -44,7 +44,7 @@ pub mod prelude {
     };
 }
 
-use std::net::IpAddr;
+use std::{marker::PhantomData, net::IpAddr};
 
 use bevy::{
     prelude::{Component, Entity, ReflectComponent, States},
@@ -70,6 +70,14 @@ pub enum ClientState {
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
 pub struct SyncMark;
+
+#[derive(Component, Default)]
+pub struct SyncExclude<T>
+where
+    T: Component,
+{
+    marker: PhantomData<T>,
+}
 
 pub struct SyncPlugin;
 

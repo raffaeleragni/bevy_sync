@@ -11,7 +11,7 @@ use bevy::{
     prelude::{
         debug, AlphaMode, App, AppTypeRegistry, Assets, Changed, Color, Component, Entity, Handle,
         Image, ParallaxMappingMethod, Plugin, Query, ReflectComponent, Res, ResMut, Resource,
-        StandardMaterial, Update, With, World,
+        StandardMaterial, Update, With, Without, World,
     },
     reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
     utils::{HashMap, HashSet},
@@ -31,8 +31,8 @@ use bevy_renet::{
 
 use crate::{
     client::ClientSyncPlugin, proto::PROTOCOL_ID, proto_serde::bin_to_compo,
-    server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncMark,
-    SyncPlugin, SyncUp,
+    server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncExclude,
+    SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -161,7 +161,7 @@ impl SyncTrackerRes {
 #[allow(clippy::type_complexity)]
 fn sync_detect_server<T: Component + Reflect>(
     mut push: ResMut<SyncTrackerRes>,
-    q: Query<(Entity, &T), (With<SyncDown>, Changed<T>)>,
+    q: Query<(Entity, &T), (With<SyncDown>, Without<SyncExclude<T>>, Changed<T>)>,
 ) {
     for (e_id, component) in q.iter() {
         push.signal_component_changed(e_id, component.clone_value());
@@ -171,7 +171,7 @@ fn sync_detect_server<T: Component + Reflect>(
 #[allow(clippy::type_complexity)]
 fn sync_detect_client<T: Component + Reflect>(
     mut push: ResMut<SyncTrackerRes>,
-    q: Query<(&SyncUp, &T), (With<SyncUp>, Changed<T>)>,
+    q: Query<(&SyncUp, &T), (With<SyncUp>, Without<SyncExclude<T>>, Changed<T>)>,
 ) {
     for (sup, component) in q.iter() {
         push.signal_component_changed(sup.server_entity_id, component.clone_value());

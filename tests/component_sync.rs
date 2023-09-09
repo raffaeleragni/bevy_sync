@@ -1,8 +1,8 @@
 mod assert;
 mod setup;
 
-use bevy::prelude::{Entity, Without};
-use bevy_sync::{SyncDown, SyncMark, SyncUp};
+use bevy::prelude::{Entity, With, Without};
+use bevy_sync::{SyncDown, SyncExclude, SyncMark, SyncUp};
 use serial_test::serial;
 use setup::{MyNonSynched, MySynched, TestEnv, TestRun};
 
@@ -14,23 +14,18 @@ fn test_non_marked_component_is_not_transferred_from_server() {
         TestRun::no_pre_setup,
         |env| {
             env.server.world.spawn((SyncMark {}, MyNonSynched {}));
-            1
+            0
         },
-        |env, _, entity_count: u32| {
+        |env, _, _| {
             let mut count_check = 0;
-            for e in env.clients[0]
+            for _ in env.clients[0]
                 .world
-                .query_filtered::<&SyncUp, Without<MyNonSynched>>()
+                .query_filtered::<Entity, With<MyNonSynched>>()
                 .iter(&env.clients[0].world)
             {
-                assert!(env.server.world.entities().contains(e.server_entity_id));
-                env.server
-                    .world
-                    .entity(e.server_entity_id)
-                    .get::<SyncDown>();
                 count_check += 1;
             }
-            assert_eq!(count_check, entity_count);
+            assert_eq!(count_check, 0);
         },
     );
 }
@@ -201,6 +196,38 @@ fn test_marked_component_is_transferred_from_client_then_changed() {
             let e = env.server.world.get_entity(id).unwrap();
             let compo = e.get::<MySynched>().unwrap();
             assert_eq!(compo.value, 3);
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn exclusion_marked_will_not_be_synced() {
+    TestRun::default().run(
+        1,
+        TestRun::no_pre_setup,
+        |env| {
+            env.setup_registration::<MySynched>();
+            let e_id = env
+                .server
+                .world
+                .spawn((SyncMark {}, SyncExclude::<MySynched>::default()))
+                .id();
+            env.update(4);
+            let mut e = env.server.world.entity_mut(e_id);
+            e.insert(MySynched { value: 7 });
+            0
+        },
+        |env, _, _| {
+            let mut count_check = 0;
+            for _ in env.clients[0]
+                .world
+                .query_filtered::<Entity, With<MySynched>>()
+                .iter(&env.clients[0].world)
+            {
+                count_check += 1;
+            }
+            assert_eq!(count_check, 0);
         },
     );
 }
