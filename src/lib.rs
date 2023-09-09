@@ -39,8 +39,8 @@ app.world.spawn(Transform::default()).insert(SyncMark {});
 
 pub mod prelude {
     pub use super::{
-        ClientPlugin, ClientState, ServerPlugin, ServerState, SyncComponent, SyncDown, SyncMark,
-        SyncPlugin, SyncUp,
+        ClientPlugin, ClientState, ServerPlugin, ServerState, SyncComponent, SyncDown, SyncExclude,
+        SyncMark, SyncPlugin, SyncUp,
     };
 }
 
