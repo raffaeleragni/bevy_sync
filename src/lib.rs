@@ -37,6 +37,13 @@ app.world.spawn(Transform::default()).insert(SyncMark {});
 
 */
 
+mod client;
+mod lib_priv;
+mod networking;
+mod proto;
+mod proto_serde;
+mod server;
+
 pub mod prelude {
     pub use super::{
         ClientPlugin, ClientState, ServerPlugin, ServerState, SyncComponent, SyncDown, SyncExclude,
@@ -102,9 +109,3 @@ pub trait SyncComponent {
     ) -> &mut Self;
     fn sync_materials(&mut self, enable: bool);
 }
-
-mod client;
-mod lib_priv;
-mod proto;
-mod proto_serde;
-mod server;

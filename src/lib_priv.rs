@@ -1,9 +1,4 @@
-use std::{
-    any::TypeId,
-    collections::VecDeque,
-    net::{IpAddr, SocketAddr, UdpSocket},
-    time::SystemTime,
-};
+use std::{any::TypeId, collections::VecDeque};
 
 use bevy::{
     asset::HandleId,
@@ -13,22 +8,9 @@ use bevy::{
     utils::{HashMap, HashSet},
 };
 
-use bevy_renet::{
-    renet::{
-        transport::{
-            ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport,
-            ServerAuthentication, ServerConfig,
-        },
-        ConnectionConfig, RenetClient, RenetServer,
-    },
-    transport::{NetcodeClientPlugin, NetcodeServerPlugin},
-    RenetClientPlugin, RenetServerPlugin,
-};
-
 use crate::{
-    client::ClientSyncPlugin, proto::PROTOCOL_ID, proto_serde::bin_to_compo,
-    server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncExclude,
-    SyncMark, SyncPlugin, SyncUp,
+    client::ClientSyncPlugin, proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin,
+    ServerPlugin, SyncComponent, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -223,55 +205,16 @@ impl Plugin for SyncPlugin {
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(RenetServerPlugin);
-        app.insert_resource(RenetServer::new(ConnectionConfig::default()));
-        app.add_plugins(NetcodeServerPlugin);
-        app.insert_resource(create_server(self.ip, self.port));
-
+        crate::networking::setup_server(app, self.ip, self.port);
         app.add_plugins(ServerSyncPlugin);
     }
 }
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(RenetClientPlugin);
-        app.insert_resource(RenetClient::new(ConnectionConfig::default()));
-        app.add_plugins(NetcodeClientPlugin);
-        app.insert_resource(create_client(self.ip, self.port));
-
+        crate::networking::setup_client(app, self.ip, self.port);
         app.add_plugins(ClientSyncPlugin);
     }
-}
-
-fn create_server(ip: IpAddr, port: u16) -> NetcodeServerTransport {
-    let socket = UdpSocket::bind((ip, port)).unwrap();
-    let server_addr = socket.local_addr().unwrap();
-    const MAX_CLIENTS: usize = 64;
-    let server_config = ServerConfig {
-        max_clients: MAX_CLIENTS,
-        protocol_id: PROTOCOL_ID,
-        public_addr: server_addr,
-        authentication: ServerAuthentication::Unsecure,
-    };
-    let current_time = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap();
-    NetcodeServerTransport::new(current_time, server_config, socket).unwrap()
-}
-
-fn create_client(ip: IpAddr, port: u16) -> NetcodeClientTransport {
-    let socket = UdpSocket::bind((ip, 0)).unwrap();
-    let now = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap();
-    let client_id = now.as_millis() as u64;
-    let authentication = ClientAuthentication::Unsecure {
-        client_id,
-        server_addr: SocketAddr::new(ip, port),
-        protocol_id: PROTOCOL_ID,
-        user_data: None,
-    };
-    NetcodeClientTransport::new(now, authentication, socket).unwrap()
 }
 
 pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {

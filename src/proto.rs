@@ -1,8 +1,6 @@
 use bevy::{asset::HandleId, prelude::Entity};
 use serde::{Deserialize, Serialize};
 
-pub(crate) const PROTOCOL_ID: u64 = 1;
-
 type EntityId = Entity;
 
 #[derive(Serialize, Deserialize)]
