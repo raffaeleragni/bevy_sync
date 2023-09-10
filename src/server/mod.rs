@@ -1,4 +1,4 @@
-use bevy::{prelude::*, reflect::Reflect, utils::HashSet};
+use bevy::prelude::*;
 use bevy_renet::renet::{
     transport::NetcodeServerTransport, DefaultChannel, RenetServer, ServerEvent,
 };
@@ -6,13 +6,19 @@ use bevy_renet::renet::{
 use crate::{
     lib_priv::{sync_material_enabled, SyncClientGeneratedEntity, SyncTrackerRes},
     proto::Message,
-    proto_serde::compo_to_bin,
-    ServerState, SyncMark,
+    server::initial_sync::send_initial_sync,
+    ServerState,
 };
 
-use super::SyncDown;
+use self::track::{
+    entity_created_on_server, entity_parented_on_server, entity_removed_from_server,
+    react_on_changed_components, react_on_changed_materials, reply_back_to_client_generated_entity,
+    track_spawn_server,
+};
 
+mod initial_sync;
 mod receiver;
+mod track;
 
 pub(crate) struct ServerSyncPlugin;
 
@@ -87,263 +93,6 @@ fn server_connected(mut state: ResMut<NextState<ServerState>>) {
     state.set(ServerState::Connected);
 }
 
-fn track_spawn_server(mut track: ResMut<SyncTrackerRes>, query: Query<Entity, Added<SyncDown>>) {
-    for e_id in query.iter() {
-        track.server_to_client_entities.insert(e_id, e_id);
-    }
-}
-
 fn server_reset(mut cmd: Commands) {
     cmd.insert_resource(SyncTrackerRes::default());
-}
-
-fn entity_created_on_server(
-    mut commands: Commands,
-    mut server: ResMut<RenetServer>,
-    mut query: Query<Entity, Added<SyncMark>>,
-) {
-    for id in query.iter_mut() {
-        debug!(
-            "New entity created on server: {}v{}",
-            id.index(),
-            id.generation()
-        );
-        for client_id in server.clients_id().into_iter() {
-            server.send_message(
-                client_id,
-                DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
-            );
-        }
-        let mut entity = commands.entity(id);
-        entity.remove::<SyncMark>().insert(SyncDown {});
-    }
-}
-
-fn entity_parented_on_server(
-    mut server: ResMut<RenetServer>,
-    query: Query<(Entity, &Parent), Changed<Parent>>,
-) {
-    for (e_id, p) in query.iter() {
-        for client_id in server.clients_id().into_iter() {
-            server.send_message(
-                client_id,
-                DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::EntityParented {
-                    server_entity_id: e_id,
-                    server_parent_id: p.get(),
-                })
-                .unwrap(),
-            );
-        }
-    }
-}
-
-fn reply_back_to_client_generated_entity(
-    mut commands: Commands,
-    mut server: ResMut<RenetServer>,
-    mut query: Query<(Entity, &SyncClientGeneratedEntity), Added<SyncClientGeneratedEntity>>,
-) {
-    for (entity_id, marker_component) in query.iter_mut() {
-        debug!(
-            "Replying to client generated entity for: {}v{}",
-            entity_id.index(),
-            entity_id.generation()
-        );
-        server.send_message(
-            marker_component.client_id,
-            DefaultChannel::ReliableOrdered,
-            bincode::serialize(&Message::EntitySpawnBack {
-                server_entity_id: entity_id,
-                client_entity_id: marker_component.client_entity_id,
-            })
-            .unwrap(),
-        );
-        for cid in server.clients_id().into_iter() {
-            if marker_component.client_id != cid {
-                server.send_message(
-                    cid,
-                    DefaultChannel::ReliableOrdered,
-                    bincode::serialize(&Message::EntitySpawn { id: entity_id }).unwrap(),
-                );
-            }
-        }
-        let mut entity = commands.entity(entity_id);
-        entity
-            .remove::<SyncClientGeneratedEntity>()
-            .insert(SyncDown {});
-    }
-}
-
-fn entity_removed_from_server(
-    mut server: ResMut<RenetServer>,
-    mut track: ResMut<SyncTrackerRes>,
-    query: Query<Entity, With<SyncDown>>,
-) {
-    let mut despawned_entities = HashSet::new();
-    track.server_to_client_entities.retain(|&e_id, _| {
-        if query.get(e_id).is_err() {
-            despawned_entities.insert(e_id);
-            false
-        } else {
-            true
-        }
-    });
-    for &id in despawned_entities.iter() {
-        debug!(
-            "Entity was removed from server: {}v{}",
-            id.index(),
-            id.generation()
-        );
-        for cid in server.clients_id().into_iter() {
-            server.send_message(
-                cid,
-                DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::EntityDelete { id }).unwrap(),
-            );
-        }
-    }
-}
-
-fn react_on_changed_components(
-    registry: Res<AppTypeRegistry>,
-    mut server: ResMut<RenetServer>,
-    mut track: ResMut<SyncTrackerRes>,
-) {
-    let registry = registry.clone();
-    let registry = registry.read();
-    while let Some(change) = track.changed_components.pop_front() {
-        debug!(
-            "Component was changed on server: {}",
-            change.data.type_name()
-        );
-        for cid in server.clients_id().into_iter() {
-            server.send_message(
-                cid,
-                DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::ComponentUpdated {
-                    id: change.change_id.id,
-                    name: change.change_id.name.clone(),
-                    data: compo_to_bin(change.data.clone_value(), &registry),
-                })
-                .unwrap(),
-            );
-        }
-    }
-}
-
-fn react_on_changed_materials(
-    mut track: ResMut<SyncTrackerRes>,
-    registry: Res<AppTypeRegistry>,
-    mut server: ResMut<RenetServer>,
-    materials: Res<Assets<StandardMaterial>>,
-    mut events: EventReader<AssetEvent<StandardMaterial>>,
-) {
-    let registry = registry.clone();
-    let registry = registry.read();
-    for event in &mut events {
-        match event {
-            AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
-                let Some(material) = materials.get(handle) else { return; };
-                if track.skip_network_handle_change(handle.id()) {
-                    return;
-                }
-                for cid in server.clients_id().into_iter() {
-                    server.send_message(
-                        cid,
-                        DefaultChannel::ReliableOrdered,
-                        bincode::serialize(&Message::StandardMaterialUpdated {
-                            id: handle.id(),
-                            material: compo_to_bin(material.clone_value(), &registry),
-                        })
-                        .unwrap(),
-                    );
-                }
-            }
-            AssetEvent::Removed { handle: _ } => {}
-        }
-    }
-}
-
-fn send_initial_sync(client_id: u64, world: &mut World) {
-    info!("Sending initial sync to client id: {}", client_id);
-    // exclusive access to world while looping through all objects, this can be blocking/freezing for the server
-    let mut initial_sync = build_initial_sync(world);
-    let mut server = world.resource_mut::<RenetServer>();
-    debug!("Initial sync size: {}", initial_sync.len());
-    for msg in initial_sync.drain(..) {
-        let msg_bin = bincode::serialize(&msg).unwrap();
-        server.send_message(client_id, DefaultChannel::ReliableOrdered, msg_bin);
-    }
-}
-
-fn build_initial_sync(world: &World) -> Vec<Message> {
-    let mut entity_ids_sent: HashSet<Entity> = HashSet::new();
-    let mut result: Vec<Message> = Vec::new();
-    let track = world.resource::<SyncTrackerRes>();
-    let registry = world.resource::<AppTypeRegistry>().clone();
-    let registry = registry.read();
-    let sync_down_id = world
-        .component_id::<SyncDown>()
-        .expect("SyncDown is not registered");
-    for arch in world
-        .archetypes()
-        .iter()
-        .filter(|arch| arch.contains(sync_down_id))
-    {
-        for arch_entity in arch.entities() {
-            let entity = world.entity(arch_entity.entity());
-            let e_id = entity.id();
-            if !entity_ids_sent.contains(&e_id) {
-                result.push(Message::EntitySpawn { id: e_id });
-                entity_ids_sent.insert(e_id);
-            }
-        }
-        for c_id in arch
-            .components()
-            .filter(|&c_id| track.sync_components.contains(&c_id))
-        {
-            let c_exclude_id = track
-                .exclude_components
-                .get(&c_id)
-                .expect("Sync component not setup correctly, missing SyncExclude<T>");
-            if arch.contains(*c_exclude_id) {
-                continue;
-            }
-            let c_info = world
-                .components()
-                .get_info(c_id)
-                .expect("component not found");
-            let type_name = c_info.name();
-            let registration = registry
-                .get(c_info.type_id().expect("not registered"))
-                .expect("not registered");
-            let reflect_component = registration
-                .data::<ReflectComponent>()
-                .expect("missing #[reflect(Component)]");
-            for arch_entity in arch.entities() {
-                let entity = world.entity(arch_entity.entity());
-                let e_id = entity.id();
-                let component = reflect_component.reflect(entity).expect("not registered");
-                let compo_bin = compo_to_bin(component.clone_value(), &registry);
-                result.push(Message::ComponentUpdated {
-                    id: e_id,
-                    name: type_name.into(),
-                    data: compo_bin,
-                });
-            }
-        }
-    }
-
-    if track.sync_materials_enabled() {
-        let materials = world.resource::<Assets<StandardMaterial>>();
-        for (id, material) in materials.iter() {
-            result.push(Message::StandardMaterialUpdated {
-                id,
-                material: compo_to_bin(material.clone_value(), &registry),
-            });
-        }
-    }
-
-    result
 }
