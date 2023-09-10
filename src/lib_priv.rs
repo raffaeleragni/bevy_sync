@@ -8,11 +8,7 @@ use std::{
 use bevy::{
     asset::HandleId,
     ecs::component::ComponentId,
-    prelude::{
-        debug, AlphaMode, App, AppTypeRegistry, Assets, Changed, Color, Component, Entity, Handle,
-        Image, ParallaxMappingMethod, Plugin, Query, ReflectComponent, Res, ResMut, Resource,
-        StandardMaterial, Update, With, Without, World,
-    },
+    prelude::*,
     reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
     utils::{HashMap, HashSet},
 };

@@ -1,23 +1,12 @@
 mod assert;
 mod setup;
 
-use bevy::prelude::{App, BuildWorldChildren, Children, Entity, Parent, With};
+use bevy::prelude::*;
 use bevy_sync::{SyncMark, SyncUp};
 use serial_test::serial;
 use setup::{TestEnv, TestRun};
 
-fn find_entity_with_server_id(c: &mut App, e_id: Entity) -> Option<Entity> {
-    for (c_e, sup) in c
-        .world
-        .query_filtered::<(Entity, &SyncUp), With<SyncUp>>()
-        .iter(&c.world)
-    {
-        if sup.server_entity_id == e_id {
-            return Some(c_e);
-        }
-    }
-    None
-}
+use crate::assert::find_entity_with_server_id;
 
 #[test]
 #[serial]

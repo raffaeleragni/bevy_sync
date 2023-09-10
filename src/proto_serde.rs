@@ -87,7 +87,7 @@ impl<'a: 'de, 'de> Visitor<'de> for ComponentDataDeserializer<'a> {
 #[cfg(test)]
 mod test {
     use bevy::{
-        prelude::{Component, Quat, Transform, Vec3},
+        prelude::*,
         reflect::{GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistryInternal},
     };
     use serde::{Deserialize, Serialize};

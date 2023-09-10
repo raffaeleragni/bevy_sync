@@ -1,6 +1,7 @@
 mod assert;
 mod setup;
 
+use assert::material_has_color;
 use bevy::prelude::*;
 use bevy_sync::SyncComponent;
 use serial_test::serial;
@@ -29,11 +30,7 @@ fn sync_material_from_server() {
             id
         },
         |env, _, id| {
-            let c = &mut env.clients[0];
-            let materials = c.world.resource_mut::<Assets<StandardMaterial>>();
-            let handle = materials.get_handle(id);
-            let material = materials.get(&handle).unwrap();
-            assert_eq!(material.base_color, Color::RED);
+            material_has_color(&mut env.clients[0], id, Color::RED);
         },
     );
 }
@@ -62,11 +59,7 @@ fn sync_material_from_client() {
             id
         },
         |env, _, id| {
-            let app = &mut env.server;
-            let materials = app.world.resource_mut::<Assets<StandardMaterial>>();
-            let handle = materials.get_handle(id);
-            let material = materials.get(&handle).unwrap();
-            assert_eq!(material.base_color, Color::RED);
+            material_has_color(&mut env.clients[0], id, Color::RED);
         },
     );
 }
@@ -95,11 +88,7 @@ fn sync_material_from_client_to_client_across_server() {
             id
         },
         |env, _, id| {
-            let app = &mut env.clients[1];
-            let materials = app.world.resource_mut::<Assets<StandardMaterial>>();
-            let handle = materials.get_handle(id);
-            let material = materials.get(&handle).unwrap();
-            assert_eq!(material.base_color, Color::RED);
+            material_has_color(&mut env.clients[0], id, Color::RED);
         },
     );
 }

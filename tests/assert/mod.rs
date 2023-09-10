@@ -1,4 +1,4 @@
-use bevy::prelude::App;
+use bevy::{asset::HandleId, prelude::*};
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 use bevy_sync::{SyncDown, SyncUp};
 
@@ -55,4 +55,60 @@ pub(crate) fn initial_sync_for_client_happened(s: &mut App, c: &mut App, entity_
         count_check += 1;
     }
     assert_eq!(count_check, entity_count);
+}
+
+#[allow(dead_code)]
+pub(crate) fn count_entities_with_component<T: Component>(app: &mut App) -> u32 {
+    let mut count = 0;
+    for _ in app
+        .world
+        .query_filtered::<Entity, With<T>>()
+        .iter(&app.world)
+    {
+        count += 1;
+    }
+    count
+}
+
+#[allow(dead_code)]
+pub(crate) fn count_entities_without_component<T: Component>(app: &mut App) -> u32 {
+    let mut count = 0;
+    for _ in app
+        .world
+        .query_filtered::<Entity, Without<T>>()
+        .iter(&app.world)
+    {
+        count += 1;
+    }
+    count
+}
+
+#[allow(dead_code)]
+pub(crate) fn get_first_entity_component<T: Component>(app: &mut App) -> Option<&T> {
+    app.world.query::<&T>().iter(&app.world).next()
+}
+
+#[allow(dead_code)]
+pub(crate) fn material_has_color(app: &mut App, id: HandleId, color: Color) {
+    let materials = app.world.resource_mut::<Assets<StandardMaterial>>();
+    let handle = materials.get_handle(id);
+    let material = materials.get(&handle).unwrap();
+    assert_eq!(material.base_color, color);
+}
+
+#[allow(dead_code)]
+pub(crate) fn find_entity_with_server_id(
+    app: &mut App,
+    server_entity_id: Entity,
+) -> Option<Entity> {
+    for (entity, sup) in app
+        .world
+        .query_filtered::<(Entity, &SyncUp), With<SyncUp>>()
+        .iter(&app.world)
+    {
+        if sup.server_entity_id == server_entity_id {
+            return Some(entity);
+        }
+    }
+    None
 }

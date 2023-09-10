@@ -1,13 +1,13 @@
 mod assert;
 mod setup;
 
-use bevy::{
-    asset::HandleId,
-    prelude::{Assets, Color, Entity, Handle, StandardMaterial, With},
-};
+use assert::material_has_color;
+use bevy::{asset::HandleId, prelude::*};
 use bevy_sync::{SyncComponent, SyncExclude, SyncMark};
 use serial_test::serial;
 use setup::{MySynched, TestEnv, TestRun};
+
+use crate::assert::count_entities_with_component;
 
 #[test]
 #[serial]
@@ -42,12 +42,7 @@ fn test_initial_world_sync_sent_from_server() {
             assert::no_messages_left_for_server(&mut env.server);
             assert::no_messages_left_for_client(&mut env.clients[0]);
 
-            let materials = env.clients[0]
-                .world
-                .resource_mut::<Assets<StandardMaterial>>();
-            let handle = materials.get_handle(id);
-            let material = materials.get(&handle).unwrap();
-            assert_eq!(material.base_color, Color::RED);
+            material_has_color(&mut env.clients[0], id, Color::RED);
         },
     );
 }
@@ -79,10 +74,7 @@ fn test_init_sync_multiple_clients() {
         |env: &mut TestEnv, (entity_count, id): (u32, HandleId), _| {
             for capp in &mut env.clients {
                 assert::initial_sync_for_client_happened(&mut env.server, capp, entity_count);
-                let materials = capp.world.resource_mut::<Assets<StandardMaterial>>();
-                let handle = materials.get_handle(id);
-                let material = materials.get(&handle).unwrap();
-                assert_eq!(material.base_color, Color::RED);
+                material_has_color(capp, id, Color::RED);
             }
 
             assert::no_messages_left_for_server(&mut env.server);
@@ -113,15 +105,8 @@ fn test_initial_world_sync_not_transfer_excluded_components() {
         },
         TestRun::no_setup,
         |env, _, _| {
-            let mut count_check = 0;
-            for _ in env.clients[0]
-                .world
-                .query_filtered::<Entity, With<MySynched>>()
-                .iter(&env.clients[0].world)
-            {
-                count_check += 1;
-            }
-            assert_eq!(count_check, 0);
+            let count = count_entities_with_component::<MySynched>(&mut env.clients[0]);
+            assert_eq!(count, 0);
         },
     );
 }

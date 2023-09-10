@@ -1,10 +1,14 @@
 mod assert;
 mod setup;
 
-use bevy::prelude::{Entity, With, Without};
-use bevy_sync::{SyncDown, SyncExclude, SyncMark, SyncUp};
+use bevy::prelude::*;
+use bevy_sync::{SyncExclude, SyncMark, SyncUp};
 use serial_test::serial;
 use setup::{MyNonSynched, MySynched, TestEnv, TestRun};
+
+use crate::assert::{
+    count_entities_with_component, count_entities_without_component, get_first_entity_component,
+};
 
 #[test]
 #[serial]
@@ -17,15 +21,8 @@ fn test_non_marked_component_is_not_transferred_from_server() {
             0
         },
         |env, _, _| {
-            let mut count_check = 0;
-            for _ in env.clients[0]
-                .world
-                .query_filtered::<Entity, With<MyNonSynched>>()
-                .iter(&env.clients[0].world)
-            {
-                count_check += 1;
-            }
-            assert_eq!(count_check, 0);
+            let count = count_entities_with_component::<MyNonSynched>(&mut env.clients[0]);
+            assert_eq!(count, 0);
         },
     );
 }
@@ -43,16 +40,8 @@ fn test_non_marked_component_is_not_transferred_from_client() {
                 .id()
         },
         |env, _, _| {
-            let mut found = false;
-            for _ in env
-                .server
-                .world
-                .query_filtered::<&SyncUp, Without<MyNonSynched>>()
-                .iter(&env.server.world)
-            {
-                found = true;
-            }
-            assert!(!found);
+            let count = count_entities_without_component::<MyNonSynched>(&mut env.clients[0]);
+            assert_eq!(count, 0);
         },
     );
 }
@@ -69,24 +58,10 @@ fn test_marked_component_is_transferred_from_server() {
             env.update(4);
             let mut e = env.server.world.entity_mut(e_id);
             e.insert(MySynched { value: 7 });
-            1
         },
-        |env, _, entity_count: u32| {
-            let mut count_check = 0;
-            for (e, c) in env.clients[0]
-                .world
-                .query::<(&SyncUp, &MySynched)>()
-                .iter(&env.clients[0].world)
-            {
-                assert!(env.server.world.entities().contains(e.server_entity_id));
-                assert_eq!(c.value, 7);
-                env.server
-                    .world
-                    .entity(e.server_entity_id)
-                    .get::<SyncDown>();
-                count_check += 1;
-            }
-            assert_eq!(count_check, entity_count);
+        |env, _, _| {
+            let comp = get_first_entity_component::<MySynched>(&mut env.clients[0]).unwrap();
+            assert_eq!(comp.value, 7);
         },
     );
 }
@@ -116,24 +91,11 @@ fn test_marked_component_is_transferred_from_server_then_changed() {
                 .value = 3;
             env.update(3);
 
-            1
+            0
         },
-        |env, _, entity_count: u32| {
-            let mut count_check = 0;
-            for (e, c) in env.clients[0]
-                .world
-                .query::<(&SyncUp, &MySynched)>()
-                .iter(&env.clients[0].world)
-            {
-                assert!(env.server.world.entities().contains(e.server_entity_id));
-                assert_eq!(c.value, 3);
-                env.server
-                    .world
-                    .entity(e.server_entity_id)
-                    .get::<SyncDown>();
-                count_check += 1;
-            }
-            assert_eq!(count_check, entity_count);
+        |env, _, _| {
+            let comp = get_first_entity_component::<MySynched>(&mut env.clients[0]).unwrap();
+            assert_eq!(comp.value, 3);
         },
     );
 }

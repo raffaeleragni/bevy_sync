@@ -17,7 +17,7 @@ Uses:
 
 ```rust
 use std::net::Ipv4Addr;
-use bevy::{prelude::{App, Transform}, MinimalPlugins,};
+use bevy::{prelude::*, MinimalPlugins,};
 use bevy_sync::{ServerPlugin, SyncComponent, SyncMark, SyncPlugin};
 
 let mut app = App::new();
@@ -46,10 +46,7 @@ pub mod prelude {
 
 use std::{marker::PhantomData, net::IpAddr};
 
-use bevy::{
-    prelude::{Component, Entity, ReflectComponent, States},
-    reflect::{FromReflect, GetTypeRegistration, Reflect},
-};
+use bevy::{prelude::*, reflect::*};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
 pub enum ServerState {
