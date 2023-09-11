@@ -37,6 +37,7 @@ app.world.spawn(Transform::default()).insert(SyncMark {});
 
 */
 
+mod bundle_fix;
 mod client;
 mod lib_priv;
 mod mesh_serde;

@@ -1,7 +1,7 @@
 mod assert;
 mod setup;
 
-use bevy::prelude::*;
+use bevy::{pbr::CubemapVisibleEntities, prelude::*, render::primitives::CubemapFrusta};
 use bevy_sync::{SyncExclude, SyncMark, SyncUp};
 use serial_test::serial;
 use setup::{MyNonSynched, MySynched, TestEnv, TestRun};
@@ -190,6 +190,72 @@ fn exclusion_marked_will_not_be_synced() {
                 count_check += 1;
             }
             assert_eq!(count_check, 0);
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn test_auto_spawn_for_global_transform() {
+    TestRun::default().run(
+        1,
+        TestRun::no_pre_setup,
+        |env| {
+            env.setup_registration::<Transform>();
+            let e_id = env.server.world.spawn(SyncMark {}).id();
+            env.update(4);
+            let mut e = env.server.world.entity_mut(e_id);
+            e.insert(Transform::from_xyz(1.0, 2.0, 3.0));
+        },
+        |env, _, _| {
+            let comp = get_first_entity_component::<Transform>(&mut env.clients[0]).unwrap();
+            assert_eq!(comp.translation.x, 1.0);
+            assert_eq!(comp.translation.y, 2.0);
+            assert_eq!(comp.translation.z, 3.0);
+
+            let _ = get_first_entity_component::<GlobalTransform>(&mut env.clients[0]).unwrap();
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn test_auto_spawn_for_computed_visibility() {
+    TestRun::default().run(
+        1,
+        TestRun::no_pre_setup,
+        |env| {
+            env.setup_registration::<Visibility>();
+            let e_id = env.server.world.spawn(SyncMark {}).id();
+            env.update(4);
+            let mut e = env.server.world.entity_mut(e_id);
+            e.insert(VisibilityBundle::default());
+        },
+        |env, _, _| {
+            let _ = get_first_entity_component::<Visibility>(&mut env.clients[0]).unwrap();
+            let _ = get_first_entity_component::<ComputedVisibility>(&mut env.clients[0]).unwrap();
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn test_auto_spawn_for_point_light() {
+    TestRun::default().run(
+        1,
+        TestRun::no_pre_setup,
+        |env| {
+            env.setup_registration::<PointLight>();
+            let e_id = env.server.world.spawn(SyncMark {}).id();
+            env.update(4);
+            let mut e = env.server.world.entity_mut(e_id);
+            e.insert(PointLightBundle::default());
+        },
+        |env, _, _| {
+            let _ = get_first_entity_component::<PointLight>(&mut env.clients[0]).unwrap();
+            let _ = get_first_entity_component::<CubemapFrusta>(&mut env.clients[0]).unwrap();
+            let _ =
+                get_first_entity_component::<CubemapVisibleEntities>(&mut env.clients[0]).unwrap();
         },
     );
 }

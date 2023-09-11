@@ -9,9 +9,9 @@ use bevy::{
 };
 
 use crate::{
-    client::ClientSyncPlugin, mesh_serde::bin_to_mesh, proto_serde::bin_to_compo,
-    server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncExclude,
-    SyncMark, SyncPlugin, SyncUp,
+    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh,
+    proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent,
+    SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -189,15 +189,7 @@ impl SyncComponent for App {
         self.add_systems(Update, sync_detect_server::<T>);
         self.add_systems(Update, sync_detect_client::<T>);
 
-        if TypeId::of::<T>() == TypeId::of::<Handle<StandardMaterial>>() {
-            self.register_type_data::<StandardMaterial, ReflectFromReflect>();
-            self.register_type::<Color>();
-            self.register_type::<Image>();
-            self.register_type::<Handle<Image>>();
-            self.register_type::<Option<Handle<Image>>>();
-            self.register_type::<AlphaMode>();
-            self.register_type::<ParallaxMappingMethod>();
-        }
+        setup_cascade_registrations::<T>(self);
 
         self
     }
@@ -213,6 +205,24 @@ impl SyncComponent for App {
     }
 }
 
+fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeRegistration>(
+    app: &mut App,
+) {
+    if TypeId::of::<T>() == TypeId::of::<Handle<StandardMaterial>>() {
+        app.register_type_data::<StandardMaterial, ReflectFromReflect>();
+        app.register_type::<Color>();
+        app.register_type::<Image>();
+        app.register_type::<Handle<Image>>();
+        app.register_type::<Option<Handle<Image>>>();
+        app.register_type::<AlphaMode>();
+        app.register_type::<ParallaxMappingMethod>();
+    }
+
+    if TypeId::of::<T>() == TypeId::of::<PointLight>() {
+        app.register_type::<Color>();
+    }
+}
+
 #[derive(Component)]
 pub(crate) struct SyncClientGeneratedEntity {
     pub(crate) client_id: u64,
@@ -223,6 +233,7 @@ impl Plugin for SyncPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<SyncMark>();
         app.init_resource::<SyncTrackerRes>();
+        app.add_plugins(BundleFixPlugin);
     }
 }
 
