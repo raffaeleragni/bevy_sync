@@ -29,4 +29,8 @@ pub(crate) enum Message {
         id: HandleId,
         material: Vec<u8>,
     } = 6,
+    MeshUpdated {
+        id: HandleId,
+        mesh: Vec<u8>,
+    } = 7,
 }

@@ -29,6 +29,7 @@ fn main() {
     client.sync_component::<Handle<StandardMaterial>>();
     client.sync_component::<Handle<Mesh>>();
     client.sync_materials(true);
+    client.sync_meshes(true);
 
     client.add_systems(Startup, load_world);
     client.run();

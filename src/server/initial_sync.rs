@@ -1,7 +1,10 @@
 use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetServer};
 
-use crate::{lib_priv::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, SyncDown};
+use crate::{
+    lib_priv::SyncTrackerRes, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
+    SyncDown,
+};
 
 pub(crate) fn send_initial_sync(client_id: u64, world: &mut World) {
     info!("Sending initial sync to client id: {}", client_id);
@@ -79,6 +82,16 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
             result.push(Message::StandardMaterialUpdated {
                 id,
                 material: compo_to_bin(material.clone_value(), &registry),
+            });
+        }
+    }
+
+    if track.sync_materials_enabled() {
+        let meshes = world.resource::<Assets<Mesh>>();
+        for (id, mesh) in meshes.iter() {
+            result.push(Message::MeshUpdated {
+                id,
+                mesh: mesh_to_bin(mesh),
             });
         }
     }

@@ -111,6 +111,15 @@ fn server_received_a_message(
                 &Message::StandardMaterialUpdated { id, material },
             );
         }),
+        Message::MeshUpdated { id, mesh } => cmd.add(move |world: &mut World| {
+            SyncTrackerRes::apply_mesh_change_from_network(id, &mesh, world);
+
+            repeat_except_for_client(
+                client_id,
+                &mut world.resource_mut::<RenetServer>(),
+                &Message::MeshUpdated { id, mesh },
+            );
+        }),
     }
 }
 

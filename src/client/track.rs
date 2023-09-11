@@ -2,7 +2,8 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetClient};
 
 use crate::{
-    lib_priv::SyncTrackerRes, proto::Message, proto_serde::compo_to_bin, SyncMark, SyncUp,
+    lib_priv::SyncTrackerRes, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
+    SyncMark, SyncUp,
 };
 
 pub(crate) fn track_spawn_client(
@@ -115,6 +116,33 @@ pub(crate) fn react_on_changed_materials(
                     bincode::serialize(&Message::StandardMaterialUpdated {
                         id: handle.id(),
                         material: compo_to_bin(material.clone_value(), &registry),
+                    })
+                    .unwrap(),
+                );
+            }
+            AssetEvent::Removed { handle: _ } => {}
+        }
+    }
+}
+
+pub(crate) fn react_on_changed_meshes(
+    mut track: ResMut<SyncTrackerRes>,
+    mut client: ResMut<RenetClient>,
+    assets: Res<Assets<Mesh>>,
+    mut events: EventReader<AssetEvent<Mesh>>,
+) {
+    for event in &mut events {
+        match event {
+            AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
+                let Some(mesh) = assets.get(handle) else { return; };
+                if track.skip_network_handle_change(handle.id()) {
+                    return;
+                }
+                client.send_message(
+                    DefaultChannel::ReliableOrdered,
+                    bincode::serialize(&Message::MeshUpdated {
+                        id: handle.id(),
+                        mesh: mesh_to_bin(mesh),
                     })
                     .unwrap(),
                 );

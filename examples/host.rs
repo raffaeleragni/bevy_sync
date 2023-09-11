@@ -32,6 +32,7 @@ fn main() {
     host.sync_component::<Handle<StandardMaterial>>();
     host.sync_component::<Handle<Mesh>>();
     host.sync_materials(true);
+    host.sync_meshes(true);
 
     host.add_systems(Startup, load_world);
     host.run();

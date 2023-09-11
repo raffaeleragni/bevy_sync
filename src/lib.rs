@@ -39,6 +39,7 @@ app.world.spawn(Transform::default()).insert(SyncMark {});
 
 mod client;
 mod lib_priv;
+mod mesh_serde;
 mod networking;
 mod proto;
 mod proto_serde;
@@ -108,4 +109,5 @@ pub trait SyncComponent {
         &mut self,
     ) -> &mut Self;
     fn sync_materials(&mut self, enable: bool);
+    fn sync_meshes(&mut self, enable: bool);
 }
