@@ -1,8 +1,12 @@
 mod assert;
 mod setup;
 
-use assert::material_has_color;
-use bevy::{asset::HandleId, prelude::*};
+use assert::{assets_has_mesh, material_has_color};
+use bevy::{
+    asset::HandleId,
+    prelude::*,
+    render::{mesh::Indices, render_resource::PrimitiveTopology},
+};
 use bevy_sync::{SyncComponent, SyncExclude, SyncMark};
 use serial_test::serial;
 use setup::{MySynched, TestEnv, TestRun};
@@ -17,7 +21,9 @@ fn test_initial_world_sync_sent_from_server() {
         |env| {
             env.setup_registration::<MySynched>();
             env.setup_registration::<Handle<StandardMaterial>>();
+            env.setup_registration::<Handle<Mesh>>();
             env.server.sync_materials(true);
+            env.server.sync_meshes(true);
             let e_id = env.server.world.spawn(SyncMark {}).id();
 
             let mut e = env.server.world.entity_mut(e_id);
@@ -30,10 +36,16 @@ fn test_initial_world_sync_sent_from_server() {
             let id = material.id();
             env.server.world.spawn(material);
 
-            (1, id)
+            let mut meshes = env.server.world.resource_mut::<Assets<Mesh>>();
+            let mesh = meshes.add(sample_mesh());
+
+            let m_id = mesh.id();
+            env.server.world.spawn(mesh);
+
+            (1, id, m_id)
         },
         TestRun::no_setup,
-        |env, (entity_count, id): (u32, HandleId), _| {
+        |env, (entity_count, id, m_id): (u32, HandleId, HandleId), _| {
             assert::initial_sync_for_client_happened(
                 &mut env.server,
                 &mut env.clients[0],
@@ -43,6 +55,7 @@ fn test_initial_world_sync_sent_from_server() {
             assert::no_messages_left_for_client(&mut env.clients[0]);
 
             material_has_color(&mut env.clients[0], id, Color::RED);
+            assets_has_mesh(&mut env.clients[0], m_id);
         },
     );
 }
@@ -56,6 +69,7 @@ fn test_init_sync_multiple_clients() {
             env.setup_registration::<MySynched>();
             env.setup_registration::<Handle<StandardMaterial>>();
             env.server.sync_materials(true);
+            env.server.sync_meshes(true);
             let e_id = env.server.world.spawn(SyncMark {}).id();
 
             let mut e = env.server.world.entity_mut(e_id);
@@ -68,13 +82,20 @@ fn test_init_sync_multiple_clients() {
             let id = material.id();
             env.server.world.spawn(material);
 
-            (1, id)
+            let mut meshes = env.server.world.resource_mut::<Assets<Mesh>>();
+            let mesh = meshes.add(sample_mesh());
+
+            let m_id = mesh.id();
+            env.server.world.spawn(mesh);
+
+            (1, id, m_id)
         },
         TestRun::no_setup,
-        |env: &mut TestEnv, (entity_count, id): (u32, HandleId), _| {
+        |env: &mut TestEnv, (entity_count, id, m_id): (u32, HandleId, HandleId), _| {
             for capp in &mut env.clients {
                 assert::initial_sync_for_client_happened(&mut env.server, capp, entity_count);
                 material_has_color(capp, id, Color::RED);
+                assets_has_mesh(capp, m_id);
             }
 
             assert::no_messages_left_for_server(&mut env.server);
@@ -109,4 +130,18 @@ fn test_initial_world_sync_not_transfer_excluded_components() {
             assert_eq!(count, 0);
         },
     );
+}
+
+fn sample_mesh() -> Mesh {
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    mesh.insert_attribute(
+        Mesh::ATTRIBUTE_POSITION,
+        vec![[0., 0., 0.], [1., 2., 1.], [2., 0., 0.]],
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; 3]);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; 3]);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, vec![[0., 1., 0., 0.]; 3]);
+    mesh.set_indices(Some(Indices::U32(vec![0, 2, 1])));
+
+    mesh
 }
