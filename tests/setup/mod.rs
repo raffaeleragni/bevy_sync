@@ -24,6 +24,12 @@ pub(crate) struct MySynched {
     pub(crate) value: i32,
 }
 
+#[derive(Component, Reflect, Default, PartialEq, Serialize, Deserialize, Debug)]
+#[reflect(Component)]
+pub(crate) struct MySynched2 {
+    pub(crate) value: i32,
+}
+
 #[derive(Debug)]
 pub(crate) struct TestError(String);
 impl Display for TestError {

@@ -27,6 +27,9 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
     let sync_down_id = world
         .component_id::<SyncDown>()
         .expect("SyncDown is not registered");
+    let parent_component_id = world
+        .component_id::<SyncDown>()
+        .expect("Parent is not registered");
     for arch in world
         .archetypes()
         .iter()
@@ -40,6 +43,7 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
                 entity_ids_sent.insert(e_id);
             }
         }
+
         for c_id in arch
             .components()
             .filter(|&c_id| track.sync_components.contains(&c_id))
@@ -71,6 +75,28 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
                     id: e_id,
                     name: type_name.into(),
                     data: compo_bin,
+                });
+            }
+        }
+    }
+
+    // Iterate again after all entities have been sent to find parenting to avoid missed parent ids
+    for arch in world
+        .archetypes()
+        .iter()
+        .filter(|arch| arch.contains(sync_down_id))
+    {
+        for _ in arch
+            .components()
+            .filter(|&c_id| c_id == parent_component_id)
+        {
+            for arch_entity in arch.entities() {
+                let entity = world.entity(arch_entity.entity());
+                let e_id = entity.id();
+                let Some(parent) = entity.get::<Parent>() else {continue};
+                result.push(Message::EntityParented {
+                    server_entity_id: e_id,
+                    server_parent_id: parent.get(),
                 });
             }
         }

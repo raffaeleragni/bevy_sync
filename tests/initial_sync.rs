@@ -11,7 +11,7 @@ use bevy_sync::{SyncComponent, SyncExclude, SyncMark};
 use serial_test::serial;
 use setup::{MySynched, TestEnv, TestRun};
 
-use crate::assert::count_entities_with_component;
+use crate::{assert::count_entities_with_component, setup::MySynched2};
 
 #[test]
 #[serial]
@@ -144,4 +144,45 @@ fn sample_mesh() -> Mesh {
     mesh.set_indices(Some(Indices::U32(vec![0, 2, 1])));
 
     mesh
+}
+
+#[test]
+#[serial]
+fn test_initial_with_parenting() {
+    TestRun::default().run(
+        1,
+        |env| {
+            env.setup_registration::<MySynched>();
+            env.setup_registration::<MySynched2>();
+            let _ = env
+                .server
+                .world
+                .spawn((SyncMark, MySynched { value: 7 }))
+                .with_children(|parent| {
+                    parent.spawn((SyncMark, MySynched2 { value: 8 }));
+                })
+                .id();
+
+            0
+        },
+        TestRun::no_setup,
+        |env, _, _| {
+            env.update(20);
+
+            let app = &mut env.clients[0];
+            let entity_value = app
+                .world
+                .query_filtered::<&MySynched, Without<Parent>>()
+                .iter(&app.world)
+                .next();
+            assert_eq!(entity_value.unwrap().value, 7);
+
+            let child_value = app
+                .world
+                .query_filtered::<&MySynched2, With<Parent>>()
+                .iter(&app.world)
+                .next();
+            assert_eq!(child_value.unwrap().value, 8);
+        },
+    );
 }
