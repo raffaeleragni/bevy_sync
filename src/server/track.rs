@@ -3,8 +3,9 @@ use bevy_renet::renet::{DefaultChannel, RenetServer};
 
 use crate::{
     lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
+    mesh_serde::mesh_to_bin,
     proto::Message,
-    proto_serde::{compo_to_bin, mesh_to_bin},
+    proto_serde::compo_to_bin,
     SyncDown, SyncMark,
 };
 

@@ -1,12 +1,8 @@
 use std::any::type_name;
 
-use bevy::{
-    prelude::Mesh,
-    reflect::{
-        serde::{ReflectSerializer, UntypedReflectDeserializer},
-        DynamicStruct, Reflect, ReflectFromReflect, TypeRegistryInternal,
-    },
-    render::render_resource::PrimitiveTopology,
+use bevy::reflect::{
+    serde::{ReflectSerializer, UntypedReflectDeserializer},
+    DynamicStruct, Reflect, ReflectFromReflect, TypeRegistryInternal,
 };
 
 use bincode::{DefaultOptions, Options};
@@ -40,14 +36,6 @@ pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistryInternal) -> Box<
         .get_type_data::<ReflectFromReflect>(registration.type_id())
         .unwrap();
     rfr.from_reflect(&*data).unwrap()
-}
-
-pub(crate) fn mesh_to_bin(_: &Mesh) -> Vec<u8> {
-    vec![]
-}
-
-pub(crate) fn bin_to_mesh(_: &[u8]) -> Mesh {
-    Mesh::new(PrimitiveTopology::TriangleList)
 }
 
 struct ComponentData<'a> {

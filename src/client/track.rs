@@ -2,9 +2,7 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetClient};
 
 use crate::{
-    lib_priv::SyncTrackerRes,
-    proto::Message,
-    proto_serde::{compo_to_bin, mesh_to_bin},
+    lib_priv::SyncTrackerRes, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
     SyncMark, SyncUp,
 };
 

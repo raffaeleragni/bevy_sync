@@ -9,10 +9,9 @@ use bevy::{
 };
 
 use crate::{
-    client::ClientSyncPlugin,
-    proto_serde::{bin_to_compo, bin_to_mesh},
-    server::ServerSyncPlugin,
-    ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
+    client::ClientSyncPlugin, mesh_serde::bin_to_mesh, proto_serde::bin_to_compo,
+    server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncExclude,
+    SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]
