@@ -11,8 +11,8 @@ Current state is in development.
 - [X] Entity synchronization
 - [X] Component synchronization
 - [X] Parent/Child entity synchronization
-- [ ] Asset synchronization
-  - [ ] Mesh
+- [X] Asset synchronization
+  - [x] Mesh
   - [X] SimpleMaterial
 
 ## Examples
