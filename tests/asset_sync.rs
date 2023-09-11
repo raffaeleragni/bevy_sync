@@ -156,6 +156,7 @@ fn sample_mesh() -> Mesh {
     );
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; 3]);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; 3]);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, vec![[0., 1., 0., 0.]; 3]);
     mesh.set_indices(Some(mesh::Indices::U32(vec![0, 2, 1])));
 
     mesh
