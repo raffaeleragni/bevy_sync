@@ -9,8 +9,10 @@ use bevy::{
 };
 
 use crate::{
-    client::ClientSyncPlugin, proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin,
-    ServerPlugin, SyncComponent, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
+    client::ClientSyncPlugin,
+    proto_serde::{bin_to_compo, bin_to_mesh},
+    server::ServerSyncPlugin,
+    ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -37,7 +39,9 @@ pub(crate) struct SyncTrackerRes {
     pushed_component_from_network: HashSet<ComponentChangeId>,
     pushed_handles_from_network: HashSet<HandleId>,
     material_handles: HashMap<HandleId, Handle<StandardMaterial>>,
+    mesh_handles: HashMap<HandleId, Handle<Mesh>>,
     sync_materials: bool,
+    sync_meshes: bool,
 }
 
 impl SyncTrackerRes {
@@ -122,6 +126,21 @@ impl SyncTrackerRes {
             .insert(id, handle);
     }
 
+    pub(crate) fn apply_mesh_change_from_network(id: HandleId, mesh: &[u8], world: &mut World) {
+        world
+            .resource_mut::<SyncTrackerRes>()
+            .pushed_handles_from_network
+            .insert(id);
+        let mut meshes = world.resource_mut::<Assets<Mesh>>();
+        let mesh = bin_to_mesh(mesh);
+        let handle = meshes.set(id, mesh);
+        // need to keep a reference somewhere else the material will be destroyed right away
+        world
+            .resource_mut::<SyncTrackerRes>()
+            .mesh_handles
+            .insert(id, handle);
+    }
+
     fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
         if previous_value.is_none() {
             return true;
@@ -188,6 +207,11 @@ impl SyncComponent for App {
         let mut tracker = self.world.resource_mut::<SyncTrackerRes>();
         tracker.sync_materials = enable;
     }
+
+    fn sync_meshes(&mut self, enable: bool) {
+        let mut tracker = self.world.resource_mut::<SyncTrackerRes>();
+        tracker.sync_meshes = enable;
+    }
 }
 
 #[derive(Component)]
@@ -219,4 +243,8 @@ impl Plugin for ClientPlugin {
 
 pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {
     tracker.sync_materials
+}
+
+pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
+    tracker.sync_meshes
 }

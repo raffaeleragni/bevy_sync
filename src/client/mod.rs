@@ -2,14 +2,15 @@ use bevy::prelude::*;
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
-    lib_priv::{sync_material_enabled, SyncTrackerRes},
+    lib_priv::{sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
     proto::Message,
     ClientState, SyncMark, SyncUp,
 };
 
 use self::track::{
     entity_created_on_client, entity_parented_on_client, entity_removed_from_client,
-    react_on_changed_components, react_on_changed_materials, track_spawn_client,
+    react_on_changed_components, react_on_changed_materials, react_on_changed_meshes,
+    track_spawn_client,
 };
 
 mod receiver;
@@ -50,6 +51,7 @@ impl Plugin for ClientSyncPlugin {
                 entity_parented_on_client,
                 react_on_changed_components,
                 react_on_changed_materials.run_if(sync_material_enabled),
+                react_on_changed_meshes.run_if(sync_mesh_enabled),
                 entity_removed_from_client,
                 receiver::poll_for_messages,
             )

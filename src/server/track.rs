@@ -4,7 +4,7 @@ use bevy_renet::renet::{DefaultChannel, RenetServer};
 use crate::{
     lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
     proto::Message,
-    proto_serde::compo_to_bin,
+    proto_serde::{compo_to_bin, mesh_to_bin},
     SyncDown, SyncMark,
 };
 
@@ -175,6 +175,36 @@ pub(crate) fn react_on_changed_materials(
                         bincode::serialize(&Message::StandardMaterialUpdated {
                             id: handle.id(),
                             material: compo_to_bin(material.clone_value(), &registry),
+                        })
+                        .unwrap(),
+                    );
+                }
+            }
+            AssetEvent::Removed { handle: _ } => {}
+        }
+    }
+}
+
+pub(crate) fn react_on_changed_meshes(
+    mut track: ResMut<SyncTrackerRes>,
+    mut server: ResMut<RenetServer>,
+    assets: Res<Assets<Mesh>>,
+    mut events: EventReader<AssetEvent<Mesh>>,
+) {
+    for event in &mut events {
+        match event {
+            AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
+                let Some(mesh) = assets.get(handle) else { return; };
+                if track.skip_network_handle_change(handle.id()) {
+                    return;
+                }
+                for cid in server.clients_id().into_iter() {
+                    server.send_message(
+                        cid,
+                        DefaultChannel::ReliableOrdered,
+                        bincode::serialize(&Message::MeshUpdated {
+                            id: handle.id(),
+                            mesh: mesh_to_bin(mesh),
                         })
                         .unwrap(),
                     );

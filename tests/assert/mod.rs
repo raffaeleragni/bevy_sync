@@ -97,6 +97,13 @@ pub(crate) fn material_has_color(app: &mut App, id: HandleId, color: Color) {
 }
 
 #[allow(dead_code)]
+pub(crate) fn assets_has_mesh(app: &mut App, id: HandleId) {
+    let meshes = app.world.resource_mut::<Assets<Mesh>>();
+    let handle = meshes.get_handle(id);
+    let _ = meshes.get(&handle).unwrap();
+}
+
+#[allow(dead_code)]
 pub(crate) fn find_entity_with_server_id(
     app: &mut App,
     server_entity_id: Entity,

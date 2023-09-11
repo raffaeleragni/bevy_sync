@@ -108,4 +108,5 @@ pub trait SyncComponent {
         &mut self,
     ) -> &mut Self;
     fn sync_materials(&mut self, enable: bool);
+    fn sync_meshes(&mut self, enable: bool);
 }
