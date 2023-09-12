@@ -1,5 +1,5 @@
 use bevy::render::mesh::Indices;
-use bevy::render::mesh::VertexAttributeValues::{Float32x2, Float32x3, Float32x4};
+use bevy::render::mesh::VertexAttributeValues::{Float32x2, Float32x3, Float32x4, Uint16x4};
 use bevy::{prelude::*, render::render_resource::PrimitiveTopology};
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +10,9 @@ struct MeshData {
     normals: Option<Vec<[f32; 3]>>,
     uvs: Option<Vec<[f32; 2]>>,
     tangents: Option<Vec<[f32; 4]>>,
+    colors: Option<Vec<[f32; 4]>>,
+    joint_weights: Option<Vec<[f32; 4]>>,
+    joint_indices: Option<Vec<[u16; 4]>>,
     indices: Option<Vec<u32>>,
 }
 
@@ -38,6 +41,24 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
         None
     };
 
+    let colors = if let Some(Float32x4(t)) = mesh.attribute(Mesh::ATTRIBUTE_COLOR) {
+        Some(t.clone())
+    } else {
+        None
+    };
+
+    let joint_weights = if let Some(Float32x4(t)) = mesh.attribute(Mesh::ATTRIBUTE_JOINT_WEIGHT) {
+        Some(t.clone())
+    } else {
+        None
+    };
+
+    let joint_indices = if let Some(Uint16x4(t)) = mesh.attribute(Mesh::ATTRIBUTE_JOINT_INDEX) {
+        Some(t.clone())
+    } else {
+        None
+    };
+
     let indices = if let Some(Indices::U32(t)) = mesh.indices() {
         Some(t.clone())
     } else {
@@ -58,6 +79,9 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
         normals,
         uvs,
         tangents,
+        colors,
+        joint_weights,
+        joint_indices,
         indices,
     };
 
@@ -92,6 +116,18 @@ pub(crate) fn bin_to_mesh(binary: &[u8]) -> Mesh {
 
     if let Some(tangents) = data.tangents {
         mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
+    }
+
+    if let Some(colors) = data.colors {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+    }
+
+    if let Some(joint_weights) = data.joint_weights {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_JOINT_WEIGHT, joint_weights);
+    }
+
+    if let Some(joint_indices) = data.joint_indices {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_JOINT_INDEX, Uint16x4(joint_indices));
     }
 
     if let Some(indices) = data.indices {
@@ -134,6 +170,28 @@ mod test {
             mesh.attribute(Mesh::ATTRIBUTE_TANGENT).unwrap().get_bytes(),
             mesh2
                 .attribute(Mesh::ATTRIBUTE_TANGENT)
+                .unwrap()
+                .get_bytes()
+        );
+        assert_eq!(
+            mesh.attribute(Mesh::ATTRIBUTE_COLOR).unwrap().get_bytes(),
+            mesh2.attribute(Mesh::ATTRIBUTE_COLOR).unwrap().get_bytes()
+        );
+        assert_eq!(
+            mesh.attribute(Mesh::ATTRIBUTE_JOINT_WEIGHT)
+                .unwrap()
+                .get_bytes(),
+            mesh2
+                .attribute(Mesh::ATTRIBUTE_JOINT_WEIGHT)
+                .unwrap()
+                .get_bytes()
+        );
+        assert_eq!(
+            mesh.attribute(Mesh::ATTRIBUTE_JOINT_INDEX)
+                .unwrap()
+                .get_bytes(),
+            mesh2
+                .attribute(Mesh::ATTRIBUTE_JOINT_INDEX)
                 .unwrap()
                 .get_bytes()
         );
@@ -183,6 +241,12 @@ mod test {
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; 3]);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; 3]);
         mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, vec![[0., 1., 0., 0.]; 3]);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vec![[0., 1., 0., 0.]; 4]);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_JOINT_WEIGHT, vec![[0., 1., 0., 0.]; 4]);
+        mesh.insert_attribute(
+            Mesh::ATTRIBUTE_JOINT_INDEX,
+            Uint16x4(vec![[1u16, 2, 3, 4]; 4]),
+        );
         mesh.set_indices(Some(Indices::U32(vec![0, 2, 1])));
         mesh
     }
