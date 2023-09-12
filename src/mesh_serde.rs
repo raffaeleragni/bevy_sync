@@ -4,52 +4,100 @@ use bevy::{prelude::*, render::render_resource::PrimitiveTopology};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-struct MeshData(
-    Vec<[f32; 3]>,
-    Vec<[f32; 3]>,
-    Vec<[f32; 2]>,
-    Option<Vec<[f32; 4]>>,
-    Vec<u32>,
-);
+struct MeshData {
+    mesh_type: u8,
+    positions: Option<Vec<[f32; 3]>>,
+    normals: Option<Vec<[f32; 3]>>,
+    uvs: Option<Vec<[f32; 2]>>,
+    tangents: Option<Vec<[f32; 4]>>,
+    indices: Option<Vec<u32>>,
+}
 
 pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
-    if let Some(Float32x3(positions)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
-        if let Some(Float32x3(normals)) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL) {
-            if let Some(Float32x2(uvs)) = mesh.attribute(Mesh::ATTRIBUTE_UV_0) {
-                if let Some(Indices::U32(indices)) = mesh.indices() {
-                    let tangents =
-                        if let Some(Float32x4(t)) = mesh.attribute(Mesh::ATTRIBUTE_TANGENT) {
-                            Some(t.clone())
-                        } else {
-                            None
-                        };
-                    let data = MeshData(
-                        positions.clone(),
-                        normals.clone(),
-                        uvs.clone(),
-                        tangents,
-                        indices.clone(),
-                    );
-                    let binary = bincode::serialize(&data).unwrap();
-                    return binary;
-                }
-            }
-        }
-    }
-    vec![]
+    let positions = if let Some(Float32x3(t)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
+        Some(t.clone())
+    } else {
+        None
+    };
+
+    let tangents = if let Some(Float32x4(t)) = mesh.attribute(Mesh::ATTRIBUTE_TANGENT) {
+        Some(t.clone())
+    } else {
+        None
+    };
+
+    let normals = if let Some(Float32x3(t)) = mesh.attribute(Mesh::ATTRIBUTE_NORMAL) {
+        Some(t.clone())
+    } else {
+        None
+    };
+
+    let uvs = if let Some(Float32x2(t)) = mesh.attribute(Mesh::ATTRIBUTE_UV_0) {
+        Some(t.clone())
+    } else {
+        None
+    };
+
+    let indices = if let Some(Indices::U32(t)) = mesh.indices() {
+        Some(t.clone())
+    } else {
+        None
+    };
+
+    let mesh_type_num = match mesh.primitive_topology() {
+        PrimitiveTopology::PointList => 0,
+        PrimitiveTopology::LineList => 1,
+        PrimitiveTopology::LineStrip => 2,
+        PrimitiveTopology::TriangleList => 3,
+        PrimitiveTopology::TriangleStrip => 4,
+    };
+
+    let data = MeshData {
+        mesh_type: mesh_type_num,
+        positions,
+        normals,
+        uvs,
+        tangents,
+        indices,
+    };
+
+    bincode::serialize(&data).unwrap()
 }
 
 pub(crate) fn bin_to_mesh(binary: &[u8]) -> Mesh {
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    if let Ok(data) = bincode::deserialize::<MeshData>(binary) {
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, Float32x3(data.0));
-        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, Float32x3(data.1));
-        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, Float32x2(data.2));
-        if let Some(tangents) = data.3 {
-            mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
-        }
-        mesh.set_indices(Some(Indices::U32(data.4)));
+    let Ok(data) = bincode::deserialize::<MeshData>(binary) else { return Mesh::new(PrimitiveTopology::TriangleList) };
+
+    let mesh_type_enum = match data.mesh_type {
+        0 => PrimitiveTopology::PointList,
+        1 => PrimitiveTopology::LineList,
+        2 => PrimitiveTopology::LineStrip,
+        3 => PrimitiveTopology::TriangleList,
+        4 => PrimitiveTopology::TriangleStrip,
+        _ => PrimitiveTopology::TriangleList,
+    };
+
+    let mut mesh = Mesh::new(mesh_type_enum);
+
+    if let Some(positions) = data.positions {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     }
+
+    if let Some(normals) = data.normals {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    }
+
+    if let Some(uvs) = data.uvs {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    }
+
+    if let Some(tangents) = data.tangents {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, tangents);
+    }
+
+    if let Some(indices) = data.indices {
+        mesh.set_indices(Some(Indices::U32(indices)));
+    }
+
     mesh
 }
 
