@@ -22,7 +22,7 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
     let mut entity_ids_sent: HashSet<Entity> = HashSet::new();
     let mut result: Vec<Message> = Vec::new();
     let track = world.resource::<SyncTrackerRes>();
-    let registry = world.resource::<AppTypeRegistry>().clone();
+    let registry = world.resource::<AppTypeRegistry>();
     let registry = registry.read();
     let sync_down_id = world
         .component_id::<SyncDown>()

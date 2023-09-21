@@ -89,7 +89,7 @@ fn server_received_a_message(
                 let changed = SyncTrackerRes::apply_component_change_from_network(
                     e_id,
                     name.clone(),
-                    data.clone(),
+                    &data,
                     world,
                 );
 

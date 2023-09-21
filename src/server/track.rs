@@ -131,7 +131,6 @@ pub(crate) fn react_on_changed_components(
     mut server: ResMut<RenetServer>,
     mut track: ResMut<SyncTrackerRes>,
 ) {
-    let registry = registry.clone();
     let registry = registry.read();
     while let Some(change) = track.changed_components.pop_front() {
         debug!(
@@ -160,7 +159,6 @@ pub(crate) fn react_on_changed_materials(
     materials: Res<Assets<StandardMaterial>>,
     mut events: EventReader<AssetEvent<StandardMaterial>>,
 ) {
-    let registry = registry.clone();
     let registry = registry.read();
     for event in &mut events {
         match event {

@@ -66,38 +66,35 @@ impl SyncTrackerRes {
     pub(crate) fn apply_component_change_from_network(
         e_id: Entity,
         name: String,
-        data: Vec<u8>,
+        data: &[u8],
         world: &mut World,
     ) -> bool {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
-        let component_data = bin_to_compo(&data, &registry);
+        let component_data = bin_to_compo(data, &registry);
         let registration = registry.get_with_name(name.as_str()).unwrap();
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
         let previous_value = reflect_component.reflect(world.entity(e_id));
         if SyncTrackerRes::needs_to_change(previous_value, &*component_data) {
-            world
-                .resource_mut::<SyncTrackerRes>()
-                .pushed_component_from_network
-                .insert(ComponentChangeId {
-                    id: e_id,
-                    name: name.clone(),
-                });
-            let entity = &mut world.entity_mut(e_id);
-            reflect_component.apply_or_insert(entity, component_data.as_reflect());
             debug!(
                 "Changed component from network: {}v{} - {}",
                 e_id.index(),
                 e_id.generation(),
-                name.clone()
+                &name
             );
+            world
+                .resource_mut::<SyncTrackerRes>()
+                .pushed_component_from_network
+                .insert(ComponentChangeId { id: e_id, name });
+            let entity = &mut world.entity_mut(e_id);
+            reflect_component.apply_or_insert(entity, component_data.as_reflect());
             true
         } else {
             debug!(
                 "Skipped component from network: {}v{} - {}",
                 e_id.index(),
                 e_id.generation(),
-                name.clone()
+                name
             );
             false
         }

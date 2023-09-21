@@ -76,7 +76,6 @@ pub(crate) fn react_on_changed_components(
     mut client: ResMut<RenetClient>,
     mut track: ResMut<SyncTrackerRes>,
 ) {
-    let registry = registry.clone();
     let registry = registry.read();
     while let Some(change) = track.changed_components.pop_front() {
         debug!(
@@ -87,7 +86,7 @@ pub(crate) fn react_on_changed_components(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::ComponentUpdated {
                 id: change.change_id.id,
-                name: change.change_id.name.clone(),
+                name: change.change_id.name,
                 data: compo_to_bin(change.data.clone_value(), &registry),
             })
             .unwrap(),
@@ -102,7 +101,6 @@ pub(crate) fn react_on_changed_materials(
     materials: Res<Assets<StandardMaterial>>,
     mut events: EventReader<AssetEvent<StandardMaterial>>,
 ) {
-    let registry = registry.clone();
     let registry = registry.read();
     for event in &mut events {
         match event {
