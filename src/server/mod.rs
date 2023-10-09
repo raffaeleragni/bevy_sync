@@ -72,7 +72,7 @@ fn client_connected(mut cmd: Commands, mut server_events: EventReader<ServerEven
     for event in server_events.read() {
         match event {
             ServerEvent::ClientConnected { client_id } => {
-                let client_id = client_id.clone();
+                let client_id = *client_id;
                 info!("Client connected with client id: {}", client_id);
                 cmd.add(move |world: &mut World| send_initial_sync(client_id, world));
             }

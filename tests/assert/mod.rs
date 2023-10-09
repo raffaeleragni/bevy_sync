@@ -1,4 +1,4 @@
-use bevy::{asset::AssetIndex, prelude::*};
+use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 use bevy_sync::{SyncDown, SyncUp};
 

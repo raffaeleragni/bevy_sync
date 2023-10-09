@@ -107,15 +107,15 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
     if track.sync_materials_enabled() {
         let materials = world.resource::<Assets<StandardMaterial>>();
         for (id, material) in materials.iter() {
-            match id {
-                AssetId::Index {
-                    index: id,
-                    marker: _,
-                } => result.push(Message::StandardMaterialUpdated {
+            if let AssetId::Index {
+                index: id,
+                marker: _,
+            } = id
+            {
+                result.push(Message::StandardMaterialUpdated {
                     id,
                     material: compo_to_bin(material.clone_value(), &registry),
-                }),
-                _ => (),
+                })
             }
         }
     }
@@ -123,15 +123,15 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
     if track.sync_materials_enabled() {
         let meshes = world.resource::<Assets<Mesh>>();
         for (id, mesh) in meshes.iter() {
-            match id {
-                AssetId::Index {
-                    index: id,
-                    marker: _,
-                } => result.push(Message::MeshUpdated {
+            if let AssetId::Index {
+                index: id,
+                marker: _,
+            } = id
+            {
+                result.push(Message::MeshUpdated {
                     id,
                     mesh: mesh_to_bin(mesh),
-                }),
-                _ => (),
+                })
             }
         }
     }
