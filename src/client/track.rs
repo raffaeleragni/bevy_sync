@@ -35,7 +35,9 @@ pub(crate) fn entity_parented_on_client(
     query_parent: Query<(Entity, &SyncUp), With<Children>>,
 ) {
     for (p, sup) in query.iter() {
-        let Ok(parent) = query_parent.get_component::<SyncUp>(p.get()) else {return};
+        let Ok(parent) = query_parent.get_component::<SyncUp>(p.get()) else {
+            return;
+        };
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntityParented {
@@ -102,23 +104,33 @@ pub(crate) fn react_on_changed_materials(
     mut events: EventReader<AssetEvent<StandardMaterial>>,
 ) {
     let registry = registry.read();
-    for event in &mut events {
+    for event in &mut events.read() {
         match event {
-            AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
-                let Some(material) = materials.get(handle) else { return; };
-                if track.skip_network_handle_change(handle.id()) {
+            AssetEvent::Added { id } | AssetEvent::Modified { id } => {
+                let Some(material) = materials.get(*id) else {
+                    return;
+                };
+                let AssetId::Index {
+                    index: id,
+                    marker: _,
+                } = id
+                else {
+                    return;
+                };
+                if track.skip_network_handle_change(*id) {
                     return;
                 }
                 client.send_message(
                     DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::StandardMaterialUpdated {
-                        id: handle.id(),
+                        id: *id,
                         material: compo_to_bin(material.clone_value(), &registry),
                     })
                     .unwrap(),
                 );
             }
-            AssetEvent::Removed { handle: _ } => {}
+            AssetEvent::Removed { id: _ } => {}
+            _ => (),
         }
     }
 }
@@ -129,23 +141,33 @@ pub(crate) fn react_on_changed_meshes(
     assets: Res<Assets<Mesh>>,
     mut events: EventReader<AssetEvent<Mesh>>,
 ) {
-    for event in &mut events {
+    for event in &mut events.read() {
         match event {
-            AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
-                let Some(mesh) = assets.get(handle) else { return; };
-                if track.skip_network_handle_change(handle.id()) {
+            AssetEvent::Added { id } | AssetEvent::Modified { id } => {
+                let Some(mesh) = assets.get(*id) else {
+                    return;
+                };
+                let AssetId::Index {
+                    index: id,
+                    marker: _,
+                } = id
+                else {
+                    return;
+                };
+                if track.skip_network_handle_change(*id) {
                     return;
                 }
                 client.send_message(
                     DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::MeshUpdated {
-                        id: handle.id(),
+                        id: *id,
                         mesh: mesh_to_bin(mesh),
                     })
                     .unwrap(),
                 );
             }
-            AssetEvent::Removed { handle: _ } => {}
+            AssetEvent::Removed { id: _ } => {}
+            _ => (),
         }
     }
 }

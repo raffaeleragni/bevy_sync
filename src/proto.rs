@@ -1,4 +1,4 @@
-use bevy::{asset::HandleId, prelude::Entity};
+use bevy::{asset::AssetIndex, prelude::Entity};
 use serde::{Deserialize, Serialize};
 
 type EntityId = Entity;
@@ -26,11 +26,11 @@ pub(crate) enum Message {
         data: Vec<u8>,
     } = 5,
     StandardMaterialUpdated {
-        id: HandleId,
+        id: AssetIndex,
         material: Vec<u8>,
     } = 6,
     MeshUpdated {
-        id: HandleId,
+        id: AssetIndex,
         mesh: Vec<u8>,
     } = 7,
 }

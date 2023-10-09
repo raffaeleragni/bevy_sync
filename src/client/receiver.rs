@@ -61,8 +61,12 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
             server_entity_id: e_id,
             server_parent_id: p_id,
         } => {
-            let Some(&c_e_id) = track.server_to_client_entities.get(&e_id) else {return};
-            let Some(&c_p_id) = track.server_to_client_entities.get(&p_id) else {return};
+            let Some(&c_e_id) = track.server_to_client_entities.get(&e_id) else {
+                return;
+            };
+            let Some(&c_p_id) = track.server_to_client_entities.get(&p_id) else {
+                return;
+            };
             cmd.add(move |world: &mut World| {
                 let mut entity = world.entity_mut(c_e_id);
                 let opt_parent = entity.get::<Parent>();
@@ -78,14 +82,19 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
                 id.index(),
                 id.generation()
             );
-            let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
-            let Some(mut e) = cmd.get_entity(e_id) else {return};
+            let Some(&e_id) = track.server_to_client_entities.get(&id) else {
+                return;
+            };
+            let Some(mut e) = cmd.get_entity(e_id) else {
+                return;
+            };
             e.despawn();
         }
         Message::ComponentUpdated { id, name, data } => {
-            let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
-            let mut entity = cmd.entity(e_id);
-            entity.add(move |_: Entity, world: &mut World| {
+            let Some(&e_id) = track.server_to_client_entities.get(&id) else {
+                return;
+            };
+            cmd.add(move |world: &mut World| {
                 SyncTrackerRes::apply_component_change_from_network(e_id, name, &data, world);
             });
         }

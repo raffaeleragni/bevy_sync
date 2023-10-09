@@ -69,12 +69,12 @@ impl Plugin for ServerSyncPlugin {
 }
 
 fn client_connected(mut cmd: Commands, mut server_events: EventReader<ServerEvent>) {
-    for event in server_events.iter() {
+    for event in server_events.read() {
         match event {
             ServerEvent::ClientConnected { client_id } => {
+                let client_id = client_id.clone();
                 info!("Client connected with client id: {}", client_id);
-                let c_id = *client_id;
-                cmd.add(move |world: &mut World| send_initial_sync(c_id, world));
+                cmd.add(move |world: &mut World| send_initial_sync(client_id, world));
             }
             ServerEvent::ClientDisconnected { client_id, reason } => {
                 info!(

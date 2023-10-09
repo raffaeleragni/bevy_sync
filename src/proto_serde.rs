@@ -2,7 +2,7 @@ use std::any::type_name;
 
 use bevy::reflect::{
     serde::{ReflectSerializer, UntypedReflectDeserializer},
-    DynamicStruct, Reflect, ReflectFromReflect, TypeRegistryInternal,
+    DynamicStruct, Reflect, ReflectFromReflect, TypeRegistry,
 };
 
 use bincode::{DefaultOptions, Options};
@@ -12,7 +12,7 @@ use serde::{
     Deserializer, Serialize,
 };
 
-pub(crate) fn compo_to_bin(compo: Box<dyn Reflect>, registry: &TypeRegistryInternal) -> Vec<u8> {
+pub(crate) fn compo_to_bin(compo: Box<dyn Reflect>, registry: &TypeRegistry) -> Vec<u8> {
     let serializer = ComponentData {
         data: compo.clone_value(),
         registry,
@@ -20,7 +20,7 @@ pub(crate) fn compo_to_bin(compo: Box<dyn Reflect>, registry: &TypeRegistryInter
     bincode::serialize(&serializer).unwrap()
 }
 
-pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistryInternal) -> Box<dyn Reflect> {
+pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistry) -> Box<dyn Reflect> {
     let binoptions = DefaultOptions::new()
         .with_fixint_encoding()
         .allow_trailing_bytes();
@@ -40,7 +40,7 @@ pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistryInternal) -> Box<
 
 struct ComponentData<'a> {
     data: Box<dyn Reflect>,
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> Serialize for ComponentData<'a> {
@@ -58,7 +58,7 @@ impl<'a> Serialize for ComponentData<'a> {
 }
 
 struct ComponentDataDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a: 'de, 'de: 'a> DeserializeSeed<'de> for ComponentDataDeserializer<'a> {
@@ -88,7 +88,7 @@ impl<'a: 'de, 'de> Visitor<'de> for ComponentDataDeserializer<'a> {
 mod test {
     use bevy::{
         prelude::*,
-        reflect::{GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistryInternal},
+        reflect::{GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistry},
     };
     use serde::{Deserialize, Serialize};
 
@@ -104,7 +104,7 @@ mod test {
     where
         T: Reflect + GetTypeRegistration + PartialEq + std::fmt::Debug,
     {
-        let mut registry = TypeRegistryInternal::default();
+        let mut registry = TypeRegistry::default();
         registry.register::<T>();
 
         let data = compo_to_bin(compo_orig.clone_value(), &registry);
@@ -127,7 +127,7 @@ mod test {
     fn compo_data_serde_bevy_native_component() {
         let compo_orig = Transform::default();
 
-        let mut registry = TypeRegistryInternal::default();
+        let mut registry = TypeRegistry::default();
         registry.register::<Transform>();
         registry.register::<Vec3>();
         registry.register::<Quat>();

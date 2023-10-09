@@ -20,10 +20,10 @@ impl Plugin for BundleFixPlugin {
 
 fn fix_computed_visibility(
     mut cmd: Commands,
-    query: Query<Entity, (With<Visibility>, Without<ComputedVisibility>)>,
+    query: Query<Entity, (With<Visibility>, Without<ViewVisibility>)>,
 ) {
     for e in query.iter() {
-        cmd.entity(e).insert(ComputedVisibility::default());
+        cmd.entity(e).insert(ViewVisibility::default());
     }
 }
 

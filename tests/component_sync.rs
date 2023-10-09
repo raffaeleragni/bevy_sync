@@ -233,7 +233,7 @@ fn test_auto_spawn_for_computed_visibility() {
         },
         |env, _, _| {
             let _ = get_first_entity_component::<Visibility>(&mut env.clients[0]).unwrap();
-            let _ = get_first_entity_component::<ComputedVisibility>(&mut env.clients[0]).unwrap();
+            let _ = get_first_entity_component::<ViewVisibility>(&mut env.clients[0]).unwrap();
         },
     );
 }

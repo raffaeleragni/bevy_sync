@@ -19,7 +19,7 @@ fn main() {
     let port = 4000;
     let mut host = App::new();
     host.add_plugins(DefaultPlugins);
-    host.add_plugins(bevy_editor_pls::EditorPlugin::default());
+    //host.add_plugins(bevy_editor_pls::EditorPlugin::default());
     host.add_plugins(SyncPlugin);
     host.add_plugins(ServerPlugin { ip, port });
 

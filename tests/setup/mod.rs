@@ -149,8 +149,8 @@ fn create_client() -> Result<App, Box<dyn Error>> {
 fn add_plugins(app: &mut App) {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(AssetPlugin::default());
-    app.add_asset::<Shader>().add_debug_asset::<Shader>();
-    app.add_asset::<Mesh>().add_debug_asset::<Mesh>();
+    app.init_asset::<Shader>();
+    app.init_asset::<Mesh>();
     app.add_plugins(PbrPlugin::default());
 
     app.add_plugins(SyncPlugin);

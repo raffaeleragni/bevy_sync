@@ -1,12 +1,13 @@
 use std::{any::TypeId, collections::VecDeque};
 
 use bevy::{
-    asset::HandleId,
+    asset::AssetIndex,
     ecs::component::ComponentId,
     prelude::*,
     reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
     utils::{HashMap, HashSet},
 };
+use bevy_renet::renet::ClientId;
 
 use crate::{
     bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh,
@@ -36,9 +37,7 @@ pub(crate) struct SyncTrackerRes {
     pub(crate) exclude_components: HashMap<ComponentId, ComponentId>,
     pub(crate) changed_components: VecDeque<ComponentChange>,
     pushed_component_from_network: HashSet<ComponentChangeId>,
-    pushed_handles_from_network: HashSet<HandleId>,
-    material_handles: HashMap<HandleId, Handle<StandardMaterial>>,
-    mesh_handles: HashMap<HandleId, Handle<Mesh>>,
+    pushed_handles_from_network: HashSet<AssetIndex>,
     sync_materials: bool,
     sync_meshes: bool,
 }
@@ -55,7 +54,7 @@ impl SyncTrackerRes {
             .push_back(ComponentChange { change_id, data });
     }
 
-    pub(crate) fn skip_network_handle_change(&mut self, id: HandleId) -> bool {
+    pub(crate) fn skip_network_handle_change(&mut self, id: AssetIndex) -> bool {
         if self.pushed_handles_from_network.contains(&id) {
             self.pushed_handles_from_network.remove(&id);
             return true;
@@ -101,7 +100,7 @@ impl SyncTrackerRes {
     }
 
     pub(crate) fn apply_material_change_from_network(
-        id: HandleId,
+        id: AssetIndex,
         material: &[u8],
         world: &mut World,
     ) {
@@ -114,27 +113,17 @@ impl SyncTrackerRes {
         let component_data = bin_to_compo(material, &registry);
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
-        let handle = materials.set(id, mat);
-        // need to keep a reference somewhere else the material will be destroyed right away
-        world
-            .resource_mut::<SyncTrackerRes>()
-            .material_handles
-            .insert(id, handle);
+        materials.insert(id, mat);
     }
 
-    pub(crate) fn apply_mesh_change_from_network(id: HandleId, mesh: &[u8], world: &mut World) {
+    pub(crate) fn apply_mesh_change_from_network(id: AssetIndex, mesh: &[u8], world: &mut World) {
         world
             .resource_mut::<SyncTrackerRes>()
             .pushed_handles_from_network
             .insert(id);
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let mesh = bin_to_mesh(mesh);
-        let handle = meshes.set(id, mesh);
-        // need to keep a reference somewhere else the material will be destroyed right away
-        world
-            .resource_mut::<SyncTrackerRes>()
-            .mesh_handles
-            .insert(id, handle);
+        meshes.insert(id, mesh);
     }
 
     fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
@@ -222,7 +211,7 @@ fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeReg
 
 #[derive(Component)]
 pub(crate) struct SyncClientGeneratedEntity {
-    pub(crate) client_id: u64,
+    pub(crate) client_id: ClientId,
     pub(crate) client_entity_id: Entity,
 }
 

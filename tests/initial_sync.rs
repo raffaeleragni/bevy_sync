@@ -3,7 +3,6 @@ mod setup;
 
 use assert::{assets_has_mesh, material_has_color};
 use bevy::{
-    asset::HandleId,
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
 };
@@ -45,7 +44,7 @@ fn test_initial_world_sync_sent_from_server() {
             (1, id, m_id)
         },
         TestRun::no_setup,
-        |env, (entity_count, id, m_id): (u32, HandleId, HandleId), _| {
+        |env, (entity_count, id, m_id): (u32, AssetId<StandardMaterial>, AssetId<Mesh>), _| {
             assert::initial_sync_for_client_happened(
                 &mut env.server,
                 &mut env.clients[0],
@@ -91,7 +90,9 @@ fn test_init_sync_multiple_clients() {
             (1, id, m_id)
         },
         TestRun::no_setup,
-        |env: &mut TestEnv, (entity_count, id, m_id): (u32, HandleId, HandleId), _| {
+        |env: &mut TestEnv,
+         (entity_count, id, m_id): (u32, AssetId<StandardMaterial>, AssetId<Mesh>),
+         _| {
             for capp in &mut env.clients {
                 assert::initial_sync_for_client_happened(&mut env.server, capp, entity_count);
                 material_has_color(capp, id, Color::RED);

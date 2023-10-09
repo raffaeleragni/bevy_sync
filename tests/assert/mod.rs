@@ -1,4 +1,4 @@
-use bevy::{asset::HandleId, prelude::*};
+use bevy::{asset::AssetIndex, prelude::*};
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 use bevy_sync::{SyncDown, SyncUp};
 
@@ -89,18 +89,16 @@ pub(crate) fn get_first_entity_component<T: Component>(app: &mut App) -> Option<
 }
 
 #[allow(dead_code)]
-pub(crate) fn material_has_color(app: &mut App, id: HandleId, color: Color) {
+pub(crate) fn material_has_color(app: &mut App, id: AssetId<StandardMaterial>, color: Color) {
     let materials = app.world.resource_mut::<Assets<StandardMaterial>>();
-    let handle = materials.get_handle(id);
-    let material = materials.get(&handle).unwrap();
+    let material = materials.get(id).unwrap();
     assert_eq!(material.base_color, color);
 }
 
 #[allow(dead_code)]
-pub(crate) fn assets_has_mesh(app: &mut App, id: HandleId) {
+pub(crate) fn assets_has_mesh(app: &mut App, id: AssetId<Mesh>) {
     let meshes = app.world.resource_mut::<Assets<Mesh>>();
-    let handle = meshes.get_handle(id);
-    let _ = meshes.get(&handle).unwrap();
+    let _ = meshes.get(id).unwrap();
 }
 
 #[allow(dead_code)]

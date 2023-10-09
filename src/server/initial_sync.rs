@@ -1,12 +1,12 @@
 use bevy::{prelude::*, utils::HashSet};
-use bevy_renet::renet::{DefaultChannel, RenetServer};
+use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
 
 use crate::{
     lib_priv::SyncTrackerRes, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
     SyncDown,
 };
 
-pub(crate) fn send_initial_sync(client_id: u64, world: &mut World) {
+pub(crate) fn send_initial_sync(client_id: ClientId, world: &mut World) {
     info!("Sending initial sync to client id: {}", client_id);
     // exclusive access to world while looping through all objects, this can be blocking/freezing for the server
     let mut initial_sync = build_initial_sync(world);
@@ -93,7 +93,9 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
             for arch_entity in arch.entities() {
                 let entity = world.entity(arch_entity.entity());
                 let e_id = entity.id();
-                let Some(parent) = entity.get::<Parent>() else {continue};
+                let Some(parent) = entity.get::<Parent>() else {
+                    continue;
+                };
                 result.push(Message::EntityParented {
                     server_entity_id: e_id,
                     server_parent_id: parent.get(),
@@ -105,20 +107,32 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
     if track.sync_materials_enabled() {
         let materials = world.resource::<Assets<StandardMaterial>>();
         for (id, material) in materials.iter() {
-            result.push(Message::StandardMaterialUpdated {
-                id,
-                material: compo_to_bin(material.clone_value(), &registry),
-            });
+            match id {
+                AssetId::Index {
+                    index: id,
+                    marker: _,
+                } => result.push(Message::StandardMaterialUpdated {
+                    id,
+                    material: compo_to_bin(material.clone_value(), &registry),
+                }),
+                _ => (),
+            }
         }
     }
 
     if track.sync_materials_enabled() {
         let meshes = world.resource::<Assets<Mesh>>();
         for (id, mesh) in meshes.iter() {
-            result.push(Message::MeshUpdated {
-                id,
-                mesh: mesh_to_bin(mesh),
-            });
+            match id {
+                AssetId::Index {
+                    index: id,
+                    marker: _,
+                } => result.push(Message::MeshUpdated {
+                    id,
+                    mesh: mesh_to_bin(mesh),
+                }),
+                _ => (),
+            }
         }
     }
 
