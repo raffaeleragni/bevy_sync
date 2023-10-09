@@ -1,4 +1,8 @@
-use bevy::{asset::AssetIndex, prelude::Entity};
+use bevy::{
+    asset::AssetIndex,
+    prelude::{Asset, AssetId, Entity},
+    utils::Uuid,
+};
 use serde::{Deserialize, Serialize};
 
 type EntityId = Entity;
@@ -26,11 +30,27 @@ pub(crate) enum Message {
         data: Vec<u8>,
     } = 5,
     StandardMaterialUpdated {
-        id: AssetIndex,
+        id: AssId,
         material: Vec<u8>,
     } = 6,
     MeshUpdated {
-        id: AssetIndex,
+        id: AssId,
         mesh: Vec<u8>,
     } = 7,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
+#[repr(u8)]
+pub(crate) enum AssId {
+    Index { id: AssetIndex },
+    Uuid { id: Uuid },
+}
+
+impl<T: Asset> From<AssetId<T>> for AssId {
+    fn from(value: AssetId<T>) -> Self {
+        match value {
+            AssetId::Index { index, marker: _ } => AssId::Index { id: index },
+            AssetId::Uuid { uuid } => AssId::Uuid { id: uuid },
+        }
+    }
 }

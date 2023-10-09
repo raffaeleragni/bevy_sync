@@ -4,7 +4,7 @@ use bevy_renet::renet::{DefaultChannel, RenetServer};
 use crate::{
     lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
     mesh_serde::mesh_to_bin,
-    proto::Message,
+    proto::{AssId, Message},
     proto_serde::compo_to_bin,
     SyncDown, SyncMark,
 };
@@ -166,14 +166,8 @@ pub(crate) fn react_on_changed_materials(
                 let Some(material) = materials.get(*id) else {
                     return;
                 };
-                let AssetId::Index {
-                    index: id,
-                    marker: _,
-                } = id
-                else {
-                    return;
-                };
-                if track.skip_network_handle_change(*id) {
+                let id: AssId = (*id).into();
+                if track.skip_network_handle_change(id.clone()) {
                     return;
                 }
                 for cid in server.clients_id().into_iter() {
@@ -181,7 +175,7 @@ pub(crate) fn react_on_changed_materials(
                         cid,
                         DefaultChannel::ReliableOrdered,
                         bincode::serialize(&Message::StandardMaterialUpdated {
-                            id: *id,
+                            id: id.clone(),
                             material: compo_to_bin(material.clone_value(), &registry),
                         })
                         .unwrap(),
@@ -206,14 +200,8 @@ pub(crate) fn react_on_changed_meshes(
                 let Some(mesh) = assets.get(*id) else {
                     return;
                 };
-                let AssetId::Index {
-                    index: id,
-                    marker: _,
-                } = id
-                else {
-                    return;
-                };
-                if track.skip_network_handle_change(*id) {
+                let id: AssId = (*id).into();
+                if track.skip_network_handle_change(id.clone()) {
                     return;
                 }
                 for cid in server.clients_id().into_iter() {
@@ -221,7 +209,7 @@ pub(crate) fn react_on_changed_meshes(
                         cid,
                         DefaultChannel::ReliableOrdered,
                         bincode::serialize(&Message::MeshUpdated {
-                            id: *id,
+                            id: id.clone(),
                             mesh: mesh_to_bin(mesh),
                         })
                         .unwrap(),

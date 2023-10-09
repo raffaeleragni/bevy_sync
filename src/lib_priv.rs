@@ -1,7 +1,6 @@
 use std::{any::TypeId, collections::VecDeque};
 
 use bevy::{
-    asset::AssetIndex,
     ecs::component::ComponentId,
     prelude::*,
     reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
@@ -10,7 +9,7 @@ use bevy::{
 use bevy_renet::renet::ClientId;
 
 use crate::{
-    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh,
+    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh, proto::AssId,
     proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent,
     SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
 };
@@ -37,7 +36,7 @@ pub(crate) struct SyncTrackerRes {
     pub(crate) exclude_components: HashMap<ComponentId, ComponentId>,
     pub(crate) changed_components: VecDeque<ComponentChange>,
     pushed_component_from_network: HashSet<ComponentChangeId>,
-    pushed_handles_from_network: HashSet<AssetIndex>,
+    pushed_handles_from_network: HashSet<AssId>,
     sync_materials: bool,
     sync_meshes: bool,
 }
@@ -54,7 +53,7 @@ impl SyncTrackerRes {
             .push_back(ComponentChange { change_id, data });
     }
 
-    pub(crate) fn skip_network_handle_change(&mut self, id: AssetIndex) -> bool {
+    pub(crate) fn skip_network_handle_change(&mut self, id: AssId) -> bool {
         if self.pushed_handles_from_network.contains(&id) {
             self.pushed_handles_from_network.remove(&id);
             return true;
@@ -100,30 +99,36 @@ impl SyncTrackerRes {
     }
 
     pub(crate) fn apply_material_change_from_network(
-        id: AssetIndex,
+        id: AssId,
         material: &[u8],
         world: &mut World,
     ) {
         world
             .resource_mut::<SyncTrackerRes>()
             .pushed_handles_from_network
-            .insert(id);
+            .insert(id.clone());
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let component_data = bin_to_compo(material, &registry);
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
-        materials.insert(id, mat);
+        match id {
+            AssId::Index { id } => materials.insert(id, mat),
+            AssId::Uuid { id } => materials.insert(id, mat),
+        }
     }
 
-    pub(crate) fn apply_mesh_change_from_network(id: AssetIndex, mesh: &[u8], world: &mut World) {
+    pub(crate) fn apply_mesh_change_from_network(id: AssId, mesh: &[u8], world: &mut World) {
         world
             .resource_mut::<SyncTrackerRes>()
             .pushed_handles_from_network
-            .insert(id);
+            .insert(id.clone());
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let mesh = bin_to_mesh(mesh);
-        meshes.insert(id, mesh);
+        match id {
+            AssId::Index { id } => meshes.insert(id, mesh),
+            AssId::Uuid { id } => meshes.insert(id, mesh),
+        }
     }
 
     fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
