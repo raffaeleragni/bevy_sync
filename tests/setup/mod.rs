@@ -8,7 +8,9 @@ use bevy::{
     pbr::PbrPlugin,
     prelude::*,
     reflect::{FromReflect, GetTypeRegistration, Reflect},
+    render::{mesh::Indices, render_resource::PrimitiveTopology},
     transform::TransformBundle,
+    utils::Uuid,
     MinimalPlugins,
 };
 use bevy_renet::renet::RenetClient;
@@ -95,16 +97,16 @@ impl TestRun {
     #[allow(dead_code)]
     pub(crate) fn no_setup(_: &mut TestEnv) {}
 
-    pub(crate) fn run<F0, F1, F2, T1, T2>(
+    pub(crate) fn run<F0, F1, F2, T0, T1>(
         &self,
         client_count: u32,
-        mut pre_setup: F0,
-        mut setup: F1,
+        mut pre_connect: F0,
+        mut post_connect: F1,
         mut assertion: F2,
     ) where
-        F0: FnMut(&mut TestEnv) -> T1,
-        F1: FnMut(&mut TestEnv) -> T2,
-        F2: FnMut(&mut TestEnv, T1, T2),
+        F0: FnMut(&mut TestEnv) -> T0,
+        F1: FnMut(&mut TestEnv) -> T1,
+        F2: FnMut(&mut TestEnv, T0, T1),
     {
         let mut test_run = TestEnv {
             server: create_server().unwrap(),
@@ -114,11 +116,11 @@ impl TestRun {
             test_run.clients.push(create_client().unwrap());
         }
 
-        let x = pre_setup(&mut test_run);
+        let x = pre_connect(&mut test_run);
 
         connect_envs(self, &mut test_run.server, &mut test_run.clients).unwrap();
 
-        let y = setup(&mut test_run);
+        let y = post_connect(&mut test_run);
 
         let mut count = 0;
         while count < self.updates_per_run {
@@ -193,4 +195,45 @@ fn wait_until_connected(
     }
 
     Err(TestError("Client did not connect.".into()).into())
+}
+
+pub(crate) fn spawn_new_material(app: &mut App) -> AssetId<StandardMaterial> {
+    let mut materials = app.world.resource_mut::<Assets<StandardMaterial>>();
+    let id = Uuid::new_v4();
+    let material = StandardMaterial {
+        base_color: Color::RED,
+        ..Default::default()
+    };
+    let handle = Handle::<StandardMaterial>::Weak(id.into());
+    materials.insert(id, material);
+
+    app.world.spawn(handle);
+
+    id.into()
+}
+
+pub(crate) fn spawn_new_mesh(app: &mut App) -> AssetId<Mesh> {
+    let mut meshes = app.world.resource_mut::<Assets<Mesh>>();
+    let id = Uuid::new_v4();
+    let mesh = sample_mesh();
+    let handle = Handle::<Mesh>::Weak(id.into());
+    meshes.insert(id, mesh);
+
+    app.world.spawn(handle);
+
+    id.into()
+}
+
+pub(crate) fn sample_mesh() -> Mesh {
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    mesh.insert_attribute(
+        Mesh::ATTRIBUTE_POSITION,
+        vec![[0., 0., 0.], [1., 2., 1.], [2., 0., 0.]],
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; 3]);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; 3]);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, vec![[0., 1., 0., 0.]; 3]);
+    mesh.set_indices(Some(Indices::U32(vec![0, 2, 1])));
+
+    mesh
 }

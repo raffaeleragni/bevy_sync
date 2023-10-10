@@ -4,7 +4,7 @@ use bevy_renet::renet::{DefaultChannel, RenetServer};
 use crate::{
     lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
     mesh_serde::mesh_to_bin,
-    proto::{AssId, Message},
+    proto::Message,
     proto_serde::compo_to_bin,
     SyncDown, SyncMark,
 };
@@ -166,8 +166,10 @@ pub(crate) fn react_on_changed_materials(
                 let Some(material) = materials.get(*id) else {
                     return;
                 };
-                let id: AssId = (*id).into();
-                if track.skip_network_handle_change(id.clone()) {
+                let AssetId::Uuid { uuid: id } = id else {
+                    return;
+                };
+                if track.skip_network_handle_change(*id) {
                     return;
                 }
                 for cid in server.clients_id().into_iter() {
@@ -175,7 +177,7 @@ pub(crate) fn react_on_changed_materials(
                         cid,
                         DefaultChannel::ReliableOrdered,
                         bincode::serialize(&Message::StandardMaterialUpdated {
-                            id: id.clone(),
+                            id: *id,
                             material: compo_to_bin(material.clone_value(), &registry),
                         })
                         .unwrap(),
@@ -200,8 +202,10 @@ pub(crate) fn react_on_changed_meshes(
                 let Some(mesh) = assets.get(*id) else {
                     return;
                 };
-                let id: AssId = (*id).into();
-                if track.skip_network_handle_change(id.clone()) {
+                let AssetId::Uuid { uuid: id } = id else {
+                    return;
+                };
+                if track.skip_network_handle_change(*id) {
                     return;
                 }
                 for cid in server.clients_id().into_iter() {
@@ -209,7 +213,7 @@ pub(crate) fn react_on_changed_meshes(
                         cid,
                         DefaultChannel::ReliableOrdered,
                         bincode::serialize(&Message::MeshUpdated {
-                            id: id.clone(),
+                            id: *id,
                             mesh: mesh_to_bin(mesh),
                         })
                         .unwrap(),

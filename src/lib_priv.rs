@@ -106,29 +106,23 @@ impl SyncTrackerRes {
         world
             .resource_mut::<SyncTrackerRes>()
             .pushed_handles_from_network
-            .insert(id.clone());
+            .insert(id);
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let component_data = bin_to_compo(material, &registry);
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
-        match id {
-            AssId::Index { id } => materials.insert(id, mat),
-            AssId::Uuid { id } => materials.insert(id, mat),
-        }
+        materials.insert(id, mat);
     }
 
     pub(crate) fn apply_mesh_change_from_network(id: AssId, mesh: &[u8], world: &mut World) {
         world
             .resource_mut::<SyncTrackerRes>()
             .pushed_handles_from_network
-            .insert(id.clone());
+            .insert(id);
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let mesh = bin_to_mesh(mesh);
-        match id {
-            AssId::Index { id } => meshes.insert(id, mesh),
-            AssId::Uuid { id } => meshes.insert(id, mesh),
-        }
+        meshes.insert(id, mesh);
     }
 
     fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {

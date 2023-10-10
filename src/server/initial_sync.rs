@@ -2,10 +2,7 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
 
 use crate::{
-    lib_priv::SyncTrackerRes,
-    mesh_serde::mesh_to_bin,
-    proto::{AssId, Message},
-    proto_serde::compo_to_bin,
+    lib_priv::SyncTrackerRes, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
     SyncDown,
 };
 
@@ -110,7 +107,9 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
     if track.sync_materials_enabled() {
         let materials = world.resource::<Assets<StandardMaterial>>();
         for (id, material) in materials.iter() {
-            let id: AssId = id.into();
+            let AssetId::Uuid { uuid: id } = id else {
+                continue;
+            };
             result.push(Message::StandardMaterialUpdated {
                 id,
                 material: compo_to_bin(material.clone_value(), &registry),
@@ -121,7 +120,9 @@ pub(crate) fn build_initial_sync(world: &World) -> Vec<Message> {
     if track.sync_materials_enabled() {
         let meshes = world.resource::<Assets<Mesh>>();
         for (id, mesh) in meshes.iter() {
-            let id: AssId = id.into();
+            let AssetId::Uuid { uuid: id } = id else {
+                continue;
+            };
             result.push(Message::MeshUpdated {
                 id,
                 mesh: mesh_to_bin(mesh),

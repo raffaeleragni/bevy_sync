@@ -2,10 +2,7 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetClient};
 
 use crate::{
-    lib_priv::SyncTrackerRes,
-    mesh_serde::mesh_to_bin,
-    proto::{AssId, Message},
-    proto_serde::compo_to_bin,
+    lib_priv::SyncTrackerRes, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
     SyncMark, SyncUp,
 };
 
@@ -113,14 +110,16 @@ pub(crate) fn react_on_changed_materials(
                 let Some(material) = materials.get(*id) else {
                     return;
                 };
-                let id: AssId = (*id).into();
-                if track.skip_network_handle_change(id.clone()) {
+                let AssetId::Uuid { uuid: id } = id else {
+                    return;
+                };
+                if track.skip_network_handle_change(*id) {
                     return;
                 }
                 client.send_message(
                     DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::StandardMaterialUpdated {
-                        id: id.clone(),
+                        id: *id,
                         material: compo_to_bin(material.clone_value(), &registry),
                     })
                     .unwrap(),
@@ -144,14 +143,16 @@ pub(crate) fn react_on_changed_meshes(
                 let Some(mesh) = assets.get(*id) else {
                     return;
                 };
-                let id: AssId = (*id).into();
-                if track.skip_network_handle_change(id.clone()) {
+                let AssetId::Uuid { uuid: id } = id else {
+                    return;
+                };
+                if track.skip_network_handle_change(*id) {
                     return;
                 }
                 client.send_message(
                     DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::MeshUpdated {
-                        id: id.clone(),
+                        id: *id,
                         mesh: mesh_to_bin(mesh),
                     })
                     .unwrap(),

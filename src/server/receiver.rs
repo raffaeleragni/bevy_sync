@@ -108,19 +108,16 @@ fn server_received_a_message(
             });
         }
         Message::StandardMaterialUpdated { id, material } => cmd.add(move |world: &mut World| {
-            SyncTrackerRes::apply_material_change_from_network(id.clone(), &material, world);
+            SyncTrackerRes::apply_material_change_from_network(id, &material, world);
 
             repeat_except_for_client(
                 client_id,
                 &mut world.resource_mut::<RenetServer>(),
-                &Message::StandardMaterialUpdated {
-                    id: id.clone(),
-                    material,
-                },
+                &Message::StandardMaterialUpdated { id, material },
             );
         }),
         Message::MeshUpdated { id, mesh } => cmd.add(move |world: &mut World| {
-            SyncTrackerRes::apply_mesh_change_from_network(id.clone(), &mesh, world);
+            SyncTrackerRes::apply_mesh_change_from_network(id, &mesh, world);
 
             repeat_except_for_client(
                 client_id,
