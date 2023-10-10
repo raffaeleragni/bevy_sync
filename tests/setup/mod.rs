@@ -197,6 +197,7 @@ fn wait_until_connected(
     Err(TestError("Client did not connect.".into()).into())
 }
 
+#[allow(dead_code)]
 pub(crate) fn spawn_new_material(app: &mut App) -> AssetId<StandardMaterial> {
     let mut materials = app.world.resource_mut::<Assets<StandardMaterial>>();
     let id = Uuid::new_v4();
@@ -212,6 +213,7 @@ pub(crate) fn spawn_new_material(app: &mut App) -> AssetId<StandardMaterial> {
     id.into()
 }
 
+#[allow(dead_code)]
 pub(crate) fn spawn_new_mesh(app: &mut App) -> AssetId<Mesh> {
     let mut meshes = app.world.resource_mut::<Assets<Mesh>>();
     let id = Uuid::new_v4();
@@ -224,6 +226,7 @@ pub(crate) fn spawn_new_mesh(app: &mut App) -> AssetId<Mesh> {
     id.into()
 }
 
+#[allow(dead_code)]
 pub(crate) fn sample_mesh() -> Mesh {
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
     mesh.insert_attribute(
