@@ -71,7 +71,7 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
                 let mut entity = world.entity_mut(c_e_id);
                 let opt_parent = entity.get::<Parent>();
                 if opt_parent.is_none() || opt_parent.unwrap().get() != c_p_id {
-                    entity.set_parent(p_id);
+                    entity.set_parent(c_p_id);
                     world.entity_mut(c_p_id).add_child(c_e_id);
                 }
             });

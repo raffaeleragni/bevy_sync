@@ -3,11 +3,7 @@ use std::{
     net::{IpAddr, Ipv4Addr},
 };
 
-use bevy::{
-    pbr::wireframe::{Wireframe, WireframeConfig},
-    prelude::*,
-    render::primitives::Aabb,
-};
+use bevy::{pbr::wireframe::Wireframe, prelude::*, render::primitives::Aabb};
 use bevy_sync::{ServerPlugin, SyncComponent, SyncExclude, SyncMark, SyncPlugin};
 
 fn main() {
@@ -40,11 +36,9 @@ fn main() {
 
 fn load_world(
     mut commands: Commands,
-    mut wireframe_config: ResMut<WireframeConfig>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    wireframe_config.global = false;
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(shape::Plane::from_size(5.0).into()),
