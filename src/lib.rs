@@ -24,11 +24,11 @@ let mut app = App::new();
 app.add_plugins(MinimalPlugins);
 
 // Either one of these two, if being server or client
-app.add_plugin(ServerPlugin { ip: Ipv4Addr::LOCALHOST.into(), port: 5555 });
+app.add_plugins(ServerPlugin { ip: Ipv4Addr::LOCALHOST.into(), port: 5555 });
 //app.add_plugin(ClientPlugin { ip: Ipv4Addr::LOCALHOST.into(), port: 5555 });
 
 // Setup sync mechanics and which components will be synced
-app.add_plugin(SyncPlugin);
+app.add_plugins(SyncPlugin);
 app.sync_component::<Transform>();
 
 // Mark entity for sync with SyncMark component
