@@ -2,7 +2,7 @@ use std::any::type_name;
 
 use bevy::reflect::{
     serde::{ReflectSerializer, UntypedReflectDeserializer},
-    DynamicStruct, Reflect, ReflectFromReflect, TypeRegistry,
+    DynamicStruct, DynamicTypePath, Reflect, ReflectFromReflect, TypeRegistry,
 };
 
 use bincode::{DefaultOptions, Options};
@@ -31,7 +31,9 @@ pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistry) -> Box<dyn Refl
         return data.data;
     }
     let data = data.data.downcast::<DynamicStruct>().unwrap();
-    let registration = registry.get_with_name(data.type_name()).unwrap();
+    let registration = registry
+        .get_with_type_path(data.reflect_type_path())
+        .unwrap();
     let rfr = registry
         .get_type_data::<ReflectFromReflect>(registration.type_id())
         .unwrap();

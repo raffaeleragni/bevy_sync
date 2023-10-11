@@ -7,7 +7,7 @@ use std::{
 use bevy::{
     pbr::PbrPlugin,
     prelude::*,
-    reflect::{FromReflect, GetTypeRegistration, Reflect},
+    reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
     render::{mesh::Indices, render_resource::PrimitiveTopology},
     transform::TransformBundle,
     utils::Uuid,
@@ -69,7 +69,9 @@ impl TestEnv {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn setup_registration<T: Component + Reflect + FromReflect + GetTypeRegistration>(
+    pub(crate) fn setup_registration<
+        T: Component + TypePath + DynamicTypePath + Reflect + FromReflect + GetTypeRegistration,
+    >(
         &mut self,
     ) {
         self.server.sync_component::<T>();

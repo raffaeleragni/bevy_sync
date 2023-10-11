@@ -3,7 +3,7 @@ use std::{any::TypeId, collections::VecDeque};
 use bevy::{
     ecs::component::ComponentId,
     prelude::*,
-    reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
+    reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
     utils::{HashMap, HashSet},
 };
 use bevy_renet::renet::ClientId;
@@ -43,7 +43,7 @@ pub(crate) struct SyncTrackerRes {
 
 impl SyncTrackerRes {
     pub(crate) fn signal_component_changed(&mut self, id: Entity, data: Box<dyn Reflect>) {
-        let name = data.type_name().into();
+        let name = data.reflect_type_path().into();
         let change_id = ComponentChangeId { id, name };
         if self.pushed_component_from_network.contains(&change_id) {
             self.pushed_component_from_network.remove(&change_id);
@@ -70,7 +70,7 @@ impl SyncTrackerRes {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let component_data = bin_to_compo(data, &registry);
-        let registration = registry.get_with_name(name.as_str()).unwrap();
+        let registration = registry.get_with_type_path(name.as_str()).unwrap();
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
         let previous_value = reflect_component.reflect(world.entity(e_id));
         if SyncTrackerRes::needs_to_change(previous_value, &*component_data) {
@@ -161,7 +161,9 @@ fn sync_detect_client<T: Component + Reflect>(
 }
 
 impl SyncComponent for App {
-    fn sync_component<T: Component + Reflect + FromReflect + GetTypeRegistration>(
+    fn sync_component<
+        T: Component + TypePath + DynamicTypePath + Reflect + FromReflect + GetTypeRegistration,
+    >(
         &mut self,
     ) -> &mut Self {
         self.register_type::<T>();

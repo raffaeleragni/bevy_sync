@@ -82,7 +82,7 @@ pub(crate) fn react_on_changed_components(
     while let Some(change) = track.changed_components.pop_front() {
         debug!(
             "Component was changed on client: {}",
-            change.data.type_name()
+            change.data.reflect_type_path()
         );
         client.send_message(
             DefaultChannel::ReliableOrdered,

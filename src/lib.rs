@@ -106,7 +106,9 @@ pub struct SyncUp {
 }
 
 pub trait SyncComponent {
-    fn sync_component<T: Component + Reflect + FromReflect + GetTypeRegistration>(
+    fn sync_component<
+        T: Component + TypePath + DynamicTypePath + Reflect + FromReflect + GetTypeRegistration,
+    >(
         &mut self,
     ) -> &mut Self;
     fn sync_materials(&mut self, enable: bool);
