@@ -143,4 +143,29 @@ mod test {
 
         assert_eq!(*compo_result, compo_orig);
     }
+
+    #[test]
+    fn material_serde() {
+        let material_orig = StandardMaterial {
+            base_color: Color::RED,
+            ..StandardMaterial::default()
+        };
+
+        let mut registry = TypeRegistry::default();
+        registry.register::<StandardMaterial>();
+        registry.register::<Color>();
+        registry.register::<Image>();
+        registry.register::<Handle<Image>>();
+        registry.register::<Option<Handle<Image>>>();
+        registry.register::<AlphaMode>();
+        registry.register::<ParallaxMappingMethod>();
+        registry.register_type_data::<StandardMaterial, ReflectFromReflect>();
+
+        let data = compo_to_bin(material_orig.clone_value(), &registry);
+
+        let result = bin_to_compo(&data, &registry);
+        let result = result.downcast::<StandardMaterial>().unwrap();
+
+        assert_eq!(result.base_color, material_orig.base_color);
+    }
 }
