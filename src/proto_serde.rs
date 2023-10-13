@@ -89,7 +89,7 @@ impl<'a: 'de, 'de> Visitor<'de> for ComponentDataDeserializer<'a> {
 mod test {
     use bevy::{
         prelude::*,
-        reflect::{DynamicStruct, GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistry},
+        reflect::{GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistry},
     };
     use serde::{Deserialize, Serialize};
 
@@ -107,7 +107,6 @@ mod test {
     {
         let mut registry = TypeRegistry::default();
         registry.register::<T>();
-        registry.register::<DynamicStruct>();
 
         let data = compo_to_bin(compo_orig.clone_value(), &registry);
 
