@@ -132,7 +132,7 @@ pub(crate) fn react_on_changed_components(
     mut track: ResMut<SyncTrackerRes>,
 ) {
     let registry = registry.read();
-    while let Some(change) = track.changed_components.pop_front() {
+    while let Some(change) = track.changed_components_to_send.pop_front() {
         debug!(
             "Component was changed on server: {}",
             change.data.reflect_type_path()

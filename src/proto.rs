@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub type EntityId = Entity;
 pub type AssId = Uuid;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[repr(u8)]
 pub(crate) enum Message {
     EntitySpawn {

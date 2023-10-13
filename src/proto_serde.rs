@@ -31,9 +31,8 @@ pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistry) -> Box<dyn Refl
         return data.data;
     }
     let data = data.data.downcast::<DynamicStruct>().unwrap();
-    let registration = registry
-        .get_with_type_path(data.reflect_type_path())
-        .unwrap();
+    let type_path = data.reflect_type_path();
+    let registration = registry.get_with_type_path(type_path).unwrap();
     let rfr = registry
         .get_type_data::<ReflectFromReflect>(registration.type_id())
         .unwrap();
@@ -90,7 +89,7 @@ impl<'a: 'de, 'de> Visitor<'de> for ComponentDataDeserializer<'a> {
 mod test {
     use bevy::{
         prelude::*,
-        reflect::{GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistry},
+        reflect::{DynamicStruct, GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistry},
     };
     use serde::{Deserialize, Serialize};
 
@@ -108,6 +107,7 @@ mod test {
     {
         let mut registry = TypeRegistry::default();
         registry.register::<T>();
+        registry.register::<DynamicStruct>();
 
         let data = compo_to_bin(compo_orig.clone_value(), &registry);
 

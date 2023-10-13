@@ -25,20 +25,31 @@ pub(crate) struct ComponentChange {
     pub(crate) data: Box<dyn Reflect>,
 }
 
-// Keeps mapping of server entity ids to client entity ids.
-// Key: server entity id.
-// Value: client entity id.
-// For servers, the map contains same key & value.
 #[derive(Resource, Default)]
 pub(crate) struct SyncTrackerRes {
+    /// Mapping of entity ids between server and clients. key: server, value: client
     pub(crate) server_to_client_entities: HashMap<Entity, Entity>,
-    pub(crate) sync_components: HashSet<ComponentId>,
-    pub(crate) exclude_components: HashMap<ComponentId, ComponentId>,
-    pub(crate) changed_components: VecDeque<ComponentChange>,
-    pushed_component_from_network: HashSet<ComponentChangeId>,
-    pushed_handles_from_network: HashSet<AssId>,
-    sync_materials: bool,
-    sync_meshes: bool,
+
+    pub(crate) registered_componets_for_sync: HashSet<ComponentId>,
+    /// Tracks SyncExcludes for component T. key: component id of T, value: component id of SyncExcdlude<T>
+    pub(crate) sync_exclude_cid_of_component_cid: HashMap<ComponentId, ComponentId>,
+    /// Queue of component changes to be sent over network
+    pub(crate) changed_components_to_send: VecDeque<ComponentChange>,
+    /// Pushed references (component and handle) that came from network and were applied in world,
+    /// so that in the next detect step they will be skipped and avoid ensless loop.
+    pub(crate) pushed_component_from_network: HashSet<ComponentChangeId>,
+    pub(crate) pushed_handles_from_network: HashSet<AssId>,
+
+    pub(crate) sync_materials: bool,
+    pub(crate) sync_meshes: bool,
+}
+
+pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {
+    tracker.sync_materials
+}
+
+pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
+    tracker.sync_meshes
 }
 
 impl SyncTrackerRes {
@@ -49,7 +60,7 @@ impl SyncTrackerRes {
             self.pushed_component_from_network.remove(&change_id);
             return;
         }
-        self.changed_components
+        self.changed_components_to_send
             .push_back(ComponentChange { change_id, data });
     }
 
@@ -73,7 +84,7 @@ impl SyncTrackerRes {
         let registration = registry.get_with_type_path(name.as_str()).unwrap();
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
         let previous_value = reflect_component.reflect(world.entity(e_id));
-        if SyncTrackerRes::needs_to_change(previous_value, &*component_data) {
+        if equals(previous_value, &*component_data) {
             debug!(
                 "Changed component from network: {}v{} - {}",
                 e_id.index(),
@@ -124,20 +135,16 @@ impl SyncTrackerRes {
         let mesh = bin_to_mesh(mesh);
         meshes.insert(id, mesh);
     }
+}
 
-    fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
-        if previous_value.is_none() {
-            return true;
-        }
-        !previous_value
-            .unwrap()
-            .reflect_partial_eq(component_data)
-            .unwrap_or(true)
+fn equals(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
+    if previous_value.is_none() {
+        return true;
     }
-
-    pub(crate) fn sync_materials_enabled(&self) -> bool {
-        self.sync_materials
-    }
+    !previous_value
+        .unwrap()
+        .reflect_partial_eq(component_data)
+        .unwrap_or(true)
 }
 
 #[allow(clippy::type_complexity)]
@@ -171,8 +178,10 @@ impl SyncComponent for App {
         let c_id = self.world.init_component::<T>();
         let c_exclude_id = self.world.init_component::<SyncExclude<T>>();
         let mut track = self.world.resource_mut::<SyncTrackerRes>();
-        track.sync_components.insert(c_id);
-        track.exclude_components.insert(c_id, c_exclude_id);
+        track.registered_componets_for_sync.insert(c_id);
+        track
+            .sync_exclude_cid_of_component_cid
+            .insert(c_id, c_exclude_id);
         self.add_systems(Update, sync_detect_server::<T>);
         self.add_systems(Update, sync_detect_client::<T>);
 
@@ -236,12 +245,4 @@ impl Plugin for ClientPlugin {
         crate::networking::setup_client(app, self.ip, self.port);
         app.add_plugins(ClientSyncPlugin);
     }
-}
-
-pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {
-    tracker.sync_materials
-}
-
-pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
-    tracker.sync_meshes
 }

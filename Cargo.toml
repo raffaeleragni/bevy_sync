@@ -16,7 +16,8 @@ include = ["/src", "/LICENSE-MIT", "/LICENSE-APACHE"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy.git" }
+#bevy = { git = "https://github.com/bevyengine/bevy.git" }
+bevy = { git = "https://github.com/MrGVSV/bevy.git", branch = "reflect-serialize-dynamics" }
 bevy_renet = { path = "../renet/bevy_renet" }
 bincode = "1.3.3"
 serde = { version = "1.0.160", features = ["derive"] }
