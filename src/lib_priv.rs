@@ -54,7 +54,7 @@ pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
 
 impl SyncTrackerRes {
     pub(crate) fn signal_component_changed(&mut self, id: Entity, data: Box<dyn Reflect>) {
-        let name = data.reflect_type_path().into();
+        let name = data.get_represented_type_info().unwrap().type_path().into();
         let change_id = ComponentChangeId { id, name };
         if self.pushed_component_from_network.contains(&change_id) {
             self.pushed_component_from_network.remove(&change_id);

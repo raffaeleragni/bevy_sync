@@ -135,7 +135,7 @@ pub(crate) fn react_on_changed_components(
     while let Some(change) = track.changed_components_to_send.pop_front() {
         debug!(
             "Component was changed on server: {}",
-            change.data.reflect_type_path()
+            change.data.get_represented_type_info().unwrap().type_path()
         );
         for cid in server.clients_id().into_iter() {
             server.send_message(
