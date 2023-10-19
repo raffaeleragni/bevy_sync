@@ -150,4 +150,19 @@ mod test {
         let result = result.downcast::<StandardMaterial>().unwrap();
         assert_eq!(compo.base_color, result.base_color);
     }
+
+    #[derive(Asset, Default, PartialEq, Serialize, Deserialize, Debug, Reflect)]
+    struct MyAsset {}
+
+    #[derive(Component, Default, PartialEq, Debug, Reflect)]
+    struct CompoHandle {
+        handle: Handle<MyAsset>
+    }
+
+    #[test]
+    fn serde_component_with_handle() {
+        let value = MyAsset{};
+        let orig = CompoHandle { handle: Handle::from(value) };
+        check_serialize_and_back::<CompoHandle>(orig);
+    }
 }

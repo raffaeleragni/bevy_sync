@@ -3,8 +3,9 @@ use std::{
     net::{IpAddr, Ipv4Addr},
 };
 
-use bevy::{pbr::wireframe::Wireframe, prelude::*, render::primitives::Aabb};
+use bevy::{prelude::*, render::primitives::Aabb};
 use bevy_sync::{ServerPlugin, SyncComponent, SyncExclude, SyncMark, SyncPlugin};
+use uuid::Uuid;
 
 fn main() {
     if env::var("RUST_LOG").is_err() {
@@ -23,7 +24,6 @@ fn main() {
     host.sync_component::<Aabb>();
     host.sync_component::<Visibility>();
     host.sync_component::<Transform>();
-    host.sync_component::<Wireframe>();
     host.sync_component::<PointLight>();
     host.sync_component::<Handle<StandardMaterial>>();
     host.sync_component::<Handle<Mesh>>();
@@ -34,6 +34,17 @@ fn main() {
     host.run();
 }
 
+trait AddByUuid<A: Asset> {
+    fn addu(&mut self, asset: A) -> Handle<A>; 
+}
+impl<A: Asset> AddByUuid<A> for Assets<A> {
+    fn addu(&mut self, asset: A) -> Handle<A> {
+        let id = AssetId::Uuid{ uuid: Uuid::new_v4() };
+        self.insert(id, asset);
+        Handle::<A>::Weak(id)
+    }
+}
+
 fn load_world(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -41,8 +52,8 @@ fn load_world(
 ) {
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(shape::Plane::from_size(5.0).into()),
-            material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+            mesh: meshes.addu(shape::Plane::from_size(5.0).into()),
+            material: materials.addu(Color::rgb(0.3, 0.5, 0.3).into()),
             ..default()
         },
         SyncMark,
@@ -51,12 +62,11 @@ fn load_world(
     ));
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            mesh: meshes.addu(Mesh::from(shape::Cube { size: 1.0 })),
+            material: materials.addu(Color::rgb(0.8, 0.7, 0.6).into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
-        Wireframe,
         SyncMark,
         Name::new("Cube"),
     ));
