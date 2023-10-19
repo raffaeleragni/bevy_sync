@@ -139,8 +139,7 @@ mod test {
         registry.register::<OpaqueRendererMethod>();
 
         // compo_to_bin inlined
-        let cloned = compo.clone_value();
-        let serializer = ReflectSerializer::new(cloned.as_reflect(), &registry);
+        let serializer = ReflectSerializer::new(compo.as_reflect(), &registry);
         let result = DefaultOptions::new()
             .with_fixint_encoding()
             .allow_trailing_bytes()

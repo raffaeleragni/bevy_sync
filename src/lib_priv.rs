@@ -4,7 +4,7 @@ use bevy::{
     ecs::component::ComponentId,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
-    utils::{HashMap, HashSet},
+    utils::{HashMap, HashSet}, pbr::OpaqueRendererMethod,
 };
 use bevy_renet::renet::ClientId;
 
@@ -212,6 +212,7 @@ fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeReg
         app.register_type::<Option<Handle<Image>>>();
         app.register_type::<AlphaMode>();
         app.register_type::<ParallaxMappingMethod>();
+        app.register_type::<OpaqueRendererMethod>();
     }
 
     if TypeId::of::<T>() == TypeId::of::<PointLight>() {
