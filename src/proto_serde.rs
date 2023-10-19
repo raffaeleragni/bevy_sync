@@ -1,36 +1,31 @@
-use std::any::type_name;
-
 use bevy::reflect::{
     serde::{ReflectSerializer, UntypedReflectDeserializer},
     DynamicStruct, Reflect, ReflectFromReflect, TypeRegistry,
 };
 
 use bincode::{DefaultOptions, Options};
-use serde::{
-    de::{self, DeserializeSeed, Visitor},
-    ser::{SerializeStruct, Serializer},
-    Deserializer, Serialize,
-};
+use serde::de::DeserializeSeed;
 
-pub(crate) fn compo_to_bin(compo: Box<dyn Reflect>, registry: &TypeRegistry) -> Vec<u8> {
-    let serializer = ComponentData {
-        data: compo.clone_value(),
-        registry,
-    };
-    bincode::serialize(&serializer).unwrap()
+pub(crate) fn compo_to_bin(compo: &dyn Reflect, registry: &TypeRegistry) -> Vec<u8> {
+    let serializer = ReflectSerializer::new(compo, registry);
+    DefaultOptions::new()
+        .with_fixint_encoding()
+        .allow_trailing_bytes()
+        .serialize(&serializer)
+        .unwrap()
 }
 
 pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistry) -> Box<dyn Reflect> {
+    let reflect_deserializer = UntypedReflectDeserializer::new(registry);
     let binoptions = DefaultOptions::new()
         .with_fixint_encoding()
         .allow_trailing_bytes();
     let mut bin_deser = bincode::Deserializer::from_slice(data, binoptions);
-    let deserializer = ComponentDataDeserializer { registry };
-    let data = deserializer.deserialize(&mut bin_deser).unwrap();
-    if !data.data.is::<DynamicStruct>() {
-        return data.data;
+    let data = reflect_deserializer.deserialize(&mut bin_deser).unwrap();
+    if !data.is::<DynamicStruct>() {
+        return data;
     }
-    let data = data.data.downcast::<DynamicStruct>().unwrap();
+    let data = data.downcast::<DynamicStruct>().unwrap();
     let type_path = data.get_represented_type_info().unwrap().type_path();
     let registration = registry.get_with_type_path(type_path).unwrap();
     let rfr = registry
@@ -39,55 +34,11 @@ pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistry) -> Box<dyn Refl
     rfr.from_reflect(&*data).unwrap()
 }
 
-struct ComponentData<'a> {
-    data: Box<dyn Reflect>,
-    registry: &'a TypeRegistry,
-}
-
-impl<'a> Serialize for ComponentData<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct(type_name::<ComponentData>(), 1)?;
-        state.serialize_field(
-            "data",
-            &ReflectSerializer::new(self.data.as_reflect(), self.registry),
-        )?;
-        state.end()
-    }
-}
-
-struct ComponentDataDeserializer<'a> {
-    registry: &'a TypeRegistry,
-}
-
-impl<'a: 'de, 'de: 'a> DeserializeSeed<'de> for ComponentDataDeserializer<'a> {
-    type Value = ComponentData<'a>;
-
-    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
-        let registry = self.registry;
-        let data = deserializer.deserialize_struct(type_name::<Self::Value>(), &["data"], self)?;
-        Ok(ComponentData { data, registry })
-    }
-}
-
-impl<'a: 'de, 'de> Visitor<'de> for ComponentDataDeserializer<'a> {
-    type Value = Box<dyn Reflect>;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str(type_name::<Self::Value>())
-    }
-
-    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-        seq.next_element_seed(UntypedReflectDeserializer::new(self.registry))?
-            .ok_or_else(|| de::Error::invalid_type(de::Unexpected::NewtypeVariant, &self))
-    }
-}
-
 #[cfg(test)]
 mod test {
+    use super::*;
     use bevy::{
+        pbr::OpaqueRendererMethod,
         prelude::*,
         reflect::{GetTypeRegistration, Reflect, ReflectFromReflect, TypeRegistry},
     };
@@ -108,7 +59,7 @@ mod test {
         let mut registry = TypeRegistry::default();
         registry.register::<T>();
 
-        let data = compo_to_bin(compo_orig.clone_value(), &registry);
+        let data = compo_to_bin(compo_orig.as_reflect(), &registry);
 
         let compo_result = bin_to_compo(&data, &registry);
         let compo_result = compo_result.downcast::<T>().unwrap();
@@ -136,7 +87,7 @@ mod test {
         registry.register_type_data::<Vec3, ReflectFromReflect>();
         registry.register_type_data::<Quat, ReflectFromReflect>();
 
-        let data = compo_to_bin(compo_orig.clone_value(), &registry);
+        let data = compo_to_bin(compo_orig.as_reflect(), &registry);
 
         let compo_result = bin_to_compo(&data, &registry);
         let compo_result = compo_result.downcast::<Transform>().unwrap();
@@ -159,13 +110,45 @@ mod test {
         registry.register::<Option<Handle<Image>>>();
         registry.register::<AlphaMode>();
         registry.register::<ParallaxMappingMethod>();
+        registry.register::<OpaqueRendererMethod>();
         registry.register_type_data::<StandardMaterial, ReflectFromReflect>();
 
-        let data = compo_to_bin(material_orig.clone_value(), &registry);
+        let data = compo_to_bin(material_orig.as_reflect(), &registry);
 
         let result = bin_to_compo(&data, &registry);
         let result = result.downcast::<StandardMaterial>().unwrap();
 
         assert_eq!(result.base_color, material_orig.base_color);
+    }
+
+    #[test]
+    fn reflect_material_no_dependencies() {
+        let compo = StandardMaterial {
+            base_color: Color::RED,
+            ..StandardMaterial::default()
+        };
+
+        let mut registry = TypeRegistry::default();
+        registry.register::<StandardMaterial>();
+        registry.register::<Color>();
+        registry.register::<Image>();
+        registry.register::<Handle<Image>>();
+        registry.register::<Option<Handle<Image>>>();
+        registry.register::<AlphaMode>();
+        registry.register::<ParallaxMappingMethod>();
+        registry.register::<OpaqueRendererMethod>();
+
+        // compo_to_bin inlined
+        let cloned = compo.clone_value();
+        let serializer = ReflectSerializer::new(cloned.as_reflect(), &registry);
+        let result = DefaultOptions::new()
+            .with_fixint_encoding()
+            .allow_trailing_bytes()
+            .serialize(&serializer)
+            .unwrap();
+
+        let result = bin_to_compo(&result, &registry);
+        let result = result.downcast::<StandardMaterial>().unwrap();
+        assert_eq!(compo.base_color, result.base_color);
     }
 }

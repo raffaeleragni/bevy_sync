@@ -89,7 +89,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let entity = world.entity(arch_entity.entity());
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).ok_or("not registered")?;
-                let compo_bin = compo_to_bin(component.clone_value(), &registry);
+                let compo_bin = compo_to_bin(component.as_reflect(), &registry);
                 result.push(Message::ComponentUpdated {
                     id: e_id,
                     name: type_name.into(),
@@ -146,7 +146,7 @@ fn check_materials(world: &World, result: &mut Vec<Message>) -> Result<(), Box<d
             };
             result.push(Message::StandardMaterialUpdated {
                 id,
-                material: compo_to_bin(material.clone_value(), &registry),
+                material: compo_to_bin(material.as_reflect(), &registry),
             });
         }
     }

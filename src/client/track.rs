@@ -89,7 +89,7 @@ pub(crate) fn react_on_changed_components(
             bincode::serialize(&Message::ComponentUpdated {
                 id: change.change_id.id,
                 name: change.change_id.name,
-                data: compo_to_bin(change.data.clone_value(), &registry),
+                data: compo_to_bin(change.data.as_reflect(), &registry),
             })
             .unwrap(),
         );
@@ -120,7 +120,7 @@ pub(crate) fn react_on_changed_materials(
                     DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::StandardMaterialUpdated {
                         id: *id,
-                        material: compo_to_bin(material.clone_value(), &registry),
+                        material: compo_to_bin(material.as_reflect(), &registry),
                     })
                     .unwrap(),
                 );
