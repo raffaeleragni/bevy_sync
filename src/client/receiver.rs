@@ -1,3 +1,5 @@
+use crate::logging::{log_message_received, Who};
+
 use super::*;
 
 pub(crate) fn poll_for_messages(
@@ -22,13 +24,9 @@ fn receive_as_client(
 }
 
 fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, cmd: &mut Commands) {
+    log_message_received(Who::Client, &msg);
     match msg {
         Message::EntitySpawn { id } => {
-            debug!(
-                "Client received of type EntitySpawn for server entity {}v{}",
-                id.index(),
-                id.generation()
-            );
             if let Some(e_id) = track.server_to_client_entities.get(&id) {
                 if cmd.get_entity(*e_id).is_some() {
                     return;
@@ -46,11 +44,6 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
             server_entity_id: id,
             client_entity_id: back_id,
         } => {
-            debug!(
-                "Client received of type EntitySpawnBack for server entity {}v{}",
-                id.index(),
-                id.generation()
-            );
             if let Some(mut e) = cmd.get_entity(back_id) {
                 e.remove::<SyncMark>().insert(SyncUp {
                     server_entity_id: id,
@@ -77,11 +70,6 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
             });
         }
         Message::EntityDelete { id } => {
-            debug!(
-                "Client received of type EntityDelete for server entity {}v{}",
-                id.index(),
-                id.generation()
-            );
             let Some(&e_id) = track.server_to_client_entities.get(&id) else {
                 return;
             };

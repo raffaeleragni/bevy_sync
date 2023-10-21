@@ -24,12 +24,7 @@ pub(crate) fn entity_created_on_server(
     mut query: Query<Entity, Added<SyncMark>>,
 ) {
     for id in query.iter_mut() {
-        debug!(
-            "New entity created on server: {}v{}",
-            id.index(),
-            id.generation()
-        );
-        for client_id in server.clients_id().into_iter() {
+       for client_id in server.clients_id().into_iter() {
             server.send_message(
                 client_id,
                 DefaultChannel::ReliableOrdered,
@@ -66,12 +61,7 @@ pub(crate) fn reply_back_to_client_generated_entity(
     mut query: Query<(Entity, &SyncClientGeneratedEntity), Added<SyncClientGeneratedEntity>>,
 ) {
     for (entity_id, marker_component) in query.iter_mut() {
-        debug!(
-            "Replying to client generated entity for: {}v{}",
-            entity_id.index(),
-            entity_id.generation()
-        );
-        server.send_message(
+       server.send_message(
             marker_component.client_id,
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawnBack {
@@ -111,11 +101,6 @@ pub(crate) fn entity_removed_from_server(
         }
     });
     for &id in despawned_entities.iter() {
-        debug!(
-            "Entity was removed from server: {}v{}",
-            id.index(),
-            id.generation()
-        );
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,
@@ -133,10 +118,6 @@ pub(crate) fn react_on_changed_components(
 ) {
     let registry = registry.read();
     while let Some(change) = track.changed_components_to_send.pop_front() {
-        debug!(
-            "Component was changed on server: {}",
-            change.data.get_represented_type_info().unwrap().type_path()
-        );
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,

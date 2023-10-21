@@ -45,6 +45,7 @@ mod networking;
 mod proto;
 mod proto_serde;
 mod server;
+mod logging;
 
 pub mod prelude {
     pub use super::{

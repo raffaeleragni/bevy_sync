@@ -80,11 +80,7 @@ pub(crate) fn react_on_changed_components(
 ) {
     let registry = registry.read();
     while let Some(change) = track.changed_components_to_send.pop_front() {
-        debug!(
-            "Component was changed on client: {}",
-            change.data.get_represented_type_info().unwrap().type_path()
-        );
-        client.send_message(
+       client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::ComponentUpdated {
                 id: change.change_id.id,

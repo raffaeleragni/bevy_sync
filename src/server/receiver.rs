@@ -1,5 +1,7 @@
 use bevy_renet::renet::ClientId;
 
+use crate::logging::{log_message_received, Who};
+
 use super::*;
 
 pub(crate) fn poll_for_messages(
@@ -32,13 +34,9 @@ fn server_received_a_message(
     track: &mut ResMut<SyncTrackerRes>,
     cmd: &mut Commands,
 ) {
+    log_message_received(Who::Server, &msg);
     match msg {
         Message::EntitySpawn { id } => {
-            debug!(
-                "Server received message of type EntitySpawn for entity {}v{}",
-                id.index(),
-                id.generation()
-            );
             let e_id = cmd
                 .spawn(SyncClientGeneratedEntity {
                     client_id,
@@ -72,11 +70,6 @@ fn server_received_a_message(
             });
         }
         Message::EntityDelete { id } => {
-            debug!(
-                "Server received message of type EntityDelete for entity {}v{}",
-                id.index(),
-                id.generation()
-            );
             if let Some(mut e) = cmd.get_entity(id) {
                 e.despawn();
             }

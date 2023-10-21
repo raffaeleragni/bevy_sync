@@ -85,13 +85,7 @@ impl SyncTrackerRes {
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
         let previous_value = reflect_component.reflect(world.entity(e_id));
         if equals(previous_value, &*component_data) {
-            debug!(
-                "Changed component from network: {}v{} - {}",
-                e_id.index(),
-                e_id.generation(),
-                &name
-            );
-            world
+           world
                 .resource_mut::<SyncTrackerRes>()
                 .pushed_component_from_network
                 .insert(ComponentChangeId { id: e_id, name });
