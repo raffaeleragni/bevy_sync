@@ -1,7 +1,7 @@
 mod assert;
 mod setup;
 
-use assert::{assets_has_mesh, material_has_color};
+use assert::{assets_has_sample_mesh, material_has_color};
 use bevy::prelude::*;
 use bevy_sync::{SyncComponent, SyncExclude, SyncMark};
 use serial_test::serial;
@@ -41,7 +41,7 @@ fn test_initial_world_sync_sent_from_server() {
             assert::no_messages_left_for_client(&mut env.clients[0]);
 
             material_has_color(&mut env.clients[0], id, Color::RED);
-            assets_has_mesh(&mut env.clients[0], m_id);
+            assets_has_sample_mesh(&mut env.clients[0], m_id);
         },
     );
 }
@@ -73,7 +73,7 @@ fn test_init_sync_multiple_clients() {
             for capp in &mut env.clients {
                 assert::initial_sync_for_client_happened(&mut env.server, capp, entity_count);
                 material_has_color(capp, id, Color::RED);
-                assets_has_mesh(capp, m_id);
+                assets_has_sample_mesh(capp, m_id);
             }
 
             assert::no_messages_left_for_server(&mut env.server);

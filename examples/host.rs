@@ -16,7 +16,7 @@ fn main() {
     let port = 4000;
     let mut host = App::new();
     host.add_plugins(DefaultPlugins);
-    //host.add_plugins(bevy_editor_pls::EditorPlugin::default());
+    host.add_plugins(bevy_editor_pls::EditorPlugin::default());
     host.add_plugins(SyncPlugin);
     host.add_plugins(ServerPlugin { ip, port });
 
@@ -35,11 +35,13 @@ fn main() {
 }
 
 trait AddByUuid<A: Asset> {
-    fn addu(&mut self, asset: A) -> Handle<A>; 
+    fn addu(&mut self, asset: A) -> Handle<A>;
 }
 impl<A: Asset> AddByUuid<A> for Assets<A> {
     fn addu(&mut self, asset: A) -> Handle<A> {
-        let id = AssetId::Uuid{ uuid: Uuid::new_v4() };
+        let id = AssetId::Uuid {
+            uuid: Uuid::new_v4(),
+        };
         self.insert(id, asset);
         Handle::<A>::Weak(id)
     }

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 use bevy_sync::{SyncDown, SyncUp};
 
-use crate::setup::{MySynched, TestEnv};
+use crate::setup::{sample_mesh, MySynched, TestEnv};
 
 #[allow(dead_code)]
 pub(crate) fn entities_in_sync<T>(env: &mut TestEnv, _: T, entity_count: u32) {
@@ -96,9 +96,19 @@ pub(crate) fn material_has_color(app: &mut App, id: AssetId<StandardMaterial>, c
 }
 
 #[allow(dead_code)]
-pub(crate) fn assets_has_mesh(app: &mut App, id: AssetId<Mesh>) {
+pub(crate) fn assets_has_sample_mesh(app: &mut App, id: AssetId<Mesh>) {
     let meshes = app.world.resource_mut::<Assets<Mesh>>();
-    let _ = meshes.get(id).unwrap();
+    let mesh = meshes.get(id).unwrap();
+    let sample = sample_mesh();
+    assert_eq!(
+        mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+            .unwrap()
+            .get_bytes(),
+        sample
+            .attribute(Mesh::ATTRIBUTE_POSITION)
+            .unwrap()
+            .get_bytes()
+    );
 }
 
 #[allow(dead_code)]

@@ -1,7 +1,7 @@
 mod assert;
 mod setup;
 
-use assert::{assets_has_mesh, material_has_color};
+use assert::{material_has_color, assets_has_sample_mesh};
 use bevy::prelude::*;
 use bevy_sync::SyncComponent;
 use serial_test::serial;
@@ -81,7 +81,7 @@ fn test_mesh_transferred_from_server() {
             spawn_new_mesh(app)
         },
         |env, _, id| {
-            assets_has_mesh(&mut env.clients[0], id);
+            assets_has_sample_mesh(&mut env.clients[0], id);
         },
     );
 }
@@ -101,7 +101,7 @@ fn test_mesh_transferred_from_client() {
             spawn_new_mesh(app)
         },
         |env, _, id| {
-            assets_has_mesh(&mut env.server, id);
+            assets_has_sample_mesh(&mut env.server, id);
         },
     );
 }
