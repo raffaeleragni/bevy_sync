@@ -27,13 +27,11 @@ impl Plugin for ClientSyncPlugin {
             Update,
             client_connected
                 .run_if(state_exists_and_equals(ClientState::Connecting))
-                .run_if(bevy_renet::client_connected()),
         );
         app.add_systems(
             Update,
             client_connecting
                 .run_if(state_exists_and_equals(ClientState::Disconnected))
-                .run_if(bevy_renet::client_connecting()),
         );
         app.add_systems(
             Update,
