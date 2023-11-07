@@ -17,13 +17,12 @@ include = ["/src", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [dependencies]
 bevy = { version = "0.12" }
-#bevy = { path = "../bevy" }
-bevy_renet = { git = "https://github.com/raffaeleragni/renet.git", branch = "bevy_0_12" }
+bevy_renet = { git = "https://github.com/lucaspoffo/renet.git" }
 bincode = "1.3.3"
 serde = { version = "1.0.160", features = ["derive"] }
 
 [dev-dependencies]
 portpicker = "0.1.1"
 serial_test = "2.0.0"
-bevy_editor_pls = { git = "https://github.com/raffaeleragni/bevy_editor_pls", branch = "bevy_0_12" }
+bevy_editor_pls = { git = "https://github.com/jakobhellermann/bevy_editor_pls" }
 uuid = "1.5.0"
