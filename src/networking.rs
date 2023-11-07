@@ -36,16 +36,17 @@ fn create_server(ip: IpAddr, port: u16) -> NetcodeServerTransport {
     let socket = UdpSocket::bind((ip, port)).unwrap();
     let server_addr = socket.local_addr().unwrap();
     const MAX_CLIENTS: usize = 64;
-    let server_config = ServerConfig {
-        max_clients: MAX_CLIENTS,
-        protocol_id: PROTOCOL_ID,
-        public_addr: server_addr,
-        authentication: ServerAuthentication::Unsecure,
-    };
     let current_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap();
-    NetcodeServerTransport::new(current_time, server_config, socket).unwrap()
+    let server_config = ServerConfig {
+        current_time,
+        max_clients: MAX_CLIENTS,
+        protocol_id: PROTOCOL_ID,
+        public_addresses: vec![server_addr],
+        authentication: ServerAuthentication::Unsecure,
+    };
+    NetcodeServerTransport::new(server_config, socket).unwrap()
 }
 
 pub(crate) fn create_client(ip: IpAddr, port: u16) -> NetcodeClientTransport {

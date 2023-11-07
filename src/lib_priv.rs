@@ -1,15 +1,15 @@
 use std::{any::TypeId, collections::VecDeque};
 
 use bevy::{
-    asset::HandleId,
     ecs::component::ComponentId,
     prelude::*,
-    reflect::{FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
-    utils::{HashMap, HashSet},
+    reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
+    utils::{HashMap, HashSet}, pbr::OpaqueRendererMethod,
 };
+use bevy_renet::renet::ClientId;
 
 use crate::{
-    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh,
+    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh, proto::AssId,
     proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent,
     SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
 };
@@ -25,37 +25,46 @@ pub(crate) struct ComponentChange {
     pub(crate) data: Box<dyn Reflect>,
 }
 
-// Keeps mapping of server entity ids to client entity ids.
-// Key: server entity id.
-// Value: client entity id.
-// For servers, the map contains same key & value.
 #[derive(Resource, Default)]
 pub(crate) struct SyncTrackerRes {
+    /// Mapping of entity ids between server and clients. key: server, value: client
     pub(crate) server_to_client_entities: HashMap<Entity, Entity>,
-    pub(crate) sync_components: HashSet<ComponentId>,
-    pub(crate) exclude_components: HashMap<ComponentId, ComponentId>,
-    pub(crate) changed_components: VecDeque<ComponentChange>,
-    pushed_component_from_network: HashSet<ComponentChangeId>,
-    pushed_handles_from_network: HashSet<HandleId>,
-    material_handles: HashMap<HandleId, Handle<StandardMaterial>>,
-    mesh_handles: HashMap<HandleId, Handle<Mesh>>,
-    sync_materials: bool,
-    sync_meshes: bool,
+
+    pub(crate) registered_componets_for_sync: HashSet<ComponentId>,
+    /// Tracks SyncExcludes for component T. key: component id of T, value: component id of SyncExcdlude<T>
+    pub(crate) sync_exclude_cid_of_component_cid: HashMap<ComponentId, ComponentId>,
+    /// Queue of component changes to be sent over network
+    pub(crate) changed_components_to_send: VecDeque<ComponentChange>,
+    /// Pushed references (component and handle) that came from network and were applied in world,
+    /// so that in the next detect step they will be skipped and avoid ensless loop.
+    pub(crate) pushed_component_from_network: HashSet<ComponentChangeId>,
+    pub(crate) pushed_handles_from_network: HashSet<AssId>,
+
+    pub(crate) sync_materials: bool,
+    pub(crate) sync_meshes: bool,
+}
+
+pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {
+    tracker.sync_materials
+}
+
+pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
+    tracker.sync_meshes
 }
 
 impl SyncTrackerRes {
     pub(crate) fn signal_component_changed(&mut self, id: Entity, data: Box<dyn Reflect>) {
-        let name = data.type_name().into();
+        let name = data.get_represented_type_info().unwrap().type_path().into();
         let change_id = ComponentChangeId { id, name };
         if self.pushed_component_from_network.contains(&change_id) {
             self.pushed_component_from_network.remove(&change_id);
             return;
         }
-        self.changed_components
+        self.changed_components_to_send
             .push_back(ComponentChange { change_id, data });
     }
 
-    pub(crate) fn skip_network_handle_change(&mut self, id: HandleId) -> bool {
+    pub(crate) fn skip_network_handle_change(&mut self, id: AssId) -> bool {
         if self.pushed_handles_from_network.contains(&id) {
             self.pushed_handles_from_network.remove(&id);
             return true;
@@ -72,17 +81,11 @@ impl SyncTrackerRes {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let component_data = bin_to_compo(data, &registry);
-        let registration = registry.get_with_name(name.as_str()).unwrap();
+        let registration = registry.get_with_type_path(name.as_str()).unwrap();
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
         let previous_value = reflect_component.reflect(world.entity(e_id));
-        if SyncTrackerRes::needs_to_change(previous_value, &*component_data) {
-            debug!(
-                "Changed component from network: {}v{} - {}",
-                e_id.index(),
-                e_id.generation(),
-                &name
-            );
-            world
+        if equals(previous_value, &*component_data) {
+           world
                 .resource_mut::<SyncTrackerRes>()
                 .pushed_component_from_network
                 .insert(ComponentChangeId { id: e_id, name });
@@ -101,7 +104,7 @@ impl SyncTrackerRes {
     }
 
     pub(crate) fn apply_material_change_from_network(
-        id: HandleId,
+        id: AssId,
         material: &[u8],
         world: &mut World,
     ) {
@@ -114,42 +117,28 @@ impl SyncTrackerRes {
         let component_data = bin_to_compo(material, &registry);
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
-        let handle = materials.set(id, mat);
-        // need to keep a reference somewhere else the material will be destroyed right away
-        world
-            .resource_mut::<SyncTrackerRes>()
-            .material_handles
-            .insert(id, handle);
+        materials.insert(id, mat);
     }
 
-    pub(crate) fn apply_mesh_change_from_network(id: HandleId, mesh: &[u8], world: &mut World) {
+    pub(crate) fn apply_mesh_change_from_network(id: AssId, mesh: &[u8], world: &mut World) {
         world
             .resource_mut::<SyncTrackerRes>()
             .pushed_handles_from_network
             .insert(id);
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let mesh = bin_to_mesh(mesh);
-        let handle = meshes.set(id, mesh);
-        // need to keep a reference somewhere else the material will be destroyed right away
-        world
-            .resource_mut::<SyncTrackerRes>()
-            .mesh_handles
-            .insert(id, handle);
+        meshes.insert(id, mesh);
     }
+}
 
-    fn needs_to_change(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
-        if previous_value.is_none() {
-            return true;
-        }
-        !previous_value
-            .unwrap()
-            .reflect_partial_eq(component_data)
-            .unwrap_or(true)
+fn equals(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
+    if previous_value.is_none() {
+        return true;
     }
-
-    pub(crate) fn sync_materials_enabled(&self) -> bool {
-        self.sync_materials
-    }
+    !previous_value
+        .unwrap()
+        .reflect_partial_eq(component_data)
+        .unwrap_or(true)
 }
 
 #[allow(clippy::type_complexity)]
@@ -173,7 +162,9 @@ fn sync_detect_client<T: Component + Reflect>(
 }
 
 impl SyncComponent for App {
-    fn sync_component<T: Component + Reflect + FromReflect + GetTypeRegistration>(
+    fn sync_component<
+        T: Component + TypePath + DynamicTypePath + Reflect + FromReflect + GetTypeRegistration,
+    >(
         &mut self,
     ) -> &mut Self {
         self.register_type::<T>();
@@ -181,8 +172,10 @@ impl SyncComponent for App {
         let c_id = self.world.init_component::<T>();
         let c_exclude_id = self.world.init_component::<SyncExclude<T>>();
         let mut track = self.world.resource_mut::<SyncTrackerRes>();
-        track.sync_components.insert(c_id);
-        track.exclude_components.insert(c_id, c_exclude_id);
+        track.registered_componets_for_sync.insert(c_id);
+        track
+            .sync_exclude_cid_of_component_cid
+            .insert(c_id, c_exclude_id);
         self.add_systems(Update, sync_detect_server::<T>);
         self.add_systems(Update, sync_detect_client::<T>);
 
@@ -213,6 +206,7 @@ fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeReg
         app.register_type::<Option<Handle<Image>>>();
         app.register_type::<AlphaMode>();
         app.register_type::<ParallaxMappingMethod>();
+        app.register_type::<OpaqueRendererMethod>();
     }
 
     if TypeId::of::<T>() == TypeId::of::<PointLight>() {
@@ -222,7 +216,7 @@ fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeReg
 
 #[derive(Component)]
 pub(crate) struct SyncClientGeneratedEntity {
-    pub(crate) client_id: u64,
+    pub(crate) client_id: ClientId,
     pub(crate) client_entity_id: Entity,
 }
 
@@ -246,12 +240,4 @@ impl Plugin for ClientPlugin {
         crate::networking::setup_client(app, self.ip, self.port);
         app.add_plugins(ClientSyncPlugin);
     }
-}
-
-pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {
-    tracker.sync_materials
-}
-
-pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
-    tracker.sync_meshes
 }

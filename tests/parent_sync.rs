@@ -107,9 +107,3 @@ fn test_entity_parent_is_transferred_from_client() {
         },
     );
 }
-
-#[test]
-#[serial]
-fn test_mesh_transferred_from_server_to_client() {
-    TestRun::default().run(1, |_| {}, |_| {}, |_, _, _| {});
-}

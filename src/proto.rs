@@ -1,9 +1,10 @@
-use bevy::{asset::HandleId, prelude::Entity};
+use bevy::{prelude::Entity, utils::Uuid};
 use serde::{Deserialize, Serialize};
 
-type EntityId = Entity;
+pub type EntityId = Entity;
+pub type AssId = Uuid;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[repr(u8)]
 pub(crate) enum Message {
     EntitySpawn {
@@ -26,11 +27,11 @@ pub(crate) enum Message {
         data: Vec<u8>,
     } = 5,
     StandardMaterialUpdated {
-        id: HandleId,
+        id: AssId,
         material: Vec<u8>,
     } = 6,
     MeshUpdated {
-        id: HandleId,
+        id: AssId,
         mesh: Vec<u8>,
     } = 7,
 }

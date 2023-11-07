@@ -20,16 +20,17 @@ impl Plugin for BundleFixPlugin {
 
 fn fix_computed_visibility(
     mut cmd: Commands,
-    query: Query<Entity, (With<Visibility>, Without<ComputedVisibility>)>,
+    query: Query<Entity, (Added<Visibility>, Without<ViewVisibility>)>,
 ) {
     for e in query.iter() {
-        cmd.entity(e).insert(ComputedVisibility::default());
+        cmd.entity(e).insert(ViewVisibility::default());
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn fix_missing_global_transforms(
     mut cmd: Commands,
-    query: Query<(Entity, &Transform), Without<GlobalTransform>>,
+    query: Query<(Entity, &Transform), (Added<Transform>, Without<GlobalTransform>)>,
 ) {
     for (e, &t) in query.iter() {
         cmd.entity(e).insert(GlobalTransform::from(t));
@@ -38,7 +39,7 @@ fn fix_missing_global_transforms(
 
 fn fix_missing_cubemap_frusta(
     mut cmd: Commands,
-    query: Query<Entity, (With<PointLight>, Without<CubemapFrusta>)>,
+    query: Query<Entity, (Added<PointLight>, Without<CubemapFrusta>)>,
 ) {
     for e in query.iter() {
         cmd.entity(e).insert(CubemapFrusta::default());
@@ -47,7 +48,7 @@ fn fix_missing_cubemap_frusta(
 
 fn fix_missing_cubemap_visible_entities(
     mut cmd: Commands,
-    query: Query<Entity, (With<PointLight>, Without<CubemapVisibleEntities>)>,
+    query: Query<Entity, (Added<PointLight>, Without<CubemapVisibleEntities>)>,
 ) {
     for e in query.iter() {
         cmd.entity(e).insert(CubemapVisibleEntities::default());

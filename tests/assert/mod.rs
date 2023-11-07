@@ -1,8 +1,8 @@
-use bevy::{asset::HandleId, prelude::*};
+use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 use bevy_sync::{SyncDown, SyncUp};
 
-use crate::setup::{MySynched, TestEnv};
+use crate::setup::{sample_mesh, MySynched, TestEnv};
 
 #[allow(dead_code)]
 pub(crate) fn entities_in_sync<T>(env: &mut TestEnv, _: T, entity_count: u32) {
@@ -89,18 +89,26 @@ pub(crate) fn get_first_entity_component<T: Component>(app: &mut App) -> Option<
 }
 
 #[allow(dead_code)]
-pub(crate) fn material_has_color(app: &mut App, id: HandleId, color: Color) {
+pub(crate) fn material_has_color(app: &mut App, id: AssetId<StandardMaterial>, color: Color) {
     let materials = app.world.resource_mut::<Assets<StandardMaterial>>();
-    let handle = materials.get_handle(id);
-    let material = materials.get(&handle).unwrap();
+    let material = materials.get(id).unwrap();
     assert_eq!(material.base_color, color);
 }
 
 #[allow(dead_code)]
-pub(crate) fn assets_has_mesh(app: &mut App, id: HandleId) {
+pub(crate) fn assets_has_sample_mesh(app: &mut App, id: AssetId<Mesh>) {
     let meshes = app.world.resource_mut::<Assets<Mesh>>();
-    let handle = meshes.get_handle(id);
-    let _ = meshes.get(&handle).unwrap();
+    let mesh = meshes.get(id).unwrap();
+    let sample = sample_mesh();
+    assert_eq!(
+        mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+            .unwrap()
+            .get_bytes(),
+        sample
+            .attribute(Mesh::ATTRIBUTE_POSITION)
+            .unwrap()
+            .get_bytes()
+    );
 }
 
 #[allow(dead_code)]

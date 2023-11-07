@@ -16,6 +16,8 @@ Current state is in development.
 - [ ] Asset: Textures
 - [ ] Asset: Audio
 
+**Asset are synchronized only if they are added to bevy by uuid.**
+
 ## Examples
 
 Run both examples so the they connect to each other:

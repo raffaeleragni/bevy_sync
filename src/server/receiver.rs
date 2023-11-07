@@ -1,3 +1,7 @@
+use bevy_renet::renet::ClientId;
+
+use crate::logging::{log_message_received, Who};
+
 use super::*;
 
 pub(crate) fn poll_for_messages(
@@ -25,18 +29,14 @@ fn receive_as_server(
 }
 
 fn server_received_a_message(
-    client_id: u64,
+    client_id: ClientId,
     msg: Message,
     track: &mut ResMut<SyncTrackerRes>,
     cmd: &mut Commands,
 ) {
+    log_message_received(Who::Server, &msg);
     match msg {
         Message::EntitySpawn { id } => {
-            debug!(
-                "Server received message of type EntitySpawn for entity {}v{}",
-                id.index(),
-                id.generation()
-            );
             let e_id = cmd
                 .spawn(SyncClientGeneratedEntity {
                     client_id,
@@ -51,7 +51,9 @@ fn server_received_a_message(
             server_parent_id: p_id,
         } => {
             cmd.add(move |world: &mut World| {
-                let Some(mut entity) = world.get_entity_mut(e_id) else {return};
+                let Some(mut entity) = world.get_entity_mut(e_id) else {
+                    return;
+                };
                 let opt_parent = entity.get::<Parent>();
                 if opt_parent.is_none() || opt_parent.unwrap().get() != p_id {
                     entity.set_parent(p_id);
@@ -68,11 +70,6 @@ fn server_received_a_message(
             });
         }
         Message::EntityDelete { id } => {
-            debug!(
-                "Server received message of type EntityDelete for entity {}v{}",
-                id.index(),
-                id.generation()
-            );
             if let Some(mut e) = cmd.get_entity(id) {
                 e.despawn();
             }
@@ -83,9 +80,10 @@ fn server_received_a_message(
             client_entity_id: _,
         } => {}
         Message::ComponentUpdated { id, name, data } => {
-            let Some(&e_id) = track.server_to_client_entities.get(&id) else {return};
-            let mut entity = cmd.entity(e_id);
-            entity.add(move |_: Entity, world: &mut World| {
+            let Some(&e_id) = track.server_to_client_entities.get(&id) else {
+                return;
+            };
+            cmd.add(move |world: &mut World| {
                 let changed = SyncTrackerRes::apply_component_change_from_network(
                     e_id,
                     name.clone(),
@@ -123,7 +121,11 @@ fn server_received_a_message(
     }
 }
 
-fn repeat_except_for_client(msg_client_id: u64, server: &mut RenetServer, msg: &Message) {
+fn repeat_except_for_client(
+    msg_client_id: bevy_renet::renet::ClientId,
+    server: &mut RenetServer,
+    msg: &Message,
+) {
     for client_id in server.clients_id().into_iter() {
         if client_id == msg_client_id {
             continue;
