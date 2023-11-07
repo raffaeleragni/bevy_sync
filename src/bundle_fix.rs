@@ -27,6 +27,7 @@ fn fix_computed_visibility(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn fix_missing_global_transforms(
     mut cmd: Commands,
     query: Query<(Entity, &Transform), (Added<Transform>, Without<GlobalTransform>)>,
