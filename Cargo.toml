@@ -24,5 +24,5 @@ serde = { version = "1.0.160", features = ["derive"] }
 [dev-dependencies]
 portpicker = "0.1.1"
 serial_test = "2.0.0"
-bevy_editor_pls = { git = "https://github.com/jakobhellermann/bevy_editor_pls" }
+bevy_editor_pls = "0.6"
 uuid = "1.5.0"

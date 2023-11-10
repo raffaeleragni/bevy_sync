@@ -1,40 +1,6 @@
 /*!
 # Bevy engine network synchronization
 **state is in development**
-
-Wire up server and clients to synchronize their entities, components and assets,
-mainly intended for collaborative editing combined with `bevy_editor_pls` crate.
-
-Networking is through UDP (renet standard) and changes are sent through a ordered+reliable channel
-with idempotent messages.
-
-Uses:
-  - `bevy`
-  - `bevy_renet`
-  - `serde` & `bincode`
-
-## Example
-
-```rust
-use std::net::Ipv4Addr;
-use bevy::{prelude::*, MinimalPlugins,};
-use bevy_sync::{ServerPlugin, SyncComponent, SyncMark, SyncPlugin};
-
-let mut app = App::new();
-app.add_plugins(MinimalPlugins);
-
-// Either one of these two, if being server or client
-app.add_plugins(ServerPlugin { ip: Ipv4Addr::LOCALHOST.into(), port: 5555 });
-//app.add_plugin(ClientPlugin { ip: Ipv4Addr::LOCALHOST.into(), port: 5555 });
-
-// Setup sync mechanics and which components will be synced
-app.add_plugins(SyncPlugin);
-app.sync_component::<Transform>();
-
-// Mark entity for sync with SyncMark component
-app.world.spawn(Transform::default()).insert(SyncMark {});
-```
-
 */
 
 mod bundle_fix;
@@ -89,8 +55,8 @@ where
 pub struct SyncPlugin;
 
 pub struct ServerPlugin {
-    pub port: u16,
     pub ip: IpAddr,
+    pub port: u16,
 }
 
 pub struct ClientPlugin {
