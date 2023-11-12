@@ -1,6 +1,6 @@
 # bevy_sync
 
-![example workflow](https://github.com/raffaeleragni/bevy_sync/actions/workflows/build.yml/badge.svg)
+![build](https://github.com/raffaeleragni/bevy_sync/actions/workflows/build.yml/badge.svg)
 
 ![Sync](docs/sync.gif)
 
