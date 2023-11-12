@@ -28,3 +28,12 @@ Run both examples so the they connect to each other:
 - `cargo run --example client`
 
 Then open the editor and change a component value in one to see it reflected in the other.
+
+## Versions
+
+Base version of bevy_sync is inherited from bevy version.
+
+| bevy | bevy_sync |
+| ---- | --------- |
+| 0.12 | 0.12.x    |
+
