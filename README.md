@@ -1,5 +1,7 @@
 # bevy_sync
 
+![example workflow](https://github.com/raffaeleragni/bevy_sync/actions/workflows/build.yml/badge.svg)
+
 ![Sync](docs/sync.gif)
 
 Plugin for synchronizing entities and components between server and its clients. This plugin is meant to support collaborative editing environment through editors and supports bi-directional updates between server and client.
