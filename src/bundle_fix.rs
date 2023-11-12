@@ -9,7 +9,7 @@ impl Plugin for BundleFixPlugin {
         app.add_systems(
             Update,
             (
-                fix_computed_visibility,
+                fix_visibility_bundle,
                 fix_missing_global_transforms,
                 fix_missing_cubemap_frusta,
                 fix_missing_cubemap_visible_entities,
@@ -18,12 +18,22 @@ impl Plugin for BundleFixPlugin {
     }
 }
 
-fn fix_computed_visibility(
+fn fix_visibility_bundle(
     mut cmd: Commands,
-    query: Query<Entity, (Added<Visibility>, Without<ViewVisibility>)>,
+    query: Query<
+    (Entity, &Visibility),
+        (
+            Added<Visibility>,
+            Without<ViewVisibility>,
+            Without<InheritedVisibility>,
+        ),
+    >,
 ) {
-    for e in query.iter() {
-        cmd.entity(e).insert(ViewVisibility::default());
+    for (e, v) in query.iter() {
+        cmd.entity(e)
+            .insert(Visibility::from(*v))
+            .insert(ViewVisibility::default())
+            .insert(InheritedVisibility::default());
     }
 }
 

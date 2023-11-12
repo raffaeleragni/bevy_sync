@@ -6,12 +6,12 @@
 mod bundle_fix;
 mod client;
 mod lib_priv;
+mod logging;
 mod mesh_serde;
 mod networking;
 mod proto;
 mod proto_serde;
 mod server;
-mod logging;
 
 pub mod prelude {
     pub use super::{
@@ -45,11 +45,16 @@ pub enum ClientState {
 pub struct SyncMark;
 
 #[derive(Component, Default)]
-pub struct SyncExclude<T>
-where
-    T: Component,
-{
+pub struct SyncExclude<T: Component> {
     marker: PhantomData<T>,
+}
+
+#[derive(Component)]
+pub struct SyncDown {}
+
+#[derive(Component)]
+pub struct SyncUp {
+    pub server_entity_id: Entity,
 }
 
 pub struct SyncPlugin;
@@ -62,14 +67,6 @@ pub struct ServerPlugin {
 pub struct ClientPlugin {
     pub ip: IpAddr,
     pub port: u16,
-}
-
-#[derive(Component)]
-pub struct SyncDown {}
-
-#[derive(Component)]
-pub struct SyncUp {
-    pub server_entity_id: Entity,
 }
 
 pub trait SyncComponent {
