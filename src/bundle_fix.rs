@@ -13,6 +13,10 @@ impl Plugin for BundleFixPlugin {
                 fix_missing_global_transforms,
                 fix_missing_cubemap_frusta,
                 fix_missing_cubemap_visible_entities,
+                fix_missing_cubemap_frusta_spot,
+                fix_missing_cubemap_visible_entities_spot,
+                fix_missing_cubemap_frusta_directional,
+                fix_missing_cubemap_visible_entities_directional,
             ),
         );
     }
@@ -62,6 +66,46 @@ fn fix_missing_cubemap_frusta(
 
 #[allow(clippy::type_complexity)]
 fn fix_missing_cubemap_visible_entities(
+    mut cmd: Commands,
+    query: Query<Entity, (Added<PointLight>, Without<CubemapVisibleEntities>)>,
+) {
+    for e in query.iter() {
+        cmd.entity(e).insert(CubemapVisibleEntities::default());
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn fix_missing_cubemap_frusta_spot(
+    mut cmd: Commands,
+    query: Query<Entity, (Added<PointLight>, Without<CubemapFrusta>)>,
+) {
+    for e in query.iter() {
+        cmd.entity(e).insert(CubemapFrusta::default());
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn fix_missing_cubemap_visible_entities_spot(
+    mut cmd: Commands,
+    query: Query<Entity, (Added<PointLight>, Without<CubemapVisibleEntities>)>,
+) {
+    for e in query.iter() {
+        cmd.entity(e).insert(CubemapVisibleEntities::default());
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn fix_missing_cubemap_frusta_directional(
+    mut cmd: Commands,
+    query: Query<Entity, (Added<PointLight>, Without<CubemapFrusta>)>,
+) {
+    for e in query.iter() {
+        cmd.entity(e).insert(CubemapFrusta::default());
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn fix_missing_cubemap_visible_entities_directional(
     mut cmd: Commands,
     query: Query<Entity, (Added<PointLight>, Without<CubemapVisibleEntities>)>,
 ) {

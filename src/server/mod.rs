@@ -63,6 +63,7 @@ impl Plugin for ServerSyncPlugin {
             Update,
             (client_connected, receiver::poll_for_messages)
                 .chain()
+                .run_if(resource_exists::<RenetServer>())
                 .run_if(state_exists_and_equals(ServerState::Connected)),
         );
     }

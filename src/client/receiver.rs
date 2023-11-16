@@ -5,21 +5,11 @@ use super::*;
 pub(crate) fn poll_for_messages(
     mut commands: Commands,
     mut track: ResMut<SyncTrackerRes>,
-    opt_client: Option<ResMut<RenetClient>>,
-) {
-    if let Some(mut client) = opt_client {
-        receive_as_client(&mut client, &mut track, &mut commands);
-    }
-}
-
-fn receive_as_client(
-    client: &mut ResMut<RenetClient>,
-    track: &mut ResMut<SyncTrackerRes>,
-    commands: &mut Commands,
+    mut client: ResMut<RenetClient>,
 ) {
     while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         let deser_message = bincode::deserialize(&message).unwrap();
-        client_received_a_message(deser_message, track, commands);
+        client_received_a_message(deser_message, &mut track, &mut commands);
     }
 }
 

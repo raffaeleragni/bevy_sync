@@ -6,24 +6,14 @@ use super::*;
 
 pub(crate) fn poll_for_messages(
     mut commands: Commands,
-    opt_server: Option<ResMut<RenetServer>>,
+    mut server: ResMut<RenetServer>,
     mut track: ResMut<SyncTrackerRes>,
-) {
-    if let Some(mut server) = opt_server {
-        receive_as_server(&mut server, &mut track, &mut commands);
-    }
-}
-
-fn receive_as_server(
-    server: &mut ResMut<RenetServer>,
-    track: &mut ResMut<SyncTrackerRes>,
-    commands: &mut Commands,
 ) {
     for client_id in server.clients_id().into_iter() {
         while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered)
         {
             let deser_message = bincode::deserialize(&message).unwrap();
-            server_received_a_message(client_id, deser_message, track, commands);
+            server_received_a_message(client_id, deser_message, &mut track, &mut commands);
         }
     }
 }
