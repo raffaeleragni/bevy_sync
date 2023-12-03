@@ -13,10 +13,11 @@ Current state is in development.
 - [X] Entity synchronization
 - [X] Component synchronization
 - [X] Parent/Child entity synchronization
-- [x] Asset: Mesh
-- [X] Asset: SimpleMaterial
-- [ ] Asset: Textures
-- [ ] Asset: Audio
+- [X] SimpleMaterial (through sync channel)
+- [ ] Refactor asset transfer through http
+  - [x] Asset: Mesh
+  - [ ] Asset: Textures
+  - [ ] Asset: Audio
 
 **Asset are synchronized only if they are added to bevy by uuid.**
 
