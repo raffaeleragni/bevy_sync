@@ -1,11 +1,11 @@
 mod assert;
 mod setup;
 
-use assert::{material_has_color, assets_has_sample_mesh};
+use assert::{assets_has_sample_mesh, material_has_color};
 use bevy::prelude::*;
 use bevy_sync::SyncComponent;
 use serial_test::serial;
-use setup::{spawn_new_material, spawn_new_mesh, TestRun};
+use setup::{spawn_new_material, spawn_new_mesh, TestRun, load_cube};
 
 #[test]
 #[serial]
@@ -105,3 +105,29 @@ fn test_mesh_transferred_from_client() {
         },
     );
 }
+
+#[test]
+#[serial]
+fn test_with_asset_loader() {
+    TestRun::default().run(
+        1,
+        |env| {
+            env.setup_registration::<Handle<Mesh>>();
+            env.setup_registration::<Handle<StandardMaterial>>();
+            for app in [&mut env.server, &mut env.clients[0]] {
+                app.sync_meshes(true);
+                app.sync_materials(true);
+            }
+        },
+        |env| {
+            let app = &mut env.server;
+            load_cube(app)
+        },
+        |env, _, (mesh_id, material_id)| {
+            println!("{:?} {:?}", mesh_id, material_id);
+            assets_has_sample_mesh(&mut env.clients[0], mesh_id);
+            material_has_color(&mut env.clients[0], material_id, Color::RED);
+        },
+    );
+}
+

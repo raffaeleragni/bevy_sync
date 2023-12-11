@@ -1,7 +1,7 @@
 use std::{
     error::Error,
     fmt::Display,
-    net::{IpAddr, Ipv4Addr},
+    net::{IpAddr, Ipv4Addr}, os::unix::thread, time::Duration,
 };
 
 use bevy::{
@@ -241,4 +241,22 @@ pub(crate) fn sample_mesh() -> Mesh {
     mesh.set_indices(Some(Indices::U32(vec![0, 2, 1])));
 
     mesh
+}
+
+#[allow(dead_code)]
+pub(crate) fn load_cube(app: &mut App) -> (AssetId<Mesh>, AssetId<StandardMaterial>) {
+    app.init_asset::<Scene>();
+    app.init_asset::<Mesh>();
+    app.init_asset::<StandardMaterial>();
+    let assets = app.world.resource_mut::<AssetServer>();
+    let scene = assets.load("cube.glb#Scene0");
+    app.world.spawn(SceneBundle {
+        scene,
+        ..Default::default()
+    });
+    let meshes = app.world.resource_mut::<Assets<Mesh>>();
+    let mesh_id = meshes.iter().next().unwrap().0;
+    let materials = app.world.resource_mut::<Assets<StandardMaterial>>();
+    let material_id = materials.iter().next().unwrap().0;
+    (mesh_id, material_id)
 }
