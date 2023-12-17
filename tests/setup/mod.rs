@@ -1,7 +1,7 @@
 use std::{
     error::Error,
     fmt::Display,
-    net::{IpAddr, Ipv4Addr}, os::unix::thread, time::Duration,
+    net::{IpAddr, Ipv4Addr},
 };
 
 use bevy::{
@@ -229,6 +229,21 @@ pub(crate) fn spawn_new_mesh(app: &mut App) -> AssetId<Mesh> {
 }
 
 #[allow(dead_code)]
+pub(crate) fn spawn_new_material_nouuid(app: &mut App) -> Handle<StandardMaterial> {
+    let mut materials = app.world.resource_mut::<Assets<StandardMaterial>>();
+    materials.add(StandardMaterial {
+        base_color: Color::RED,
+        ..Default::default()
+    })
+}
+
+#[allow(dead_code)]
+pub(crate) fn spawn_new_mesh_nouuid(app: &mut App) -> Handle<Mesh> {
+    let mut meshes = app.world.resource_mut::<Assets<Mesh>>();
+    meshes.add(sample_mesh())
+}
+
+#[allow(dead_code)]
 pub(crate) fn sample_mesh() -> Mesh {
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
     mesh.insert_attribute(
@@ -243,20 +258,3 @@ pub(crate) fn sample_mesh() -> Mesh {
     mesh
 }
 
-#[allow(dead_code)]
-pub(crate) fn load_cube(app: &mut App) -> (AssetId<Mesh>, AssetId<StandardMaterial>) {
-    app.init_asset::<Scene>();
-    app.init_asset::<Mesh>();
-    app.init_asset::<StandardMaterial>();
-    let assets = app.world.resource_mut::<AssetServer>();
-    let scene = assets.load("cube.glb#Scene0");
-    app.world.spawn(SceneBundle {
-        scene,
-        ..Default::default()
-    });
-    let meshes = app.world.resource_mut::<Assets<Mesh>>();
-    let mesh_id = meshes.iter().next().unwrap().0;
-    let materials = app.world.resource_mut::<Assets<StandardMaterial>>();
-    let material_id = materials.iter().next().unwrap().0;
-    (mesh_id, material_id)
-}

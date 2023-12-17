@@ -5,7 +5,7 @@ use assert::{assets_has_sample_mesh, material_has_color};
 use bevy::prelude::*;
 use bevy_sync::{SyncComponent, SyncExclude, SyncMark};
 use serial_test::serial;
-use setup::{spawn_new_material, spawn_new_mesh, MySynched, TestEnv, TestRun};
+use setup::{spawn_new_material, spawn_new_mesh, MySynched, TestEnv, TestRun, spawn_new_material_nouuid, spawn_new_mesh_nouuid};
 
 use crate::{assert::count_entities_with_component, setup::MySynched2};
 
@@ -147,6 +147,40 @@ fn test_initial_with_parenting() {
                 .iter(&app.world)
                 .next();
             assert_eq!(child_value.unwrap().value, 8);
+        },
+    );
+}
+
+#[test]
+#[serial]
+fn test_initial_world_sync_without_uuid() {
+    TestRun::default().run(
+        1,
+        |env| {
+            env.setup_registration::<MySynched>();
+            env.setup_registration::<Handle<StandardMaterial>>();
+            env.setup_registration::<Handle<Mesh>>();
+            env.server.sync_materials(true);
+            env.server.sync_meshes(true);
+            let e_id = env.server.world.spawn(SyncMark {}).id();
+
+            let material_id = spawn_new_material_nouuid(&mut env.server);
+            let mesh_id = spawn_new_mesh_nouuid(&mut env.server);
+
+            let mut e = env.server.world.entity_mut(e_id);
+            e.insert((MySynched { value: 7 }, material_id, mesh_id));
+
+            1
+        },
+        TestRun::no_setup,
+        |env, entity_count: u32, _| {
+            assert::initial_sync_for_client_happened(
+                &mut env.server,
+                &mut env.clients[0],
+                entity_count,
+            );
+            assert::no_messages_left_for_server(&mut env.server);
+            assert::no_messages_left_for_client(&mut env.clients[0]);
         },
     );
 }

@@ -80,12 +80,15 @@ pub(crate) fn react_on_changed_components(
 ) {
     let registry = registry.read();
     while let Some(change) = track.changed_components_to_send.pop_front() {
-       client.send_message(
+        let Ok(bin) = compo_to_bin(change.data.as_reflect(), &registry) else {
+            break;
+        };
+        client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::ComponentUpdated {
                 id: change.change_id.id,
                 name: change.change_id.name,
-                data: compo_to_bin(change.data.as_reflect(), &registry),
+                data: bin,
             })
             .unwrap(),
         );
@@ -104,19 +107,22 @@ pub(crate) fn react_on_changed_materials(
         match event {
             AssetEvent::Added { id } | AssetEvent::Modified { id } => {
                 let Some(material) = materials.get(*id) else {
-                    return;
+                    break;
                 };
                 let AssetId::Uuid { uuid: id } = id else {
-                    return;
+                    break;
                 };
                 if track.skip_network_handle_change(*id) {
-                    return;
+                    break;
                 }
+                let Ok(bin) = compo_to_bin(material.as_reflect(), &registry) else {
+                    break;
+                };
                 client.send_message(
                     DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::StandardMaterialUpdated {
                         id: *id,
-                        material: compo_to_bin(material.as_reflect(), &registry),
+                        material: bin,
                     })
                     .unwrap(),
                 );

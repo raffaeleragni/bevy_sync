@@ -24,7 +24,7 @@ pub(crate) fn entity_created_on_server(
     mut query: Query<Entity, Added<SyncMark>>,
 ) {
     for id in query.iter_mut() {
-       for client_id in server.clients_id().into_iter() {
+        for client_id in server.clients_id().into_iter() {
             server.send_message(
                 client_id,
                 DefaultChannel::ReliableOrdered,
@@ -61,7 +61,7 @@ pub(crate) fn reply_back_to_client_generated_entity(
     mut query: Query<(Entity, &SyncClientGeneratedEntity), Added<SyncClientGeneratedEntity>>,
 ) {
     for (entity_id, marker_component) in query.iter_mut() {
-       server.send_message(
+        server.send_message(
             marker_component.client_id,
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawnBack {
@@ -118,16 +118,19 @@ pub(crate) fn react_on_changed_components(
 ) {
     let registry = registry.read();
     while let Some(change) = track.changed_components_to_send.pop_front() {
+        let Ok(bin) = compo_to_bin(change.data.as_reflect(), &registry) else {
+            break;
+        };
+        let msg = &Message::ComponentUpdated {
+            id: change.change_id.id,
+            name: change.change_id.name.clone(),
+            data: bin,
+        };
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,
                 DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::ComponentUpdated {
-                    id: change.change_id.id,
-                    name: change.change_id.name.clone(),
-                    data: compo_to_bin(change.data.as_reflect(), &registry),
-                })
-                .unwrap(),
+                bincode::serialize(msg).unwrap(),
             );
         }
     }
@@ -153,15 +156,18 @@ pub(crate) fn react_on_changed_materials(
                 if track.skip_network_handle_change(*id) {
                     return;
                 }
+                let Ok(bin) = compo_to_bin(material.as_reflect(), &registry) else {
+                    break;
+                };
+                let msg = &Message::StandardMaterialUpdated {
+                    id: *id,
+                    material: bin,
+                };
                 for cid in server.clients_id().into_iter() {
                     server.send_message(
                         cid,
                         DefaultChannel::ReliableOrdered,
-                        bincode::serialize(&Message::StandardMaterialUpdated {
-                            id: *id,
-                            material: compo_to_bin(material.as_reflect(), &registry),
-                        })
-                        .unwrap(),
+                        bincode::serialize(msg).unwrap(),
                     );
                 }
             }

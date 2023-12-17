@@ -3,16 +3,15 @@ use bevy::reflect::{
     DynamicStruct, Reflect, ReflectFromReflect, TypeRegistry,
 };
 
-use bincode::{DefaultOptions, Options};
+use bincode::{DefaultOptions, Options, ErrorKind};
 use serde::de::DeserializeSeed;
 
-pub(crate) fn compo_to_bin(compo: &dyn Reflect, registry: &TypeRegistry) -> Vec<u8> {
+pub(crate) fn compo_to_bin(compo: &dyn Reflect, registry: &TypeRegistry) -> Result<Vec<u8>, Box<ErrorKind>> {
     let serializer = ReflectSerializer::new(compo, registry);
     DefaultOptions::new()
         .with_fixint_encoding()
         .allow_trailing_bytes()
         .serialize(&serializer)
-        .unwrap()
 }
 
 pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistry) -> Box<dyn Reflect> {
@@ -59,7 +58,7 @@ mod test {
         let mut registry = TypeRegistry::default();
         registry.register::<T>();
 
-        let data = compo_to_bin(compo_orig.as_reflect(), &registry);
+        let data = compo_to_bin(compo_orig.as_reflect(), &registry).unwrap();
 
         let compo_result = bin_to_compo(&data, &registry);
         let compo_result = compo_result.downcast::<T>().unwrap();
@@ -87,7 +86,7 @@ mod test {
         registry.register_type_data::<Vec3, ReflectFromReflect>();
         registry.register_type_data::<Quat, ReflectFromReflect>();
 
-        let data = compo_to_bin(compo_orig.as_reflect(), &registry);
+        let data = compo_to_bin(compo_orig.as_reflect(), &registry).unwrap();
 
         let compo_result = bin_to_compo(&data, &registry);
         let compo_result = compo_result.downcast::<Transform>().unwrap();
@@ -113,7 +112,7 @@ mod test {
         registry.register::<OpaqueRendererMethod>();
         registry.register_type_data::<StandardMaterial, ReflectFromReflect>();
 
-        let data = compo_to_bin(material_orig.as_reflect(), &registry);
+        let data = compo_to_bin(material_orig.as_reflect(), &registry).unwrap();
 
         let result = bin_to_compo(&data, &registry);
         let result = result.downcast::<StandardMaterial>().unwrap();

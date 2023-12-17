@@ -89,7 +89,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let entity = world.entity(arch_entity.entity());
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).ok_or("not registered")?;
-                let compo_bin = compo_to_bin(component.as_reflect(), &registry);
+                let Ok(compo_bin) = compo_to_bin(component.as_reflect(), &registry) else {break};
                 result.push(Message::ComponentUpdated {
                     id: e_id,
                     name: type_name.into(),
@@ -144,10 +144,10 @@ fn check_materials(world: &World, result: &mut Vec<Message>) -> Result<(), Box<d
             let AssetId::Uuid { uuid: id } = id else {
                 continue;
             };
-            result.push(Message::StandardMaterialUpdated {
-                id,
-                material: compo_to_bin(material.as_reflect(), &registry),
-            });
+            let Ok(bin) = compo_to_bin(material.as_reflect(), &registry) else {
+                break;
+            };
+            result.push(Message::StandardMaterialUpdated { id, material: bin });
         }
     }
     Ok(())
