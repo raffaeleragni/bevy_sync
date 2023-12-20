@@ -1,3 +1,5 @@
+pub mod assets;
+
 use std::{
     net::{IpAddr, SocketAddr, UdpSocket},
     time::SystemTime,

@@ -119,7 +119,7 @@ pub(crate) fn react_on_changed_components(
     let registry = registry.read();
     while let Some(change) = track.changed_components_to_send.pop_front() {
         let Ok(bin) = compo_to_bin(change.data.as_reflect(), &registry) else {
-            break;
+            continue;
         };
         let msg = &Message::ComponentUpdated {
             id: change.change_id.id,
@@ -148,16 +148,16 @@ pub(crate) fn react_on_changed_materials(
         match event {
             AssetEvent::Added { id } | AssetEvent::Modified { id } => {
                 let Some(material) = materials.get(*id) else {
-                    return;
+                    continue;
                 };
                 let AssetId::Uuid { uuid: id } = id else {
-                    return;
+                    continue;
                 };
                 if track.skip_network_handle_change(*id) {
-                    return;
+                    continue;
                 }
                 let Ok(bin) = compo_to_bin(material.as_reflect(), &registry) else {
-                    break;
+                    continue;
                 };
                 let msg = &Message::StandardMaterialUpdated {
                     id: *id,
@@ -187,13 +187,13 @@ pub(crate) fn react_on_changed_meshes(
         match event {
             AssetEvent::Added { id } | AssetEvent::Modified { id } => {
                 let Some(mesh) = assets.get(*id) else {
-                    return;
+                    continue;
                 };
                 let AssetId::Uuid { uuid: id } = id else {
-                    return;
+                    continue;
                 };
                 if track.skip_network_handle_change(*id) {
-                    return;
+                    continue;
                 }
                 for cid in server.clients_id().into_iter() {
                     server.send_message(

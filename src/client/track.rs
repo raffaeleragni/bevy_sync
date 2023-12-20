@@ -36,7 +36,7 @@ pub(crate) fn entity_parented_on_client(
 ) {
     for (p, sup) in query.iter() {
         let Ok(parent) = query_parent.get_component::<SyncUp>(p.get()) else {
-            return;
+            continue;
         };
         client.send_message(
             DefaultChannel::ReliableOrdered,
@@ -81,7 +81,7 @@ pub(crate) fn react_on_changed_components(
     let registry = registry.read();
     while let Some(change) = track.changed_components_to_send.pop_front() {
         let Ok(bin) = compo_to_bin(change.data.as_reflect(), &registry) else {
-            break;
+            continue;
         };
         client.send_message(
             DefaultChannel::ReliableOrdered,
@@ -107,16 +107,16 @@ pub(crate) fn react_on_changed_materials(
         match event {
             AssetEvent::Added { id } | AssetEvent::Modified { id } => {
                 let Some(material) = materials.get(*id) else {
-                    break;
+                    continue;
                 };
                 let AssetId::Uuid { uuid: id } = id else {
-                    break;
+                    continue;
                 };
                 if track.skip_network_handle_change(*id) {
-                    break;
+                    continue;
                 }
                 let Ok(bin) = compo_to_bin(material.as_reflect(), &registry) else {
-                    break;
+                    continue;
                 };
                 client.send_message(
                     DefaultChannel::ReliableOrdered,
@@ -143,13 +143,13 @@ pub(crate) fn react_on_changed_meshes(
         match event {
             AssetEvent::Added { id } | AssetEvent::Modified { id } => {
                 let Some(mesh) = assets.get(*id) else {
-                    return;
+                    continue;
                 };
                 let AssetId::Uuid { uuid: id } = id else {
-                    return;
+                    continue;
                 };
                 if track.skip_network_handle_change(*id) {
-                    return;
+                    continue;
                 }
                 client.send_message(
                     DefaultChannel::ReliableOrdered,

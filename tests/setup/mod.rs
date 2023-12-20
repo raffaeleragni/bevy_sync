@@ -173,6 +173,7 @@ fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut Vec<App>) -> Result<(
         capp.add_plugins(ClientPlugin {
             ip: env.ip,
             port: env.port,
+            web_port: env.web_port,
         });
 
         wait_until_connected(sapp, capp, env.startup_max_wait_updates)?;

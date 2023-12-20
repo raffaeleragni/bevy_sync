@@ -231,6 +231,7 @@ impl Plugin for SyncPlugin {
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         crate::networking::setup_server(app, self.ip, self.port);
+        crate::networking::assets::setup_server(app, self.ip, self.web_port);
         app.add_plugins(ServerSyncPlugin);
     }
 }
@@ -238,6 +239,7 @@ impl Plugin for ServerPlugin {
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         crate::networking::setup_client(app, self.ip, self.port);
+        crate::networking::assets::setup_client(app, self.ip, self.web_port);
         app.add_plugins(ClientSyncPlugin);
     }
 }
