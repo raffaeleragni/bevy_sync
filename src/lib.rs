@@ -62,6 +62,7 @@ pub struct SyncPlugin;
 pub struct ServerPlugin {
     pub ip: IpAddr,
     pub port: u16,
+    pub web_port: u16
 }
 
 pub struct ClientPlugin {

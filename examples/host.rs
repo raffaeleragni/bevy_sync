@@ -14,11 +14,12 @@ fn main() {
 
     let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
     let port = 4000;
+    let web_port = 4000;
     let mut host = App::new();
     host.add_plugins(DefaultPlugins);
     host.add_plugins(bevy_editor_pls::EditorPlugin::default());
     host.add_plugins(SyncPlugin);
-    host.add_plugins(ServerPlugin { ip, port });
+    host.add_plugins(ServerPlugin { ip, port, web_port });
 
     host.sync_component::<Name>();
     host.sync_component::<Aabb>();
