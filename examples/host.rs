@@ -26,6 +26,8 @@ fn main() {
     host.sync_component::<Visibility>();
     host.sync_component::<Transform>();
     host.sync_component::<PointLight>();
+    host.sync_component::<DirectionalLight>();
+    host.sync_component::<SpotLight>();
     host.sync_component::<Handle<StandardMaterial>>();
     host.sync_component::<Handle<Mesh>>();
     host.sync_materials(true);
@@ -79,7 +81,23 @@ fn load_world(
             ..default()
         },
         SyncMark,
-        Name::new("Light"),
+        Name::new("Light Point"),
+    ));
+    commands.spawn((
+        DirectionalLightBundle {
+            transform: Transform::from_xyz(4.0, 8.0, 4.0),
+            ..default()
+        },
+        SyncMark,
+        Name::new("Light Directional"),
+    ));
+    commands.spawn((
+        SpotLightBundle {
+            transform: Transform::from_xyz(4.0, 8.0, 4.0),
+            ..default()
+        },
+        SyncMark,
+        Name::new("Light Spot"),
     ));
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
