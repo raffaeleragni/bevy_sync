@@ -32,6 +32,7 @@ pub(crate) enum Message {
     } = 6,
     MeshUpdated {
         id: AssId,
+        url: String,
         mesh: Vec<u8>,
     } = 7,
 }

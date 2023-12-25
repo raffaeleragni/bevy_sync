@@ -7,11 +7,12 @@ use bevy::{
     utils::{HashMap, HashSet}, pbr::OpaqueRendererMethod,
 };
 use bevy_renet::renet::ClientId;
+use bevy::utils::Uuid;
 
 use crate::{
     bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh, proto::AssId,
     proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent,
-    SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
+    SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp, networking::assets::SyncAssetType,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -240,4 +241,8 @@ impl Plugin for ClientPlugin {
         crate::networking::setup_client(app, self.ip, self.port, self.web_port);
         app.add_plugins(ClientSyncPlugin);
     }
+}
+
+pub(crate) fn asset_url(_: SyncAssetType, id: &Uuid) -> String {
+    id.to_string()
 }

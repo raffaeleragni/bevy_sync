@@ -6,11 +6,12 @@ use std::{
     },
 };
 
-use crate::mesh_serde::{bin_to_mesh, mesh_to_bin};
 use bevy::{prelude::*, utils::HashMap};
 use std::io::Read;
 use threadpool::ThreadPool;
 use tiny_http::{Request, Response, Server};
+
+use crate::mesh_serde::{mesh_to_bin, bin_to_mesh};
 
 const MAX_BYTES: u64 = 100_000_000;
 
@@ -22,7 +23,7 @@ pub(crate) struct SyncAssetTransfer {
     meshes: Arc<HashMap<String, Mesh>>,
 }
 
-pub(crate) enum Type {
+pub(crate) enum SyncAssetType {
     Mesh,
 }
 
@@ -54,7 +55,10 @@ impl SyncAssetTransfer {
         result
     }
 
-    pub(crate) fn queue(&self, asset_type: Type, url: String) {
+    pub(crate) fn queue(&self, asset_type: SyncAssetType, id: String, url: String) {
+        if self.meshes.contains_key(&id) {
+            return;
+        }
         let tx = self.mesh_tx.clone();
         self.download_pool.execute(move || {
             if let Ok(response) = ureq::get(url.as_str()).call() {
@@ -70,7 +74,7 @@ impl SyncAssetTransfer {
                     .is_ok()
                 {
                     match asset_type {
-                        Type::Mesh => {
+                        SyncAssetType::Mesh => {
                             let mesh = bin_to_mesh(bytes.as_slice());
                             tx.send(mesh).unwrap_or(());
                         }

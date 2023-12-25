@@ -4,8 +4,8 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
 
 use crate::{
-    lib_priv::SyncTrackerRes, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
-    SyncDown,
+    lib_priv::{SyncTrackerRes, asset_url}, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
+    SyncDown, networking::assets::SyncAssetType,
 };
 
 pub(crate) fn send_initial_sync(client_id: ClientId, world: &mut World) {
@@ -163,6 +163,7 @@ fn check_meshes(world: &World, result: &mut Vec<Message>) -> Result<(), Box<dyn 
             };
             result.push(Message::MeshUpdated {
                 id,
+                url: asset_url(SyncAssetType::Mesh, &id),
                 mesh: mesh_to_bin(mesh),
             });
         }
