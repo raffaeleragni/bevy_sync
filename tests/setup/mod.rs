@@ -47,7 +47,6 @@ impl Error for TestError {
 
 pub(crate) struct TestRun {
     pub(crate) port: u16,
-    pub(crate) web_port: u16,
     pub(crate) ip: IpAddr,
     pub(crate) startup_max_wait_updates: u32,
     pub(crate) updates_per_run: u32,
@@ -86,7 +85,6 @@ impl Default for TestRun {
     fn default() -> Self {
         Self {
             port: portpicker::pick_unused_port().expect("No ports free"),
-            web_port: portpicker::pick_unused_port().expect("No ports free"),
             ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
             startup_max_wait_updates: 4,
             updates_per_run: 4,
@@ -162,18 +160,18 @@ fn add_plugins(app: &mut App) {
     app.add_plugins(SyncPlugin);
 }
 
-fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut Vec<App>) -> Result<(), Box<dyn Error>> {
+fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut [App]) -> Result<(), Box<dyn Error>> {
     sapp.add_plugins(ServerPlugin {
         ip: env.ip,
         port: env.port,
-        web_port: env.web_port,
+        web_port: portpicker::pick_unused_port().unwrap(),
     });
 
     for capp in capps {
         capp.add_plugins(ClientPlugin {
             ip: env.ip,
             port: env.port,
-            web_port: env.web_port,
+            web_port: portpicker::pick_unused_port().unwrap(),
         });
 
         wait_until_connected(sapp, capp, env.startup_max_wait_updates)?;
