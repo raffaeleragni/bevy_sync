@@ -5,7 +5,7 @@ use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
 
 use crate::{
     lib_priv::{SyncTrackerRes, asset_url}, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
-    SyncDown, networking::assets::SyncAssetType,
+    SyncDown, proto::SyncAssetType,
 };
 
 pub(crate) fn send_initial_sync(client_id: ClientId, world: &mut World) {

@@ -12,7 +12,7 @@ use bevy::utils::Uuid;
 use crate::{
     bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh, proto::AssId,
     proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent,
-    SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp, networking::assets::SyncAssetType,
+    SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp, proto::SyncAssetType,
 };
 
 #[derive(PartialEq, Eq, Hash)]

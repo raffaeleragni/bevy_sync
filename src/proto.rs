@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 pub type EntityId = Entity;
 pub type AssId = Uuid;
 
+pub(crate) enum SyncAssetType {
+    Mesh,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[repr(u8)]
 pub(crate) enum Message {

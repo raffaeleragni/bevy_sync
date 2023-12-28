@@ -3,7 +3,7 @@ use bevy_renet::renet::{DefaultChannel, RenetClient};
 
 use crate::{
     lib_priv::{SyncTrackerRes, asset_url}, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
-    SyncMark, SyncUp, networking::assets::SyncAssetType,
+    SyncMark, SyncUp, proto::SyncAssetType,
 };
 
 pub(crate) fn track_spawn_client(

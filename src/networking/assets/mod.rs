@@ -1,46 +1,71 @@
 use std::{
     net::{SocketAddr, ToSocketAddrs},
     sync::{
-        mpsc::{channel, Receiver, Sender},
-        Arc,
+        mpsc::{channel, Receiver},
+        Arc, RwLock,
     },
+    time::Duration,
 };
 
+use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashMap};
 use std::io::Read;
 use threadpool::ThreadPool;
 use tiny_http::{Request, Response, Server};
 
-use crate::mesh_serde::{mesh_to_bin, bin_to_mesh};
+use crate::{
+    mesh_serde::{bin_to_mesh, mesh_to_bin},
+    proto::SyncAssetType,
+};
 
-const MAX_BYTES: u64 = 100_000_000;
+pub(crate) fn init(app: &mut App, addr: std::net::IpAddr, port: u16) {
+    let thread_count = 1;
+    debug!(
+        "Initializing asset sync on {:?}:{}, parallel: {}",
+        addr, port, thread_count
+    );
+    let http_transfer = SyncAssetTransfer::new(SocketAddr::new(addr, port));
+    app.insert_resource(http_transfer);
+    app.add_systems(
+        Update,
+        process_mesh_assets.run_if(resource_exists::<SyncAssetTransfer>()),
+    );
+}
+
+fn process_mesh_assets(mut meshes: ResMut<Assets<Mesh>>, sync: ResMut<SyncAssetTransfer>) {
+    let Ok(mut map) = sync.meshes_to_apply.write() else {
+        return;
+    };
+    for (id, mesh) in map.drain() {
+        let id: AssetId<Mesh> = AssetId::Uuid { uuid: id };
+        meshes.insert(id, mesh);
+    }
+}
+
+type MeshCache = Arc<RwLock<HashMap<Uuid, Mesh>>>;
 
 #[derive(Resource)]
 pub(crate) struct SyncAssetTransfer {
     server_pool: ThreadPool,
     download_pool: ThreadPool,
-    mesh_tx: Sender<Mesh>,
-    meshes: Arc<HashMap<String, Mesh>>,
-}
-
-pub(crate) enum SyncAssetType {
-    Mesh,
+    meshes: MeshCache,
+    meshes_to_apply: MeshCache,
 }
 
 impl SyncAssetTransfer {
-    fn new<A: ToSocketAddrs>(bind: A) -> Self {
+    pub(crate) fn new<A: ToSocketAddrs>(bind: A) -> Self {
         let server_pool = ThreadPool::new(2);
         let download_pool = ThreadPool::new(127);
-        let meshes = Arc::new(HashMap::<String, Mesh>::new());
+        let meshes = Arc::new(RwLock::new(HashMap::<Uuid, Mesh>::new()));
+        let meshes_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Mesh>::new()));
 
         let (server_tx, server_rx) = channel::<Request>();
-        let (mesh_tx, mesh_rx) = channel::<Mesh>();
         let server = Server::http(bind).unwrap();
         let result = Self {
             server_pool,
             download_pool,
-            mesh_tx,
             meshes,
+            meshes_to_apply,
         };
         result.server_pool.execute(move || {
             for request in server.incoming_requests() {
@@ -51,15 +76,16 @@ impl SyncAssetTransfer {
         result
             .server_pool
             .execute(|| Self::respond(server_rx, meshes));
-
         result
     }
 
-    pub(crate) fn queue(&self, asset_type: SyncAssetType, id: String, url: String) {
-        if self.meshes.contains_key(&id) {
-            return;
+    pub(crate) fn queue(&self, asset_type: SyncAssetType, id: Uuid, url: String) {
+        if let Ok(meshes) = self.meshes.read() {
+            if meshes.contains_key(&id) {
+                return;
+            }
         }
-        let tx = self.mesh_tx.clone();
+        let meshes_to_apply = self.meshes_to_apply.clone();
         self.download_pool.execute(move || {
             if let Ok(response) = ureq::get(url.as_str()).call() {
                 let len = response
@@ -69,14 +95,24 @@ impl SyncAssetTransfer {
                 let mut bytes: Vec<u8> = Vec::with_capacity(len);
                 if response
                     .into_reader()
-                    .take(MAX_BYTES)
+                    .take(100_000_000)
                     .read_to_end(&mut bytes)
                     .is_ok()
                 {
                     match asset_type {
                         SyncAssetType::Mesh => {
                             let mesh = bin_to_mesh(bytes.as_slice());
-                            tx.send(mesh).unwrap_or(());
+                            let mut lock = meshes_to_apply.write();
+                            loop {
+                                match lock {
+                                    Ok(mut map) => {
+                                        map.insert(id, mesh);
+                                        break;
+                                    }
+                                    Err(_) => lock = meshes_to_apply.write(),
+                                }
+                                std::thread::sleep(Duration::from_millis(1));
+                            }
                         }
                     }
                 }
@@ -84,14 +120,23 @@ impl SyncAssetTransfer {
         });
     }
 
-    fn respond(rx: Receiver<Request>, meshes: Arc<HashMap<String, Mesh>>) {
+    fn respond(rx: Receiver<Request>, meshes: MeshCache) {
         for request in rx.iter() {
             let url = request.url();
             let Some(id) = url.strip_prefix("/mesh/") else {
                 continue;
             };
+            let Ok(id) = Uuid::parse_str(id) else {
+                continue;
+            };
 
-            let Some(mesh) = meshes.get(id) else {
+            let Ok(meshesmap) = meshes.read() else {
+                request
+                    .respond(Response::from_string("").with_status_code(449))
+                    .unwrap_or(());
+                continue;
+            };
+            let Some(mesh) = meshesmap.get(&id) else {
                 request
                     .respond(Response::from_string("").with_status_code(404))
                     .unwrap_or(());
@@ -102,14 +147,4 @@ impl SyncAssetTransfer {
                 .unwrap_or(());
         }
     }
-}
-
-pub(crate) fn setup(app: &mut App, addr: std::net::IpAddr, port: u16) {
-    let thread_count = 1;
-    debug!(
-        "Initializing asset sync on {:?}:{}, parallel: {}",
-        addr, port, thread_count
-    );
-    let http_transfer = SyncAssetTransfer::new(SocketAddr::new(addr, port));
-    app.insert_resource(http_transfer);
 }

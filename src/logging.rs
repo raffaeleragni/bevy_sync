@@ -59,7 +59,7 @@ pub(crate) fn log_message_received(from: Who, message: &Message) {
                 from, id
             )
         }
-        Message::MeshUpdated { id, url: url, mesh: _ } => {
+        Message::MeshUpdated { id, url, mesh: _ } => {
             debug!("{:?} received MeshUpdated {{ uuid: {} }} {{ url: {} }}", from, id, url)
         }
     }

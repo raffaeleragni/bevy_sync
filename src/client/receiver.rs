@@ -79,7 +79,7 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
         Message::StandardMaterialUpdated { id, material } => cmd.add(move |world: &mut World| {
             SyncTrackerRes::apply_material_change_from_network(id, &material, world);
         }),
-        Message::MeshUpdated { id, url, mesh } => cmd.add(move |world: &mut World| {
+        Message::MeshUpdated { id, url: _, mesh } => cmd.add(move |world: &mut World| {
             SyncTrackerRes::apply_mesh_change_from_network(id, &mesh, world);
         }),
     }

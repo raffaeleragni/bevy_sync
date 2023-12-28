@@ -6,7 +6,7 @@ use crate::{
     mesh_serde::mesh_to_bin,
     proto::Message,
     proto_serde::compo_to_bin,
-    SyncDown, SyncMark, networking::assets::SyncAssetType,
+    SyncDown, SyncMark, proto::SyncAssetType,
 };
 
 pub(crate) fn track_spawn_server(
