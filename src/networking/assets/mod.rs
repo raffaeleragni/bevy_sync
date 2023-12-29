@@ -1,7 +1,7 @@
 mod mesh_serde;
 
 use std::{
-    net::{SocketAddr, ToSocketAddrs},
+    net::{SocketAddr, ToSocketAddrs, IpAddr},
     sync::{
         mpsc::{channel, Receiver},
         Arc, RwLock,
@@ -17,13 +17,12 @@ use std::io::Read;
 use threadpool::ThreadPool;
 use tiny_http::{Request, Response, Server};
 
-pub(crate) fn init(app: &mut App, addr: std::net::IpAddr, port: u16) {
-    let thread_count = 1;
+pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16) {
     debug!(
-        "Initializing asset sync on {:?}:{}, parallel: {}",
-        addr, port, thread_count
+        "Initializing asset sync on {:?}:{}",
+        addr.clone(), port.clone()
     );
-    let http_transfer = SyncAssetTransfer::new(SocketAddr::new(addr, port));
+    let http_transfer = SyncAssetTransfer::new(addr, port);
     app.insert_resource(http_transfer);
     app.add_systems(
         Update,
@@ -50,6 +49,7 @@ type MeshCache = Arc<RwLock<HashMap<Uuid, Mesh>>>;
 
 #[derive(Resource)]
 pub(crate) struct SyncAssetTransfer {
+    base_url: String,
     server_pool: ThreadPool,
     download_pool: ThreadPool,
     meshes: MeshCache,
@@ -57,7 +57,8 @@ pub(crate) struct SyncAssetTransfer {
 }
 
 impl SyncAssetTransfer {
-    pub(crate) fn new<A: ToSocketAddrs>(bind: A) -> Self {
+    pub(crate) fn new(addr: IpAddr, port: u16) -> Self {
+        let bind = SocketAddr::new(addr, port);
         let server_pool = ThreadPool::new(2);
         let download_pool = ThreadPool::new(127);
         let meshes = Arc::new(RwLock::new(HashMap::<Uuid, Mesh>::new()));
@@ -66,6 +67,7 @@ impl SyncAssetTransfer {
         let (server_tx, server_rx) = channel::<Request>();
         let server = Server::http(bind).unwrap();
         let result = Self {
+            base_url: format!("http://{}:{}", addr, port),
             server_pool,
             download_pool,
             meshes,
@@ -136,7 +138,7 @@ impl SyncAssetTransfer {
             }
             std::thread::sleep(Duration::from_millis(1));
         }
-        "".to_string()
+        format!("{}/mesh/{}", self.base_url, &id.to_string())
     }
 
     fn respond(rx: Receiver<Request>, meshes: MeshCache) {
