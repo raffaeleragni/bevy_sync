@@ -1,3 +1,5 @@
+mod mesh_serde;
+
 use std::{
     net::{SocketAddr, ToSocketAddrs},
     sync::{
@@ -7,17 +9,13 @@ use std::{
     time::Duration,
 };
 
+use crate::{lib_priv::SyncTrackerRes, proto::SyncAssetType};
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashMap};
+use mesh_serde::{bin_to_mesh, mesh_to_bin};
 use std::io::Read;
 use threadpool::ThreadPool;
 use tiny_http::{Request, Response, Server};
-
-use crate::{
-    lib_priv::SyncTrackerRes,
-    mesh_serde::{bin_to_mesh, mesh_to_bin},
-    proto::SyncAssetType,
-};
 
 pub(crate) fn init(app: &mut App, addr: std::net::IpAddr, port: u16) {
     let thread_count = 1;
@@ -126,7 +124,7 @@ impl SyncAssetTransfer {
         });
     }
 
-    pub(crate) fn serve(&mut self, _: SyncAssetType,  id: &Uuid, mesh: &Mesh) {
+    pub(crate) fn serve(&mut self, _: SyncAssetType, id: &Uuid, mesh: &Mesh) {
         let mut lock = self.meshes.write();
         loop {
             match lock {
