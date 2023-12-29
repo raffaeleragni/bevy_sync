@@ -16,7 +16,7 @@ Current state is in development.
 - [ ] Skippable channel for Unordered+Unreliable
   - [ ] Transform
 - [X] SimpleMaterial (through sync channel)
-- [ ] Refactor asset transfer through http
+- [X] Refactor asset transfer through http
   - [x] Asset: Mesh
   - [ ] Asset: Textures
   - [ ] Asset: Audio
