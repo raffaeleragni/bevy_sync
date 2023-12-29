@@ -124,7 +124,7 @@ impl SyncAssetTransfer {
         });
     }
 
-    pub(crate) fn serve(&mut self, _: SyncAssetType, id: &Uuid, mesh: &Mesh) {
+    pub(crate) fn serve(&mut self, _: SyncAssetType, id: &Uuid, mesh: &Mesh) -> String {
         let mut lock = self.meshes.write();
         loop {
             match lock {
@@ -136,6 +136,7 @@ impl SyncAssetTransfer {
             }
             std::thread::sleep(Duration::from_millis(1));
         }
+        "".to_string()
     }
 
     fn respond(rx: Receiver<Request>, meshes: MeshCache) {

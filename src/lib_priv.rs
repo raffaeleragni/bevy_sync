@@ -2,17 +2,17 @@ use std::{any::TypeId, collections::VecDeque};
 
 use bevy::{
     ecs::component::ComponentId,
+    pbr::OpaqueRendererMethod,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
-    utils::{HashMap, HashSet}, pbr::OpaqueRendererMethod,
+    utils::{HashMap, HashSet},
 };
 use bevy_renet::renet::ClientId;
-use bevy::utils::Uuid;
 
 use crate::{
-    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId,
-    proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent,
-    SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp, proto::SyncAssetType,
+    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId, proto_serde::bin_to_compo,
+    server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncExclude,
+    SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -86,7 +86,7 @@ impl SyncTrackerRes {
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
         let previous_value = reflect_component.reflect(world.entity(e_id));
         if equals(previous_value, &*component_data) {
-           world
+            world
                 .resource_mut::<SyncTrackerRes>()
                 .pushed_component_from_network
                 .insert(ComponentChangeId { id: e_id, name });
@@ -231,8 +231,4 @@ impl Plugin for ClientPlugin {
         crate::networking::setup_client(app, self.ip, self.port, self.web_port);
         app.add_plugins(ClientSyncPlugin);
     }
-}
-
-pub(crate) fn asset_url(_: SyncAssetType, id: &Uuid) -> String {
-    id.to_string()
 }

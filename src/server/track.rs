@@ -2,11 +2,12 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetServer};
 
 use crate::{
-    lib_priv::{asset_url, SyncClientGeneratedEntity, SyncTrackerRes},
+    lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
+    networking::assets::SyncAssetTransfer,
     proto::Message,
     proto::SyncAssetType,
     proto_serde::compo_to_bin,
-    SyncDown, SyncMark, networking::assets::SyncAssetTransfer,
+    SyncDown, SyncMark,
 };
 
 pub(crate) fn track_spawn_server(
@@ -196,14 +197,14 @@ pub(crate) fn react_on_changed_meshes(
                 if track.skip_network_handle_change(*id) {
                     continue;
                 }
-                sync_assets.serve(SyncAssetType::Mesh, id, mesh);
+                let url = sync_assets.serve(SyncAssetType::Mesh, id, mesh);
                 for cid in server.clients_id().into_iter() {
                     server.send_message(
                         cid,
                         DefaultChannel::ReliableOrdered,
                         bincode::serialize(&Message::MeshUpdated {
                             id: *id,
-                            url: asset_url(SyncAssetType::Mesh, id),
+                            url: url.clone(),
                         })
                         .unwrap(),
                     );

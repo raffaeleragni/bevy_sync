@@ -1,12 +1,8 @@
 use std::error::Error;
 
 use crate::{
-    lib_priv::{asset_url, SyncTrackerRes},
-    networking::assets::SyncAssetTransfer,
-    proto::Message,
-    proto::SyncAssetType,
-    proto_serde::compo_to_bin,
-    SyncDown,
+    lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer, proto::Message,
+    proto::SyncAssetType, proto_serde::compo_to_bin, SyncDown,
 };
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashSet};
@@ -173,11 +169,8 @@ fn check_meshes(world: &mut World, result: &mut Vec<Message>) -> Result<(), Box<
     }
     let mut sync_assets = world.resource_mut::<SyncAssetTransfer>();
     for (id, mesh) in meshes_to_add.iter() {
-        sync_assets.serve(SyncAssetType::Mesh, id, mesh);
-        result.push(Message::MeshUpdated {
-            id: *id,
-            url: asset_url(SyncAssetType::Mesh, id),
-        });
+        let url = sync_assets.serve(SyncAssetType::Mesh, id, mesh);
+        result.push(Message::MeshUpdated { id: *id, url });
     }
     Ok(())
 }
