@@ -2,16 +2,17 @@ use std::{any::TypeId, collections::VecDeque};
 
 use bevy::{
     ecs::component::ComponentId,
+    pbr::OpaqueRendererMethod,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
-    utils::{HashMap, HashSet}, pbr::OpaqueRendererMethod,
+    utils::{HashMap, HashSet},
 };
 use bevy_renet::renet::ClientId;
 
 use crate::{
-    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh, proto::AssId,
-    proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent,
-    SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
+    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId, proto_serde::bin_to_compo,
+    server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncExclude,
+    SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -85,7 +86,7 @@ impl SyncTrackerRes {
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
         let previous_value = reflect_component.reflect(world.entity(e_id));
         if equals(previous_value, &*component_data) {
-           world
+            world
                 .resource_mut::<SyncTrackerRes>()
                 .pushed_component_from_network
                 .insert(ComponentChangeId { id: e_id, name });
@@ -118,16 +119,6 @@ impl SyncTrackerRes {
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
         materials.insert(id, mat);
-    }
-
-    pub(crate) fn apply_mesh_change_from_network(id: AssId, mesh: &[u8], world: &mut World) {
-        world
-            .resource_mut::<SyncTrackerRes>()
-            .pushed_handles_from_network
-            .insert(id);
-        let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let mesh = bin_to_mesh(mesh);
-        meshes.insert(id, mesh);
     }
 }
 
@@ -230,16 +221,14 @@ impl Plugin for SyncPlugin {
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
-        crate::networking::setup_server(app, self.ip, self.port);
-        crate::networking::assets::setup_server(app, self.ip, self.web_port);
+        crate::networking::setup_server(app, self.ip, self.port, self.web_port);
         app.add_plugins(ServerSyncPlugin);
     }
 }
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
-        crate::networking::setup_client(app, self.ip, self.port);
-        crate::networking::assets::setup_client(app, self.ip, self.web_port);
+        crate::networking::setup_client(app, self.ip, self.port, self.web_port);
         app.add_plugins(ClientSyncPlugin);
     }
 }

@@ -5,7 +5,10 @@ use assert::{assets_has_sample_mesh, material_has_color};
 use bevy::prelude::*;
 use bevy_sync::{SyncComponent, SyncExclude, SyncMark};
 use serial_test::serial;
-use setup::{spawn_new_material, spawn_new_mesh, MySynched, TestEnv, TestRun, spawn_new_material_nouuid, spawn_new_mesh_nouuid};
+use setup::{
+    spawn_new_material, spawn_new_material_nouuid, spawn_new_mesh, spawn_new_mesh_nouuid,
+    MySynched, TestEnv, TestRun,
+};
 
 use crate::{assert::count_entities_with_component, setup::MySynched2};
 

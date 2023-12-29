@@ -105,4 +105,3 @@ fn test_mesh_transferred_from_client() {
         },
     );
 }
-

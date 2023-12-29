@@ -1,4 +1,8 @@
-use bevy::{pbr::{CubemapVisibleEntities, CascadeShadowConfig, Cascades, CascadesVisibleEntities}, prelude::*, render::primitives::{CubemapFrusta, CascadesFrusta, Frustum}};
+use bevy::{
+    pbr::{CascadeShadowConfig, Cascades, CascadesVisibleEntities, CubemapVisibleEntities},
+    prelude::*,
+    render::primitives::{CascadesFrusta, CubemapFrusta, Frustum},
+};
 
 /// Fixing some bundle situations that are not known at sync time because bundles disappear once applied
 
@@ -27,7 +31,7 @@ impl Plugin for BundleFixPlugin {
 fn fix_visibility_bundle(
     mut cmd: Commands,
     query: Query<
-    (Entity, &Visibility),
+        (Entity, &Visibility),
         (
             Added<Visibility>,
             Without<ViewVisibility>,
@@ -49,9 +53,7 @@ fn fix_missing_global_transforms(
     query: Query<(Entity, &Transform), (Added<Transform>, Without<GlobalTransform>)>,
 ) {
     for (e, &t) in query.iter() {
-        cmd.entity(e)
-            .insert(t)
-            .insert(GlobalTransform::from(t));
+        cmd.entity(e).insert(t).insert(GlobalTransform::from(t));
     }
 }
 
@@ -124,4 +126,3 @@ fn fix_missing_cascades_shadow_config_directional(
         cmd.entity(e).insert(CascadeShadowConfig::default());
     }
 }
-

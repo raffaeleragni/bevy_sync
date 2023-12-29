@@ -3,8 +3,9 @@ use bevy_renet::renet::{DefaultChannel, RenetServer};
 
 use crate::{
     lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
-    mesh_serde::mesh_to_bin,
+    networking::assets::SyncAssetTransfer,
     proto::Message,
+    proto::SyncAssetType,
     proto_serde::compo_to_bin,
     SyncDown, SyncMark,
 };
@@ -182,6 +183,7 @@ pub(crate) fn react_on_changed_meshes(
     mut server: ResMut<RenetServer>,
     assets: Res<Assets<Mesh>>,
     mut events: EventReader<AssetEvent<Mesh>>,
+    mut sync_assets: ResMut<SyncAssetTransfer>,
 ) {
     for event in &mut events.read() {
         match event {
@@ -195,13 +197,14 @@ pub(crate) fn react_on_changed_meshes(
                 if track.skip_network_handle_change(*id) {
                     continue;
                 }
+                let url = sync_assets.serve(SyncAssetType::Mesh, id, mesh);
                 for cid in server.clients_id().into_iter() {
                     server.send_message(
                         cid,
                         DefaultChannel::ReliableOrdered,
                         bincode::serialize(&Message::MeshUpdated {
                             id: *id,
-                            mesh: mesh_to_bin(mesh),
+                            url: url.clone(),
                         })
                         .unwrap(),
                     );

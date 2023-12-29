@@ -1,6 +1,10 @@
 use bevy_renet::renet::ClientId;
 
-use crate::logging::{log_message_received, Who};
+use crate::{
+    logging::{log_message_received, Who},
+    networking::assets::SyncAssetTransfer,
+    proto::SyncAssetType,
+};
 
 use super::*;
 
@@ -8,12 +12,19 @@ pub(crate) fn poll_for_messages(
     mut commands: Commands,
     mut server: ResMut<RenetServer>,
     mut track: ResMut<SyncTrackerRes>,
+    mut sync_assets: ResMut<SyncAssetTransfer>,
 ) {
     for client_id in server.clients_id().into_iter() {
         while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered)
         {
             let deser_message = bincode::deserialize(&message).unwrap();
-            server_received_a_message(client_id, deser_message, &mut track, &mut commands);
+            server_received_a_message(
+                client_id,
+                deser_message,
+                &mut track,
+                &mut sync_assets,
+                &mut commands,
+            );
         }
     }
 }
@@ -22,6 +33,7 @@ fn server_received_a_message(
     client_id: ClientId,
     msg: Message,
     track: &mut ResMut<SyncTrackerRes>,
+    sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
 ) {
     log_message_received(Who::Server, &msg);
@@ -99,15 +111,16 @@ fn server_received_a_message(
                 &Message::StandardMaterialUpdated { id, material },
             );
         }),
-        Message::MeshUpdated { id, mesh } => cmd.add(move |world: &mut World| {
-            SyncTrackerRes::apply_mesh_change_from_network(id, &mesh, world);
-
-            repeat_except_for_client(
-                client_id,
-                &mut world.resource_mut::<RenetServer>(),
-                &Message::MeshUpdated { id, mesh },
-            );
-        }),
+        Message::MeshUpdated { id, url } => {
+            sync_assets.request(SyncAssetType::Mesh, id, url.clone());
+            cmd.add(move |world: &mut World| {
+                repeat_except_for_client(
+                    client_id,
+                    &mut world.resource_mut::<RenetServer>(),
+                    &Message::MeshUpdated { id, url },
+                );
+            })
+        }
     }
 }
 

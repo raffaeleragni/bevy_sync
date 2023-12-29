@@ -7,7 +7,6 @@ mod bundle_fix;
 mod client;
 mod lib_priv;
 mod logging;
-mod mesh_serde;
 mod networking;
 mod proto;
 mod proto_serde;

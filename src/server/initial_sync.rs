@@ -1,12 +1,12 @@
 use std::error::Error;
 
+use crate::{
+    lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer, proto::Message,
+    proto::SyncAssetType, proto_serde::compo_to_bin, SyncDown,
+};
+use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
-
-use crate::{
-    lib_priv::SyncTrackerRes, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
-    SyncDown,
-};
 
 pub(crate) fn send_initial_sync(client_id: ClientId, world: &mut World) {
     info!("Sending initial sync to client id {}", client_id);
@@ -32,7 +32,7 @@ pub(crate) fn send_initial_sync(client_id: ClientId, world: &mut World) {
     }
 }
 
-fn build_initial_sync(world: &World) -> Result<Vec<Message>, Box<dyn Error>> {
+fn build_initial_sync(world: &mut World) -> Result<Vec<Message>, Box<dyn Error>> {
     let mut result: Vec<Message> = Vec::new();
     check_entity_components(world, &mut result)?;
     check_parents(world, &mut result)?;
@@ -89,7 +89,9 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let entity = world.entity(arch_entity.entity());
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).ok_or("not registered")?;
-                let Ok(compo_bin) = compo_to_bin(component.as_reflect(), &registry) else {continue};
+                let Ok(compo_bin) = compo_to_bin(component.as_reflect(), &registry) else {
+                    continue;
+                };
                 result.push(Message::ComponentUpdated {
                     id: e_id,
                     name: type_name.into(),
@@ -153,19 +155,22 @@ fn check_materials(world: &World, result: &mut Vec<Message>) -> Result<(), Box<d
     Ok(())
 }
 
-fn check_meshes(world: &World, result: &mut Vec<Message>) -> Result<(), Box<dyn Error>> {
-    let track = world.resource::<SyncTrackerRes>();
+fn check_meshes(world: &mut World, result: &mut Vec<Message>) -> Result<(), Box<dyn Error>> {
+    let track = world.resource_mut::<SyncTrackerRes>();
+    let mut meshes_to_add = Vec::<(Uuid, Mesh)>::new();
     if track.sync_meshes {
         let meshes = world.resource::<Assets<Mesh>>();
         for (id, mesh) in meshes.iter() {
             let AssetId::Uuid { uuid: id } = id else {
                 continue;
             };
-            result.push(Message::MeshUpdated {
-                id,
-                mesh: mesh_to_bin(mesh),
-            });
+            meshes_to_add.push((id, mesh.clone()));
         }
+    }
+    let mut sync_assets = world.resource_mut::<SyncAssetTransfer>();
+    for (id, mesh) in meshes_to_add.iter() {
+        let url = sync_assets.serve(SyncAssetType::Mesh, id, mesh);
+        result.push(Message::MeshUpdated { id: *id, url });
     }
     Ok(())
 }

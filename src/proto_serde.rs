@@ -3,10 +3,13 @@ use bevy::reflect::{
     DynamicStruct, Reflect, ReflectFromReflect, TypeRegistry,
 };
 
-use bincode::{DefaultOptions, Options, ErrorKind};
+use bincode::{DefaultOptions, ErrorKind, Options};
 use serde::de::DeserializeSeed;
 
-pub(crate) fn compo_to_bin(compo: &dyn Reflect, registry: &TypeRegistry) -> Result<Vec<u8>, Box<ErrorKind>> {
+pub(crate) fn compo_to_bin(
+    compo: &dyn Reflect,
+    registry: &TypeRegistry,
+) -> Result<Vec<u8>, Box<ErrorKind>> {
     let serializer = ReflectSerializer::new(compo, registry);
     DefaultOptions::new()
         .with_fixint_encoding()
@@ -149,5 +152,4 @@ mod test {
         let result = result.downcast::<StandardMaterial>().unwrap();
         assert_eq!(compo.base_color, result.base_color);
     }
-
 }
