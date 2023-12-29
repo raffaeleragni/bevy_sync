@@ -1,19 +1,29 @@
-use crate::logging::{log_message_received, Who};
+use crate::{
+    logging::{log_message_received, Who},
+    networking::assets::SyncAssetTransfer,
+    proto::SyncAssetType,
+};
 
 use super::*;
 
 pub(crate) fn poll_for_messages(
     mut commands: Commands,
     mut track: ResMut<SyncTrackerRes>,
+    mut sync_assets: ResMut<SyncAssetTransfer>,
     mut client: ResMut<RenetClient>,
 ) {
     while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         let deser_message = bincode::deserialize(&message).unwrap();
-        client_received_a_message(deser_message, &mut track, &mut commands);
+        client_received_a_message(deser_message, &mut track, &mut sync_assets, &mut commands);
     }
 }
 
-fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, cmd: &mut Commands) {
+fn client_received_a_message(
+    msg: Message,
+    track: &mut ResMut<SyncTrackerRes>,
+    sync_assets: &mut ResMut<SyncAssetTransfer>,
+    cmd: &mut Commands,
+) {
     log_message_received(Who::Client, &msg);
     match msg {
         Message::EntitySpawn { id } => {
@@ -79,8 +89,6 @@ fn client_received_a_message(msg: Message, track: &mut ResMut<SyncTrackerRes>, c
         Message::StandardMaterialUpdated { id, material } => cmd.add(move |world: &mut World| {
             SyncTrackerRes::apply_material_change_from_network(id, &material, world);
         }),
-        Message::MeshUpdated { id, url: _, mesh } => cmd.add(move |world: &mut World| {
-            SyncTrackerRes::apply_mesh_change_from_network(id, &mesh, world);
-        }),
+        Message::MeshUpdated { id, url } => sync_assets.request(SyncAssetType::Mesh, id, url),
     }
 }

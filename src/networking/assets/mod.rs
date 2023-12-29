@@ -14,6 +14,7 @@ use threadpool::ThreadPool;
 use tiny_http::{Request, Response, Server};
 
 use crate::{
+    lib_priv::SyncTrackerRes,
     mesh_serde::{bin_to_mesh, mesh_to_bin},
     proto::SyncAssetType,
 };
@@ -32,11 +33,16 @@ pub(crate) fn init(app: &mut App, addr: std::net::IpAddr, port: u16) {
     );
 }
 
-fn process_mesh_assets(mut meshes: ResMut<Assets<Mesh>>, sync: ResMut<SyncAssetTransfer>) {
+fn process_mesh_assets(
+    mut meshes: ResMut<Assets<Mesh>>,
+    sync: ResMut<SyncAssetTransfer>,
+    mut sync_tracker: ResMut<SyncTrackerRes>,
+) {
     let Ok(mut map) = sync.meshes_to_apply.write() else {
         return;
     };
     for (id, mesh) in map.drain() {
+        sync_tracker.pushed_handles_from_network.insert(id);
         let id: AssetId<Mesh> = AssetId::Uuid { uuid: id };
         meshes.insert(id, mesh);
     }
@@ -79,7 +85,7 @@ impl SyncAssetTransfer {
         result
     }
 
-    pub(crate) fn queue(&self, asset_type: SyncAssetType, id: Uuid, url: String) {
+    pub(crate) fn request(&self, asset_type: SyncAssetType, id: Uuid, url: String) {
         if let Ok(meshes) = self.meshes.read() {
             if meshes.contains_key(&id) {
                 return;
@@ -118,6 +124,20 @@ impl SyncAssetTransfer {
                 }
             }
         });
+    }
+
+    pub(crate) fn serve(&mut self, _: SyncAssetType,  id: &Uuid, mesh: &Mesh) {
+        let mut lock = self.meshes.write();
+        loop {
+            match lock {
+                Ok(mut map) => {
+                    map.insert(*id, mesh.clone());
+                    break;
+                }
+                Err(_) => lock = self.meshes.write(),
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
     }
 
     fn respond(rx: Receiver<Request>, meshes: MeshCache) {

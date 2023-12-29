@@ -10,7 +10,7 @@ use bevy_renet::renet::ClientId;
 use bevy::utils::Uuid;
 
 use crate::{
-    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, mesh_serde::bin_to_mesh, proto::AssId,
+    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId,
     proto_serde::bin_to_compo, server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent,
     SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp, proto::SyncAssetType,
 };
@@ -119,16 +119,6 @@ impl SyncTrackerRes {
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
         materials.insert(id, mat);
-    }
-
-    pub(crate) fn apply_mesh_change_from_network(id: AssId, mesh: &[u8], world: &mut World) {
-        world
-            .resource_mut::<SyncTrackerRes>()
-            .pushed_handles_from_network
-            .insert(id);
-        let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let mesh = bin_to_mesh(mesh);
-        meshes.insert(id, mesh);
     }
 }
 

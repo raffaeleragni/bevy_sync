@@ -2,8 +2,8 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetClient};
 
 use crate::{
-    lib_priv::{SyncTrackerRes, asset_url}, mesh_serde::mesh_to_bin, proto::Message, proto_serde::compo_to_bin,
-    SyncMark, SyncUp, proto::SyncAssetType,
+    lib_priv::{SyncTrackerRes, asset_url}, proto::Message, proto_serde::compo_to_bin,
+    SyncMark, SyncUp, proto::SyncAssetType, networking::assets::SyncAssetTransfer,
 };
 
 pub(crate) fn track_spawn_client(
@@ -135,6 +135,7 @@ pub(crate) fn react_on_changed_materials(
 
 pub(crate) fn react_on_changed_meshes(
     mut track: ResMut<SyncTrackerRes>,
+    mut sync_asset: ResMut<SyncAssetTransfer>,
     mut client: ResMut<RenetClient>,
     assets: Res<Assets<Mesh>>,
     mut events: EventReader<AssetEvent<Mesh>>,
@@ -151,12 +152,12 @@ pub(crate) fn react_on_changed_meshes(
                 if track.skip_network_handle_change(*id) {
                     continue;
                 }
+                sync_asset.serve(SyncAssetType::Mesh, id, mesh);
                 client.send_message(
                     DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::MeshUpdated {
                         id: *id,
                         url: asset_url(SyncAssetType::Mesh, id),
-                        mesh: mesh_to_bin(mesh),
                     })
                     .unwrap(),
                 );
