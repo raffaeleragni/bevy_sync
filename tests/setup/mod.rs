@@ -259,4 +259,3 @@ pub(crate) fn sample_mesh() -> Mesh {
 
     mesh
 }
-

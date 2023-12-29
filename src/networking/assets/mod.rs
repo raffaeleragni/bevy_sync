@@ -1,7 +1,7 @@
 mod mesh_serde;
 
 use std::{
-    net::{SocketAddr, ToSocketAddrs, IpAddr},
+    net::{IpAddr, SocketAddr},
     sync::{
         mpsc::{channel, Receiver},
         Arc, RwLock,
@@ -20,7 +20,8 @@ use tiny_http::{Request, Response, Server};
 pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16) {
     debug!(
         "Initializing asset sync on {:?}:{}",
-        addr.clone(), port.clone()
+        addr.clone(),
+        port.clone()
     );
     let http_transfer = SyncAssetTransfer::new(addr, port);
     app.insert_resource(http_transfer);

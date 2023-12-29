@@ -25,13 +25,11 @@ impl Plugin for ClientSyncPlugin {
 
         app.add_systems(
             Update,
-            client_connected
-                .run_if(state_exists_and_equals(ClientState::Connecting))
+            client_connected.run_if(state_exists_and_equals(ClientState::Connecting)),
         );
         app.add_systems(
             Update,
-            client_connecting
-                .run_if(state_exists_and_equals(ClientState::Disconnected))
+            client_connecting.run_if(state_exists_and_equals(ClientState::Disconnected)),
         );
         app.add_systems(
             Update,

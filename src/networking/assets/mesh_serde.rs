@@ -89,7 +89,9 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
 }
 
 pub(crate) fn bin_to_mesh(binary: &[u8]) -> Mesh {
-    let Ok(data) = bincode::deserialize::<MeshData>(binary) else { return Mesh::new(PrimitiveTopology::TriangleList) };
+    let Ok(data) = bincode::deserialize::<MeshData>(binary) else {
+        return Mesh::new(PrimitiveTopology::TriangleList);
+    };
 
     let mesh_type_enum = match data.mesh_type {
         0 => PrimitiveTopology::PointList,
@@ -195,8 +197,12 @@ mod test {
                 .unwrap()
                 .get_bytes()
         );
-        let Indices::U32(v1) = mesh.indices().unwrap() else {panic!("bad indices type")};
-        let Indices::U32(v2) = mesh2.indices().unwrap() else {panic!("bad indices type")};
+        let Indices::U32(v1) = mesh.indices().unwrap() else {
+            panic!("bad indices type")
+        };
+        let Indices::U32(v2) = mesh2.indices().unwrap() else {
+            panic!("bad indices type")
+        };
         assert_eq!(v1, v2);
     }
 
@@ -227,8 +233,12 @@ mod test {
         );
         assert!(mesh.attribute(Mesh::ATTRIBUTE_TANGENT).is_none());
         assert!(mesh2.attribute(Mesh::ATTRIBUTE_TANGENT).is_none());
-        let Indices::U32(v1) = mesh.indices().unwrap() else {panic!("bad indices type")};
-        let Indices::U32(v2) = mesh2.indices().unwrap() else {panic!("bad indices type")};
+        let Indices::U32(v1) = mesh.indices().unwrap() else {
+            panic!("bad indices type")
+        };
+        let Indices::U32(v2) = mesh2.indices().unwrap() else {
+            panic!("bad indices type")
+        };
         assert_eq!(v1, v2);
     }
 
