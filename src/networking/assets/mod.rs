@@ -42,11 +42,11 @@ fn process_mesh_assets(
     for (id, mesh) in map.drain() {
         sync_tracker.pushed_handles_from_network.insert(id);
         let id: AssetId<Mesh> = AssetId::Uuid { uuid: id };
-        meshes.insert(id, mesh);
+        meshes.insert(id, bin_to_mesh(&mesh));
     }
 }
 
-type MeshCache = Arc<RwLock<HashMap<Uuid, Mesh>>>;
+type MeshCache = Arc<RwLock<HashMap<Uuid, Vec<u8>>>>;
 
 #[derive(Resource)]
 pub(crate) struct SyncAssetTransfer {
@@ -62,8 +62,8 @@ impl SyncAssetTransfer {
         let bind = SocketAddr::new(addr, port);
         let server_pool = ThreadPool::new(2);
         let download_pool = ThreadPool::new(127);
-        let meshes = Arc::new(RwLock::new(HashMap::<Uuid, Mesh>::new()));
-        let meshes_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Mesh>::new()));
+        let meshes = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
+        let meshes_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
 
         let (server_tx, server_rx) = channel::<Request>();
         let server = Server::http(bind).unwrap();
@@ -97,10 +97,13 @@ impl SyncAssetTransfer {
         debug!("Queuing request for {:?}:{} at {}", asset_type, id, url);
         self.download_pool.execute(move || {
             if let Ok(response) = ureq::get(url.as_str()).call() {
-                let len = response
+                let Some(len) = response
                     .header("Content-Length")
                     .and_then(|s| s.parse::<usize>().ok())
-                    .unwrap();
+                else {
+                    warn!("Failed to request: no content length available at {}", url);
+                    return;
+                };
                 let mut bytes: Vec<u8> = Vec::with_capacity(len);
                 if response
                     .into_reader()
@@ -110,13 +113,12 @@ impl SyncAssetTransfer {
                 {
                     match asset_type {
                         SyncAssetType::Mesh => {
-                            let mesh = bin_to_mesh(bytes.as_slice());
                             let mut lock = meshes_to_apply.write();
                             loop {
                                 match lock {
                                     Ok(mut map) => {
                                         debug!("Received mesh {}", id);
-                                        map.insert(id, mesh);
+                                        map.insert(id, bytes);
                                         break;
                                     }
                                     Err(_) => lock = meshes_to_apply.write(),
@@ -136,7 +138,7 @@ impl SyncAssetTransfer {
             match lock {
                 Ok(mut map) => {
                     debug!("Servig mesh {}", id);
-                    map.insert(*id, mesh.clone());
+                    map.insert(*id, mesh_to_bin(mesh));
                     break;
                 }
                 Err(_) => lock = self.meshes.write(),
@@ -170,7 +172,7 @@ impl SyncAssetTransfer {
                 continue;
             };
             request
-                .respond(Response::from_data(mesh_to_bin(mesh)))
+                .respond(Response::from_data(mesh.clone()))
                 .unwrap_or(());
         }
     }
