@@ -76,7 +76,7 @@ impl SyncAssetTransfer {
         };
         result.server_pool.execute(move || {
             for request in server.incoming_requests() {
-                debug!("Queuing response");
+                debug!("Queuing response to {}", request.url());
                 server_tx.send(request).unwrap_or(());
             }
         });
@@ -94,7 +94,7 @@ impl SyncAssetTransfer {
             }
         }
         let meshes_to_apply = self.meshes_to_apply.clone();
-        debug!("Queuing request");
+        debug!("Queuing request for {:?}:{} at {}", asset_type, id, url);
         self.download_pool.execute(move || {
             if let Ok(response) = ureq::get(url.as_str()).call() {
                 let len = response
@@ -149,7 +149,6 @@ impl SyncAssetTransfer {
     fn respond(rx: Receiver<Request>, meshes: MeshCache) {
         for request in rx.iter() {
             let url = request.url();
-            debug!("Responding to {}", url);
             let Some(id) = url.strip_prefix("/mesh/") else {
                 continue;
             };
@@ -157,6 +156,7 @@ impl SyncAssetTransfer {
                 continue;
             };
 
+            debug!("Responding to {}", url);
             let Ok(meshesmap) = meshes.read() else {
                 request
                     .respond(Response::from_string("").with_status_code(449))
