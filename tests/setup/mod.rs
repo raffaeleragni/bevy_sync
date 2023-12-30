@@ -165,6 +165,7 @@ fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut [App]) -> Result<(), 
         ip: env.ip,
         port: env.port,
         web_port: portpicker::pick_unused_port().unwrap(),
+        max_transfer: 100_000_000,
     });
 
     for capp in capps {
@@ -172,6 +173,7 @@ fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut [App]) -> Result<(), 
             ip: env.ip,
             port: env.port,
             web_port: portpicker::pick_unused_port().unwrap(),
+            max_transfer: 100_000_000,
         });
 
         wait_until_connected(sapp, capp, env.startup_max_wait_updates)?;

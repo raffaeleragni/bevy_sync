@@ -62,12 +62,14 @@ pub struct ServerPlugin {
     pub ip: IpAddr,
     pub port: u16,
     pub web_port: u16,
+    pub max_transfer: usize,
 }
 
 pub struct ClientPlugin {
     pub ip: IpAddr,
     pub port: u16,
     pub web_port: u16,
+    pub max_transfer: usize,
 }
 
 pub trait SyncComponent {

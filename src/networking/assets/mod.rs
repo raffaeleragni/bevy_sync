@@ -17,13 +17,13 @@ use std::io::Read;
 use threadpool::ThreadPool;
 use tiny_http::{Request, Response, Server};
 
-pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16) {
+pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16, max_transfer: usize) {
     debug!(
         "Initializing asset sync on {:?}:{}",
         addr.clone(),
         port.clone()
     );
-    let http_transfer = SyncAssetTransfer::new(addr, port);
+    let http_transfer = SyncAssetTransfer::new(addr, port, max_transfer);
     app.insert_resource(http_transfer);
     app.add_systems(
         Update,
@@ -55,12 +55,13 @@ pub(crate) struct SyncAssetTransfer {
     download_pool: ThreadPool,
     meshes: MeshCache,
     meshes_to_apply: MeshCache,
+    max_transfer: usize,
 }
 
 impl SyncAssetTransfer {
-    pub(crate) fn new(addr: IpAddr, port: u16) -> Self {
+    pub(crate) fn new(addr: IpAddr, port: u16, max_transfer: usize) -> Self {
         let bind = SocketAddr::new(addr, port);
-        let server_pool = ThreadPool::new(2);
+        let server_pool = ThreadPool::new(128);
         let download_pool = ThreadPool::new(127);
         let meshes = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
         let meshes_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
@@ -73,6 +74,7 @@ impl SyncAssetTransfer {
             download_pool,
             meshes,
             meshes_to_apply,
+            max_transfer,
         };
         result.server_pool.execute(move || {
             for request in server.incoming_requests() {
@@ -95,19 +97,17 @@ impl SyncAssetTransfer {
         }
         let meshes_to_apply = self.meshes_to_apply.clone();
         debug!("Queuing request for {:?}:{} at {}", asset_type, id, url);
+        let max_transfer = self.max_transfer;
         self.download_pool.execute(move || {
             if let Ok(response) = ureq::get(url.as_str()).call() {
-                let Some(len) = response
+                let len = response
                     .header("Content-Length")
                     .and_then(|s| s.parse::<usize>().ok())
-                else {
-                    warn!("Failed to request: no content length available at {}", url);
-                    return;
-                };
+                    .unwrap_or(max_transfer);
                 let mut bytes: Vec<u8> = Vec::with_capacity(len);
                 if response
                     .into_reader()
-                    .take(100_000_000)
+                    .take(len as u64)
                     .read_to_end(&mut bytes)
                     .is_ok()
                 {
