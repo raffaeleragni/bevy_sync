@@ -20,7 +20,13 @@ use bevy_renet::{
 
 const PROTOCOL_ID: u64 = 1;
 
-pub(crate) fn setup_server(app: &mut App, ip: IpAddr, port: u16, asset_port: u16, max_transfer: usize) {
+pub(crate) fn setup_server(
+    app: &mut App,
+    ip: IpAddr,
+    port: u16,
+    asset_port: u16,
+    max_transfer: usize,
+) {
     app.add_plugins(RenetServerPlugin);
     app.insert_resource(RenetServer::new(ConnectionConfig::default()));
     app.add_plugins(NetcodeServerPlugin);
@@ -28,7 +34,13 @@ pub(crate) fn setup_server(app: &mut App, ip: IpAddr, port: u16, asset_port: u16
     assets::init(app, ip, asset_port, max_transfer);
 }
 
-pub(crate) fn setup_client(app: &mut App, ip: IpAddr, port: u16, asset_port: u16, max_transfer: usize) {
+pub(crate) fn setup_client(
+    app: &mut App,
+    ip: IpAddr,
+    port: u16,
+    asset_port: u16,
+    max_transfer: usize,
+) {
     app.add_plugins(RenetClientPlugin);
     app.insert_resource(RenetClient::new(ConnectionConfig::default()));
     app.add_plugins(NetcodeClientPlugin);

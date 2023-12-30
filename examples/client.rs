@@ -19,7 +19,12 @@ fn main() {
     client.add_plugins(DefaultPlugins);
     client.add_plugins(bevy_editor_pls::EditorPlugin::default());
     client.add_plugins(SyncPlugin);
-    client.add_plugins(ClientPlugin { ip, port, web_port, max_transfer: 100_000_000 });
+    client.add_plugins(ClientPlugin {
+        ip,
+        port,
+        web_port,
+        max_transfer: 100_000_000,
+    });
 
     client.sync_component::<Name>();
     client.sync_component::<Aabb>();
