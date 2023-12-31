@@ -9,7 +9,7 @@ mod lib_priv;
 mod logging;
 mod networking;
 mod proto;
-mod proto_serde;
+mod binreflect;
 mod server;
 
 pub mod prelude {

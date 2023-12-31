@@ -3,7 +3,7 @@ use bevy_renet::renet::{DefaultChannel, RenetClient};
 
 use crate::{
     lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer, proto::Message,
-    proto::SyncAssetType, proto_serde::compo_to_bin, SyncMark, SyncUp,
+    proto::SyncAssetType, binreflect::reflect_to_bin, SyncMark, SyncUp,
 };
 
 pub(crate) fn track_spawn_client(
@@ -80,7 +80,7 @@ pub(crate) fn react_on_changed_components(
 ) {
     let registry = registry.read();
     while let Some(change) = track.changed_components_to_send.pop_front() {
-        let Ok(bin) = compo_to_bin(change.data.as_reflect(), &registry) else {
+        let Ok(bin) = reflect_to_bin(change.data.as_reflect(), &registry) else {
             continue;
         };
         client.send_message(
@@ -115,7 +115,7 @@ pub(crate) fn react_on_changed_materials(
                 if track.skip_network_handle_change(*id) {
                     continue;
                 }
-                let Ok(bin) = compo_to_bin(material.as_reflect(), &registry) else {
+                let Ok(bin) = reflect_to_bin(material.as_reflect(), &registry) else {
                     continue;
                 };
                 client.send_message(

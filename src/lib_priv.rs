@@ -10,7 +10,7 @@ use bevy::{
 use bevy_renet::renet::ClientId;
 
 use crate::{
-    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId, proto_serde::bin_to_compo,
+    bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId, binreflect::bin_to_reflect,
     server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown, SyncExclude,
     SyncMark, SyncPlugin, SyncUp,
 };
@@ -81,7 +81,7 @@ impl SyncTrackerRes {
     ) -> bool {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
-        let component_data = bin_to_compo(data, &registry);
+        let component_data = bin_to_reflect(data, &registry);
         let registration = registry.get_with_type_path(name.as_str()).unwrap();
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
         let previous_value = reflect_component.reflect(world.entity(e_id));
@@ -115,7 +115,7 @@ impl SyncTrackerRes {
             .insert(id);
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
-        let component_data = bin_to_compo(material, &registry);
+        let component_data = bin_to_reflect(material, &registry);
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
         materials.insert(id, mat);

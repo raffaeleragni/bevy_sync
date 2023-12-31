@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::{
     lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer, proto::Message,
-    proto::SyncAssetType, proto_serde::compo_to_bin, SyncDown,
+    proto::SyncAssetType, binreflect::reflect_to_bin, SyncDown,
 };
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashSet};
@@ -89,7 +89,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let entity = world.entity(arch_entity.entity());
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).ok_or("not registered")?;
-                let Ok(compo_bin) = compo_to_bin(component.as_reflect(), &registry) else {
+                let Ok(compo_bin) = reflect_to_bin(component.as_reflect(), &registry) else {
                     continue;
                 };
                 result.push(Message::ComponentUpdated {
@@ -146,7 +146,7 @@ fn check_materials(world: &World, result: &mut Vec<Message>) -> Result<(), Box<d
             let AssetId::Uuid { uuid: id } = id else {
                 continue;
             };
-            let Ok(bin) = compo_to_bin(material.as_reflect(), &registry) else {
+            let Ok(bin) = reflect_to_bin(material.as_reflect(), &registry) else {
                 continue;
             };
             result.push(Message::StandardMaterialUpdated { id, material: bin });

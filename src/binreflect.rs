@@ -6,7 +6,7 @@ use bevy::reflect::{
 use bincode::{DefaultOptions, ErrorKind, Options};
 use serde::de::DeserializeSeed;
 
-pub(crate) fn compo_to_bin(
+pub(crate) fn reflect_to_bin(
     compo: &dyn Reflect,
     registry: &TypeRegistry,
 ) -> Result<Vec<u8>, Box<ErrorKind>> {
@@ -17,7 +17,7 @@ pub(crate) fn compo_to_bin(
         .serialize(&serializer)
 }
 
-pub(crate) fn bin_to_compo(data: &[u8], registry: &TypeRegistry) -> Box<dyn Reflect> {
+pub(crate) fn bin_to_reflect(data: &[u8], registry: &TypeRegistry) -> Box<dyn Reflect> {
     let reflect_deserializer = UntypedReflectDeserializer::new(registry);
     let binoptions = DefaultOptions::new()
         .with_fixint_encoding()
@@ -46,8 +46,6 @@ mod test {
     };
     use serde::{Deserialize, Serialize};
 
-    use crate::proto_serde::{bin_to_compo, compo_to_bin};
-
     #[derive(Component, Default, PartialEq, Serialize, Deserialize, Debug, Reflect)]
     struct MyCompo {
         value: i32,
@@ -61,9 +59,9 @@ mod test {
         let mut registry = TypeRegistry::default();
         registry.register::<T>();
 
-        let data = compo_to_bin(compo_orig.as_reflect(), &registry).unwrap();
+        let data = reflect_to_bin(compo_orig.as_reflect(), &registry).unwrap();
 
-        let compo_result = bin_to_compo(&data, &registry);
+        let compo_result = bin_to_reflect(&data, &registry);
         let compo_result = compo_result.downcast::<T>().unwrap();
 
         assert_eq!(*compo_result, compo_orig);
@@ -89,9 +87,9 @@ mod test {
         registry.register_type_data::<Vec3, ReflectFromReflect>();
         registry.register_type_data::<Quat, ReflectFromReflect>();
 
-        let data = compo_to_bin(compo_orig.as_reflect(), &registry).unwrap();
+        let data = reflect_to_bin(compo_orig.as_reflect(), &registry).unwrap();
 
-        let compo_result = bin_to_compo(&data, &registry);
+        let compo_result = bin_to_reflect(&data, &registry);
         let compo_result = compo_result.downcast::<Transform>().unwrap();
 
         assert_eq!(*compo_result, compo_orig);
@@ -115,9 +113,9 @@ mod test {
         registry.register::<OpaqueRendererMethod>();
         registry.register_type_data::<StandardMaterial, ReflectFromReflect>();
 
-        let data = compo_to_bin(material_orig.as_reflect(), &registry).unwrap();
+        let data = reflect_to_bin(material_orig.as_reflect(), &registry).unwrap();
 
-        let result = bin_to_compo(&data, &registry);
+        let result = bin_to_reflect(&data, &registry);
         let result = result.downcast::<StandardMaterial>().unwrap();
 
         assert_eq!(result.base_color, material_orig.base_color);
@@ -148,7 +146,7 @@ mod test {
             .serialize(&serializer)
             .unwrap();
 
-        let result = bin_to_compo(&result, &registry);
+        let result = bin_to_reflect(&result, &registry);
         let result = result.downcast::<StandardMaterial>().unwrap();
         assert_eq!(compo.base_color, result.base_color);
     }
