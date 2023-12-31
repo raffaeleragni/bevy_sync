@@ -85,7 +85,7 @@ impl SyncAssetTransfer {
         let meshes = result.meshes.clone();
         result
             .server_pool
-            .execute(|| Self::respond(server_rx, meshes));
+            .execute(move || Self::respond(server_rx, meshes, max_transfer));
         result
     }
 
@@ -148,7 +148,7 @@ impl SyncAssetTransfer {
         format!("{}/mesh/{}", self.base_url, &id.to_string())
     }
 
-    fn respond(rx: Receiver<Request>, meshes: MeshCache) {
+    fn respond(rx: Receiver<Request>, meshes: MeshCache, max_size: usize) {
         for request in rx.iter() {
             let url = request.url();
             let Some(id) = url.strip_prefix("/mesh/") else {
@@ -172,7 +172,7 @@ impl SyncAssetTransfer {
                 continue;
             };
             request
-                .respond(Response::from_data(mesh.clone()))
+                .respond(Response::from_data(mesh.clone()).with_chunked_threshold(max_size))
                 .unwrap_or(());
         }
     }
