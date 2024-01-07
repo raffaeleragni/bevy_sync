@@ -4,16 +4,22 @@ use bevy::{prelude::*, render::render_resource::PrimitiveTopology};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
+struct AssetImage;
+
+#[derive(Serialize, Deserialize)]
 struct MeshData {
     mesh_type: u8,
     positions: Option<Vec<[f32; 3]>>,
     normals: Option<Vec<[f32; 3]>>,
-    uvs: Option<Vec<[f32; 2]>>,
+    uvs0: Option<Vec<[f32; 2]>>,
+    uvs1: Option<Vec<[f32; 2]>>,
     tangents: Option<Vec<[f32; 4]>>,
     colors: Option<Vec<[f32; 4]>>,
     joint_weights: Option<Vec<[f32; 4]>>,
     joint_indices: Option<Vec<[u16; 4]>>,
     indices: Option<Vec<u32>>,
+    morph_targets: Option<AssetImage>, //TODO serialize Image type
+    morph_target_names: Option<Vec<String>>,
 }
 
 pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
@@ -35,7 +41,13 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
         None
     };
 
-    let uvs = if let Some(Float32x2(t)) = mesh.attribute(Mesh::ATTRIBUTE_UV_0) {
+    let uvs0 = if let Some(Float32x2(t)) = mesh.attribute(Mesh::ATTRIBUTE_UV_0) {
+        Some(t.clone())
+    } else {
+        None
+    };
+
+    let uvs1 = if let Some(Float32x2(t)) = mesh.attribute(Mesh::ATTRIBUTE_UV_1) {
         Some(t.clone())
     } else {
         None
@@ -65,6 +77,8 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
         None
     };
 
+    let morph_targets = None;
+    let morph_target_names = mesh.morph_target_names().map(|v| v.to_vec());
     let mesh_type_num = match mesh.primitive_topology() {
         PrimitiveTopology::PointList => 0,
         PrimitiveTopology::LineList => 1,
@@ -77,12 +91,15 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
         mesh_type: mesh_type_num,
         positions,
         normals,
-        uvs,
+        uvs0,
+        uvs1,
         tangents,
         colors,
         joint_weights,
         joint_indices,
         indices,
+        morph_targets,
+        morph_target_names,
     };
 
     bincode::serialize(&data).unwrap()
@@ -112,8 +129,12 @@ pub(crate) fn bin_to_mesh(binary: &[u8]) -> Mesh {
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     }
 
-    if let Some(uvs) = data.uvs {
-        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    if let Some(uvs0) = data.uvs0 {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs0);
+    }
+
+    if let Some(uvs1) = data.uvs1 {
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, uvs1);
     }
 
     if let Some(tangents) = data.tangents {
@@ -134,6 +155,14 @@ pub(crate) fn bin_to_mesh(binary: &[u8]) -> Mesh {
 
     if let Some(indices) = data.indices {
         mesh.set_indices(Some(Indices::U32(indices)));
+    }
+
+    //if let Some(morph_targets) = data.morph_targets {
+    //    mesh.set_morph_targets(morph_targets);
+    //}
+
+    if let Some(morph_target_names) = data.morph_target_names {
+        mesh.set_morph_target_names(morph_target_names);
     }
 
     mesh
@@ -167,6 +196,10 @@ mod test {
         assert_eq!(
             mesh.attribute(Mesh::ATTRIBUTE_UV_0).unwrap().get_bytes(),
             mesh2.attribute(Mesh::ATTRIBUTE_UV_0).unwrap().get_bytes()
+        );
+        assert_eq!(
+            mesh.attribute(Mesh::ATTRIBUTE_UV_1).unwrap().get_bytes(),
+            mesh2.attribute(Mesh::ATTRIBUTE_UV_1).unwrap().get_bytes()
         );
         assert_eq!(
             mesh.attribute(Mesh::ATTRIBUTE_TANGENT).unwrap().get_bytes(),
@@ -203,7 +236,11 @@ mod test {
         let Indices::U32(v2) = mesh2.indices().unwrap() else {
             panic!("bad indices type")
         };
-        assert_eq!(v1, v2);
+        assert_eq!(
+            mesh.morph_target_names(),
+            mesh2.morph_target_names()
+        );
+         assert_eq!(v1, v2);
     }
 
     #[test]
@@ -231,6 +268,10 @@ mod test {
             mesh.attribute(Mesh::ATTRIBUTE_UV_0).unwrap().get_bytes(),
             mesh2.attribute(Mesh::ATTRIBUTE_UV_0).unwrap().get_bytes()
         );
+        assert_eq!(
+            mesh.attribute(Mesh::ATTRIBUTE_UV_1).unwrap().get_bytes(),
+            mesh2.attribute(Mesh::ATTRIBUTE_UV_1).unwrap().get_bytes()
+        );
         assert!(mesh.attribute(Mesh::ATTRIBUTE_TANGENT).is_none());
         assert!(mesh2.attribute(Mesh::ATTRIBUTE_TANGENT).is_none());
         let Indices::U32(v1) = mesh.indices().unwrap() else {
@@ -250,6 +291,7 @@ mod test {
         );
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; 3]);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; 3]);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, vec![[1., 1.]; 3]);
         mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, vec![[0., 1., 0., 0.]; 3]);
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vec![[0., 1., 0., 0.]; 4]);
         mesh.insert_attribute(Mesh::ATTRIBUTE_JOINT_WEIGHT, vec![[0., 1., 0., 0.]; 4]);
@@ -258,6 +300,7 @@ mod test {
             Uint16x4(vec![[1u16, 2, 3, 4]; 4]),
         );
         mesh.set_indices(Some(Indices::U32(vec![0, 2, 1])));
+        mesh.set_morph_target_names(vec!["name1".into(), "name2".into()]);
         mesh
     }
 
@@ -269,6 +312,7 @@ mod test {
         );
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; 3]);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; 3]);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, vec![[1., 1.]; 3]);
         mesh.set_indices(Some(Indices::U32(vec![0, 2, 1])));
         mesh
     }
