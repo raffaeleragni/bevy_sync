@@ -60,22 +60,26 @@ pub(crate) struct SyncAssetTransfer {
 
 impl SyncAssetTransfer {
     pub(crate) fn new(addr: IpAddr, port: u16, max_transfer: usize) -> Self {
-        let bind = SocketAddr::new(addr, port);
+        let base_url = format!("http://{}:{}", addr, port);
+        debug!("Starting asset server on {}", base_url);
+        let server = Server::http(SocketAddr::new(addr, port)).unwrap();
+
         let server_pool = ThreadPool::new(128);
         let download_pool = ThreadPool::new(127);
+
         let meshes = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
         let meshes_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
 
-        let (server_tx, server_rx) = channel::<Request>();
-        let server = Server::http(bind).unwrap();
         let result = Self {
-            base_url: format!("http://{}:{}", addr, port),
+            base_url,
             server_pool,
             download_pool,
             meshes,
             meshes_to_apply,
             max_transfer,
         };
+
+        let (server_tx, server_rx) = channel::<Request>();
         result.server_pool.execute(move || {
             for request in server.incoming_requests() {
                 debug!("Queuing response to {}", request.url());
@@ -117,7 +121,7 @@ impl SyncAssetTransfer {
                             loop {
                                 match lock {
                                     Ok(mut map) => {
-                                        debug!("Received mesh {}", id);
+                                        debug!("Received mesh {} with size {}", id, len);
                                         map.insert(id, bytes);
                                         break;
                                     }
@@ -158,7 +162,6 @@ impl SyncAssetTransfer {
                 continue;
             };
 
-            debug!("Responding to {}", url);
             let Ok(meshesmap) = meshes.read() else {
                 request
                     .respond(Response::from_string("").with_status_code(449))
@@ -171,6 +174,7 @@ impl SyncAssetTransfer {
                     .unwrap_or(());
                 continue;
             };
+            debug!("Responding to {} with size {}", url, mesh.len());
             request
                 .respond(Response::from_data(mesh.clone()).with_chunked_threshold(max_size))
                 .unwrap_or(());

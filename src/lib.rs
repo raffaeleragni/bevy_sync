@@ -3,13 +3,13 @@
 **state is in development**
 */
 
+mod binreflect;
 mod bundle_fix;
 mod client;
 mod lib_priv;
 mod logging;
 mod networking;
 mod proto;
-mod binreflect;
 mod server;
 
 pub mod prelude {

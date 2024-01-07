@@ -2,8 +2,8 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetClient};
 
 use crate::{
-    lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer, proto::Message,
-    proto::SyncAssetType, binreflect::reflect_to_bin, SyncMark, SyncUp,
+    binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
+    proto::Message, proto::SyncAssetType, SyncMark, SyncUp,
 };
 
 pub(crate) fn track_spawn_client(

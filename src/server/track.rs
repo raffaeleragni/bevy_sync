@@ -2,11 +2,11 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetServer};
 
 use crate::{
+    binreflect::reflect_to_bin,
     lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
     networking::assets::SyncAssetTransfer,
     proto::Message,
     proto::SyncAssetType,
-    binreflect::reflect_to_bin,
     SyncDown, SyncMark,
 };
 

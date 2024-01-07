@@ -1,8 +1,8 @@
 use std::error::Error;
 
 use crate::{
-    lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer, proto::Message,
-    proto::SyncAssetType, binreflect::reflect_to_bin, SyncDown,
+    binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
+    proto::Message, proto::SyncAssetType, SyncDown,
 };
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashSet};
