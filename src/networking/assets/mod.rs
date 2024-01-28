@@ -142,7 +142,7 @@ impl SyncAssetTransfer {
             match lock {
                 Ok(mut map) => {
                     debug!("Servig mesh {}", id);
-                    map.insert(*id, mesh_to_bin(mesh));
+                    map.entry(*id).or_insert_with(|| mesh_to_bin(mesh));
                     break;
                 }
                 Err(_) => lock = self.meshes.write(),
