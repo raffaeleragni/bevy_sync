@@ -15,7 +15,7 @@ use crate::{
 use self::track::{
     entity_created_on_server, entity_parented_on_server, entity_removed_from_server,
     react_on_changed_components, react_on_changed_materials, react_on_changed_meshes,
-    reply_back_to_client_generated_entity, track_spawn_server,
+    reply_back_to_client_generated_entity, track_spawn_server, react_on_changed_images,
 };
 
 mod initial_sync;
@@ -53,6 +53,7 @@ impl Plugin for ServerSyncPlugin {
                 track_spawn_server,
                 react_on_changed_components,
                 react_on_changed_materials.run_if(sync_material_enabled),
+                react_on_changed_images.run_if(sync_material_enabled),
                 react_on_changed_meshes.run_if(sync_mesh_enabled),
             )
                 .chain()

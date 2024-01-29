@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
-    proto::Message, proto::SyncAssetType, SyncDown,
+    proto::Message, SyncDown,
 };
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashSet};
@@ -169,7 +169,7 @@ fn check_meshes(world: &mut World, result: &mut Vec<Message>) -> Result<(), Box<
     }
     let mut sync_assets = world.resource_mut::<SyncAssetTransfer>();
     for (id, mesh) in meshes_to_add.iter() {
-        let url = sync_assets.serve(SyncAssetType::Mesh, id, mesh);
+        let url = sync_assets.serve_mesh(id, mesh);
         result.push(Message::MeshUpdated { id: *id, url });
     }
     Ok(())

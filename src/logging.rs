@@ -65,5 +65,11 @@ pub(crate) fn log_message_received(from: Who, message: &Message) {
                 from, id, url
             )
         }
+        Message::ImageUpdated { id, url } => {
+            debug!(
+                "{:?} received ImageUpdated {{ uuid: {} }} {{ url: {} }}",
+                from, id, url
+            )
+        }
     }
 }

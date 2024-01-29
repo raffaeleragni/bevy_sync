@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 use bevy_sync::{SyncDown, SyncUp};
 
-use crate::setup::{sample_mesh, MySynched, TestEnv};
+use crate::setup::{sample_mesh, MySynched, TestEnv, sample_image};
 
 #[allow(dead_code)]
 pub(crate) fn entities_in_sync<T>(env: &mut TestEnv, _: T, entity_count: u32) {
@@ -109,6 +109,14 @@ pub(crate) fn assets_has_sample_mesh(app: &mut App, id: AssetId<Mesh>) {
             .unwrap()
             .get_bytes()
     );
+}
+
+#[allow(dead_code)]
+pub(crate) fn assets_has_sample_image(app: &mut App, id: AssetId<Image>) {
+    let images = app.world.resource_mut::<Assets<Image>>();
+    let image = images.get(id).unwrap();
+    let sample = sample_image();
+    assert_eq!(image.data, sample.data);
 }
 
 #[allow(dead_code)]

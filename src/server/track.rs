@@ -6,7 +6,6 @@ use crate::{
     lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
     networking::assets::SyncAssetTransfer,
     proto::Message,
-    proto::SyncAssetType,
     SyncDown, SyncMark,
 };
 
@@ -197,12 +196,50 @@ pub(crate) fn react_on_changed_meshes(
                 if track.skip_network_handle_change(*id) {
                     continue;
                 }
-                let url = sync_assets.serve(SyncAssetType::Mesh, id, mesh);
+                let url = sync_assets.serve_mesh(id, mesh);
                 for cid in server.clients_id().into_iter() {
                     server.send_message(
                         cid,
                         DefaultChannel::ReliableOrdered,
                         bincode::serialize(&Message::MeshUpdated {
+                            id: *id,
+                            url: url.clone(),
+                        })
+                        .unwrap(),
+                    );
+                }
+            }
+            AssetEvent::Removed { id: _ } => {}
+            _ => (),
+        }
+    }
+}
+
+pub(crate) fn react_on_changed_images(
+    mut track: ResMut<SyncTrackerRes>,
+    mut server: ResMut<RenetServer>,
+    assets: Res<Assets<Image>>,
+    mut events: EventReader<AssetEvent<Image>>,
+    mut sync_assets: ResMut<SyncAssetTransfer>,
+) {
+    for event in &mut events.read() {
+        match event {
+            AssetEvent::Added { id } | AssetEvent::Modified { id } => {
+                let Some(image) = assets.get(*id) else {
+                    continue;
+                };
+                let AssetId::Uuid { uuid: id } = id else {
+                    continue;
+                };
+                if track.skip_network_handle_change(*id) {
+                    continue;
+                }
+                let url = sync_assets.serve_image(id, image);
+                for cid in server.clients_id().into_iter() {
+                    server.send_message(
+                        cid,
+                        DefaultChannel::ReliableOrdered,
+                        bincode::serialize(&Message::ImageUpdated {
                             id: *id,
                             url: url.clone(),
                         })

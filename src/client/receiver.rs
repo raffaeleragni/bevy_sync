@@ -90,5 +90,6 @@ fn client_received_a_message(
             SyncTrackerRes::apply_material_change_from_network(id, &material, world);
         }),
         Message::MeshUpdated { id, url } => sync_assets.request(SyncAssetType::Mesh, id, url),
+        Message::ImageUpdated { id, url } => sync_assets.request(SyncAssetType::Image, id, url),
     }
 }

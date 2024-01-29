@@ -7,6 +7,7 @@ pub type AssId = Uuid;
 #[derive(Debug)]
 pub(crate) enum SyncAssetType {
     Mesh,
+    Image,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -39,4 +40,8 @@ pub(crate) enum Message {
         id: Uuid,
         url: String,
     } = 7,
+    ImageUpdated {
+        id: Uuid,
+        url: String,
+    } = 8,
 }

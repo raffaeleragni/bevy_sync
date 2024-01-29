@@ -3,7 +3,7 @@ use bevy_renet::renet::{DefaultChannel, RenetClient};
 
 use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
-    proto::Message, proto::SyncAssetType, SyncMark, SyncUp,
+    proto::Message, SyncMark, SyncUp,
 };
 
 pub(crate) fn track_spawn_client(
@@ -152,10 +152,41 @@ pub(crate) fn react_on_changed_meshes(
                 if track.skip_network_handle_change(*id) {
                     continue;
                 }
-                let url = sync_asset.serve(SyncAssetType::Mesh, id, mesh);
+                let url = sync_asset.serve_mesh(id, mesh);
                 client.send_message(
                     DefaultChannel::ReliableOrdered,
                     bincode::serialize(&Message::MeshUpdated { id: *id, url }).unwrap(),
+                );
+            }
+            AssetEvent::Removed { id: _ } => {}
+            _ => (),
+        }
+    }
+}
+
+pub(crate) fn react_on_changed_images(
+    mut track: ResMut<SyncTrackerRes>,
+    mut sync_asset: ResMut<SyncAssetTransfer>,
+    mut client: ResMut<RenetClient>,
+    assets: Res<Assets<Image>>,
+    mut events: EventReader<AssetEvent<Image>>,
+) {
+    for event in &mut events.read() {
+        match event {
+            AssetEvent::Added { id } | AssetEvent::Modified { id } => {
+                let Some(image) = assets.get(*id) else {
+                    continue;
+                };
+                let AssetId::Uuid { uuid: id } = id else {
+                    continue;
+                };
+                if track.skip_network_handle_change(*id) {
+                    continue;
+                }
+                let url = sync_asset.serve_image(id, image);
+                client.send_message(
+                    DefaultChannel::ReliableOrdered,
+                    bincode::serialize(&Message::ImageUpdated { id: *id, url }).unwrap(),
                 );
             }
             AssetEvent::Removed { id: _ } => {}

@@ -8,7 +8,10 @@ use bevy::{
     pbr::PbrPlugin,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
-    render::{mesh::Indices, render_resource::PrimitiveTopology},
+    render::{
+        mesh::Indices,
+        render_resource::{Extent3d, PrimitiveTopology, TextureDimension},
+    },
     transform::TransformBundle,
     utils::Uuid,
     MinimalPlugins,
@@ -155,6 +158,7 @@ fn add_plugins(app: &mut App) {
     app.add_plugins(AssetPlugin::default());
     app.init_asset::<Shader>();
     app.init_asset::<Mesh>();
+    app.init_asset::<Image>();
     app.add_plugins(PbrPlugin::default());
 
     app.add_plugins(SyncPlugin);
@@ -233,6 +237,19 @@ pub(crate) fn spawn_new_mesh(app: &mut App) -> AssetId<Mesh> {
 }
 
 #[allow(dead_code)]
+pub(crate) fn spawn_new_image(app: &mut App) -> AssetId<Image> {
+    let mut images = app.world.resource_mut::<Assets<Image>>();
+    let id = Uuid::new_v4();
+    let mesh = sample_image();
+    let handle = Handle::<Image>::Weak(id.into());
+    images.insert(id, mesh);
+
+    app.world.spawn(handle);
+
+    id.into()
+}
+
+#[allow(dead_code)]
 pub(crate) fn spawn_new_material_nouuid(app: &mut App) -> Handle<StandardMaterial> {
     let mut materials = app.world.resource_mut::<Assets<StandardMaterial>>();
     materials.add(StandardMaterial {
@@ -260,4 +277,14 @@ pub(crate) fn sample_mesh() -> Mesh {
     mesh.set_indices(Some(Indices::U32(vec![0, 2, 1])));
 
     mesh
+}
+
+#[allow(dead_code)]
+pub(crate) fn sample_image() -> Image {
+    Image::new(
+        Extent3d::default(),
+        TextureDimension::D1,
+        vec![],
+        bevy::render::render_resource::TextureFormat::R8Sint,
+    )
 }
