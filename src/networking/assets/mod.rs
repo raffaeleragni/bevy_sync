@@ -1,3 +1,4 @@
+mod image_serde;
 mod mesh_serde;
 
 use std::{
@@ -9,13 +10,15 @@ use std::{
     time::Duration,
 };
 
-use crate::{lib_priv::SyncTrackerRes, proto::SyncAssetType};
+use crate::{lib_priv::SyncTrackerRes, proto::SyncAssetType, networking::assets::image_serde::image_to_bin};
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashMap};
 use mesh_serde::{bin_to_mesh, mesh_to_bin};
 use std::io::Read;
 use threadpool::ThreadPool;
 use tiny_http::{Request, Response, Server};
+
+use self::image_serde::bin_to_image;
 
 pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16, max_transfer: usize) {
     debug!(
@@ -28,6 +31,10 @@ pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16, max_transfer: usize) 
     app.add_systems(
         Update,
         process_mesh_assets.run_if(resource_exists::<SyncAssetTransfer>()),
+    );
+    app.add_systems(
+        Update,
+        process_image_assets.run_if(resource_exists::<SyncAssetTransfer>()),
     );
 }
 
@@ -43,6 +50,21 @@ fn process_mesh_assets(
         sync_tracker.pushed_handles_from_network.insert(id);
         let id: AssetId<Mesh> = AssetId::Uuid { uuid: id };
         meshes.insert(id, bin_to_mesh(&mesh));
+    }
+}
+
+fn process_image_assets(
+    mut images: ResMut<Assets<Image>>,
+    sync: ResMut<SyncAssetTransfer>,
+    mut sync_tracker: ResMut<SyncTrackerRes>,
+) {
+    let Ok(mut map) = sync.images_to_apply.write() else {
+        return;
+    };
+    for (id, image) in map.drain() {
+        sync_tracker.pushed_handles_from_network.insert(id);
+        let id: AssetId<Image> = AssetId::Uuid { uuid: id };
+        images.insert(id, bin_to_image(&image));
     }
 }
 
@@ -181,7 +203,7 @@ impl SyncAssetTransfer {
             match lock {
                 Ok(mut map) => {
                     debug!("Serving image {}", id);
-                    map.entry(*id).or_insert_with(|| image.data.clone());
+                    map.entry(*id).or_insert_with(|| image_to_bin(image));
                     break;
                 }
                 Err(_) => lock = self.meshes.write(),
