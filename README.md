@@ -17,7 +17,7 @@ Current state is in development.
   - [ ] Transform
 - [X] SimpleMaterial (through sync channel)
 - [X] Refactor asset transfer through http
-  - [ ] Asset: Mesh
+  - [X] Asset: Mesh
     - [X] programmatically created mesh
     - [X] mesh from gltf: static, rigged, with morphs
   - [ ] Asset: Textures
