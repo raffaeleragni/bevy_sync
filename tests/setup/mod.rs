@@ -8,10 +8,7 @@ use bevy::{
     pbr::PbrPlugin,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
-    render::{
-        mesh::Indices,
-        render_resource::{Extent3d, PrimitiveTopology, TextureDimension},
-    },
+    render::{mesh::Indices, render_resource::PrimitiveTopology},
     transform::TransformBundle,
     utils::Uuid,
     MinimalPlugins,
@@ -281,10 +278,5 @@ pub(crate) fn sample_mesh() -> Mesh {
 
 #[allow(dead_code)]
 pub(crate) fn sample_image() -> Image {
-    Image::new(
-        Extent3d::default(),
-        TextureDimension::D1,
-        vec![],
-        bevy::render::render_resource::TextureFormat::R8Sint,
-    )
+    Image::default()
 }

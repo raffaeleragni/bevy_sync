@@ -88,26 +88,6 @@ fn test_mesh_transferred_from_server() {
 
 #[serial]
 #[test]
-fn test_image_transferred_from_server() {
-    TestRun::default().run(
-        1,
-        |env| {
-            env.setup_registration::<Handle<Image>>();
-            env.server.sync_materials(true);
-            env.clients[0].sync_materials(true);
-        },
-        |env| {
-            let app = &mut env.server;
-            spawn_new_image(app)
-        },
-        |env, _, id| {
-            assets_has_sample_image(&mut env.clients[0], id);
-        },
-    );
-}
-
-#[serial]
-#[test]
 fn test_mesh_transferred_from_client() {
     TestRun::default().run(
         1,
@@ -128,10 +108,32 @@ fn test_mesh_transferred_from_client() {
 
 #[serial]
 #[test]
+fn test_image_transferred_from_server() {
+    TestRun::default().run(
+        1,
+        |env| {
+            env.setup_registration::<Handle<StandardMaterial>>();
+            env.setup_registration::<Handle<Image>>();
+            env.server.sync_materials(true);
+            env.clients[0].sync_materials(true);
+        },
+        |env| {
+            let app = &mut env.server;
+            spawn_new_image(app)
+        },
+        |env, _, id| {
+            assets_has_sample_image(&mut env.clients[0], id);
+        },
+    );
+}
+
+#[serial]
+#[test]
 fn test_images_transferred_from_client() {
     TestRun::default().run(
         1,
         |env| {
+            env.setup_registration::<Handle<StandardMaterial>>();
             env.setup_registration::<Handle<Image>>();
             env.server.sync_materials(true);
             env.clients[0].sync_materials(true);
