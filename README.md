@@ -19,9 +19,7 @@ Current state is in development.
 - [X] Refactor asset transfer through http
   - [ ] Asset: Mesh
     - [X] programmatically created mesh
-    - [ ] mesh from gltf: static
-    - [ ] mesh from gltf: rigged
-    - [ ] mesh from gltf: with morphs
+    - [X] mesh from gltf: static, rigged, with morphs
   - [ ] Asset: Textures
   - [ ] Asset: Audio
 
