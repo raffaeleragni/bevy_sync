@@ -15,6 +15,7 @@ Current state is in development.
 - [X] Parent/Child entity synchronization
 - [ ] Skippable channel for Unordered+Unreliable
   - [ ] Transform
+- [ ] Throttleable sync (time window queuing)
 - [X] SimpleMaterial (through sync channel)
 - [X] Refactor asset transfer through http
   - [X] Asset: Mesh
