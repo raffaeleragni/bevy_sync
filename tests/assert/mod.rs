@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 use bevy_sync::{SyncDown, SyncUp};
 
-use crate::setup::{sample_mesh, MySynched, TestEnv, sample_image};
+use crate::setup::{sample_image, sample_mesh, MySynched, TestEnv};
 
 #[allow(dead_code)]
 pub(crate) fn entities_in_sync<T>(env: &mut TestEnv, _: T, entity_count: u32) {

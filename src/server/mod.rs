@@ -14,8 +14,8 @@ use crate::{
 
 use self::track::{
     entity_created_on_server, entity_parented_on_server, entity_removed_from_server,
-    react_on_changed_components, react_on_changed_materials, react_on_changed_meshes,
-    reply_back_to_client_generated_entity, track_spawn_server, react_on_changed_images,
+    react_on_changed_components, react_on_changed_images, react_on_changed_materials,
+    react_on_changed_meshes, reply_back_to_client_generated_entity, track_spawn_server,
 };
 
 mod initial_sync;

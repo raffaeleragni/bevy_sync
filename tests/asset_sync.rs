@@ -1,11 +1,11 @@
 mod assert;
 mod setup;
 
-use assert::{assets_has_sample_mesh, material_has_color, assets_has_sample_image};
+use assert::{assets_has_sample_image, assets_has_sample_mesh, material_has_color};
 use bevy::prelude::*;
 use bevy_sync::SyncComponent;
 use serial_test::serial;
-use setup::{spawn_new_material, spawn_new_mesh, TestRun, spawn_new_image};
+use setup::{spawn_new_image, spawn_new_material, spawn_new_mesh, TestRun};
 
 #[test]
 #[serial]

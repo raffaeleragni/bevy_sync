@@ -247,11 +247,8 @@ mod test {
         let Indices::U32(v2) = mesh2.indices().unwrap() else {
             panic!("bad indices type")
         };
-        assert_eq!(
-            mesh.morph_target_names(),
-            mesh2.morph_target_names()
-        );
-         assert_eq!(v1, v2);
+        assert_eq!(mesh.morph_target_names(), mesh2.morph_target_names());
+        assert_eq!(v1, v2);
     }
 
     #[test]
@@ -318,11 +315,8 @@ mod test {
         let Indices::U16(v2) = mesh2.indices().unwrap() else {
             panic!("bad indices type")
         };
-        assert_eq!(
-            mesh.morph_target_names(),
-            mesh2.morph_target_names()
-        );
-         assert_eq!(v1, v2);
+        assert_eq!(mesh.morph_target_names(), mesh2.morph_target_names());
+        assert_eq!(v1, v2);
     }
 
     #[test]
