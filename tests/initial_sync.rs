@@ -1,13 +1,13 @@
 mod assert;
 mod setup;
 
-use assert::{assets_has_sample_mesh, material_has_color};
+use assert::{assets_has_sample_image, assets_has_sample_mesh, material_has_color};
 use bevy::prelude::*;
 use bevy_sync::{SyncComponent, SyncExclude, SyncMark};
 use serial_test::serial;
 use setup::{
-    spawn_new_material, spawn_new_material_nouuid, spawn_new_mesh, spawn_new_mesh_nouuid,
-    MySynched, TestEnv, TestRun,
+    spawn_new_image, spawn_new_material, spawn_new_material_nouuid, spawn_new_mesh,
+    spawn_new_mesh_nouuid, MySynched, TestEnv, TestRun,
 };
 
 use crate::{assert::count_entities_with_component, setup::MySynched2};
@@ -21,6 +21,7 @@ fn test_initial_world_sync_sent_from_server() {
             env.setup_registration::<MySynched>();
             env.setup_registration::<Handle<StandardMaterial>>();
             env.setup_registration::<Handle<Mesh>>();
+            env.setup_registration::<Handle<Image>>();
             env.server.sync_materials(true);
             env.server.sync_meshes(true);
             let e_id = env.server.world.spawn(SyncMark {}).id();
@@ -30,11 +31,19 @@ fn test_initial_world_sync_sent_from_server() {
 
             let id = spawn_new_material(&mut env.server);
             let m_id = spawn_new_mesh(&mut env.server);
+            let i_id = spawn_new_image(&mut env.server);
 
-            (1, id, m_id)
+            (1, id, m_id, i_id)
         },
         TestRun::no_setup,
-        |env, (entity_count, id, m_id): (u32, AssetId<StandardMaterial>, AssetId<Mesh>), _| {
+        |env,
+         (entity_count, id, m_id, i_id): (
+            u32,
+            AssetId<StandardMaterial>,
+            AssetId<Mesh>,
+            AssetId<Image>,
+        ),
+         _| {
             assert::initial_sync_for_client_happened(
                 &mut env.server,
                 &mut env.clients[0],
@@ -45,6 +54,7 @@ fn test_initial_world_sync_sent_from_server() {
 
             material_has_color(&mut env.clients[0], id, Color::RED);
             assets_has_sample_mesh(&mut env.clients[0], m_id);
+            assets_has_sample_image(&mut env.clients[0], i_id);
         },
     );
 }

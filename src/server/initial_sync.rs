@@ -36,6 +36,7 @@ fn build_initial_sync(world: &mut World) -> Result<Vec<Message>, Box<dyn Error>>
     let mut result: Vec<Message> = Vec::new();
     check_entity_components(world, &mut result)?;
     check_parents(world, &mut result)?;
+    check_images(world, &mut result)?;
     check_materials(world, &mut result)?;
     check_meshes(world, &mut result)?;
     Ok(result)
@@ -171,6 +172,26 @@ fn check_meshes(world: &mut World, result: &mut Vec<Message>) -> Result<(), Box<
     for (id, mesh) in meshes_to_add.iter() {
         let url = sync_assets.serve_mesh(id, mesh);
         result.push(Message::MeshUpdated { id: *id, url });
+    }
+    Ok(())
+}
+
+fn check_images(world: &mut World, result: &mut Vec<Message>) -> Result<(), Box<dyn Error>> {
+    let track = world.resource_mut::<SyncTrackerRes>();
+    let mut images_to_add = Vec::<(Uuid, Image)>::new();
+    if track.sync_materials {
+        let images = world.resource::<Assets<Image>>();
+        for (id, image) in images.iter() {
+            let AssetId::Uuid { uuid: id } = id else {
+                continue;
+            };
+            images_to_add.push((id, image.clone()));
+        }
+    }
+    let mut sync_assets = world.resource_mut::<SyncAssetTransfer>();
+    for (id, image) in images_to_add.iter() {
+        let url = sync_assets.serve_image(id, image);
+        result.push(Message::ImageUpdated { id: *id, url });
     }
     Ok(())
 }
