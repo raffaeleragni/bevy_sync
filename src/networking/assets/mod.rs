@@ -10,7 +10,9 @@ use std::{
     time::Duration,
 };
 
-use crate::{lib_priv::SyncTrackerRes, proto::SyncAssetType, networking::assets::image_serde::image_to_bin};
+use crate::{
+    lib_priv::SyncTrackerRes, networking::assets::image_serde::image_to_bin, proto::SyncAssetType,
+};
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashMap};
 use mesh_serde::{bin_to_mesh, mesh_to_bin};
@@ -64,7 +66,10 @@ fn process_image_assets(
     for (id, image) in map.drain() {
         sync_tracker.pushed_handles_from_network.insert(id);
         let id: AssetId<Image> = AssetId::Uuid { uuid: id };
-        images.insert(id, bin_to_image(&image));
+        let Some(img) = bin_to_image(&image) else {
+            continue;
+        };
+        images.insert(id, img);
     }
 }
 
@@ -202,8 +207,10 @@ impl SyncAssetTransfer {
         loop {
             match lock {
                 Ok(mut map) => {
-                    debug!("Serving image {}", id);
-                    map.entry(*id).or_insert_with(|| image_to_bin(image));
+                    if let Some(bin) = image_to_bin(image) {
+                        debug!("Serving image {}", id);
+                        map.entry(*id).or_insert_with(|| bin);
+                    }
                     break;
                 }
                 Err(_) => lock = self.meshes.write(),
