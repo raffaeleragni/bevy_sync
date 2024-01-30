@@ -121,6 +121,16 @@ fn server_received_a_message(
                 );
             })
         }
+        Message::ImageUpdated { id, url } => {
+            sync_assets.request(SyncAssetType::Image, id, url.clone());
+            cmd.add(move |world: &mut World| {
+                repeat_except_for_client(
+                    client_id,
+                    &mut world.resource_mut::<RenetServer>(),
+                    &Message::ImageUpdated { id, url },
+                );
+            })
+        }
     }
 }
 

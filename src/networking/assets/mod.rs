@@ -1,3 +1,4 @@
+mod image_serde;
 mod mesh_serde;
 
 use std::{
@@ -9,13 +10,17 @@ use std::{
     time::Duration,
 };
 
-use crate::{lib_priv::SyncTrackerRes, proto::SyncAssetType};
+use crate::{
+    lib_priv::SyncTrackerRes, networking::assets::image_serde::image_to_bin, proto::SyncAssetType,
+};
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashMap};
 use mesh_serde::{bin_to_mesh, mesh_to_bin};
 use std::io::Read;
 use threadpool::ThreadPool;
 use tiny_http::{Request, Response, Server};
+
+use self::image_serde::bin_to_image;
 
 pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16, max_transfer: usize) {
     debug!(
@@ -28,6 +33,10 @@ pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16, max_transfer: usize) 
     app.add_systems(
         Update,
         process_mesh_assets.run_if(resource_exists::<SyncAssetTransfer>()),
+    );
+    app.add_systems(
+        Update,
+        process_image_assets.run_if(resource_exists::<SyncAssetTransfer>()),
     );
 }
 
@@ -46,7 +55,26 @@ fn process_mesh_assets(
     }
 }
 
+fn process_image_assets(
+    mut images: ResMut<Assets<Image>>,
+    sync: ResMut<SyncAssetTransfer>,
+    mut sync_tracker: ResMut<SyncTrackerRes>,
+) {
+    let Ok(mut map) = sync.images_to_apply.write() else {
+        return;
+    };
+    for (id, image) in map.drain() {
+        sync_tracker.pushed_handles_from_network.insert(id);
+        let id: AssetId<Image> = AssetId::Uuid { uuid: id };
+        let Some(img) = bin_to_image(&image) else {
+            continue;
+        };
+        images.insert(id, img);
+    }
+}
+
 type MeshCache = Arc<RwLock<HashMap<Uuid, Vec<u8>>>>;
+type ImageCache = Arc<RwLock<HashMap<Uuid, Vec<u8>>>>;
 
 #[derive(Resource)]
 pub(crate) struct SyncAssetTransfer {
@@ -55,6 +83,8 @@ pub(crate) struct SyncAssetTransfer {
     download_pool: ThreadPool,
     meshes: MeshCache,
     meshes_to_apply: MeshCache,
+    images: ImageCache,
+    images_to_apply: ImageCache,
     max_transfer: usize,
 }
 
@@ -69,6 +99,8 @@ impl SyncAssetTransfer {
 
         let meshes = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
         let meshes_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
+        let images = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
+        let images_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
 
         let result = Self {
             base_url,
@@ -77,6 +109,8 @@ impl SyncAssetTransfer {
             meshes,
             meshes_to_apply,
             max_transfer,
+            images,
+            images_to_apply,
         };
 
         let (server_tx, server_rx) = channel::<Request>();
@@ -87,9 +121,10 @@ impl SyncAssetTransfer {
             }
         });
         let meshes = result.meshes.clone();
+        let images = result.images.clone();
         result
             .server_pool
-            .execute(move || Self::respond(server_rx, meshes, max_transfer));
+            .execute(move || Self::respond(server_rx, meshes, images, max_transfer));
         result
     }
 
@@ -100,6 +135,7 @@ impl SyncAssetTransfer {
             }
         }
         let meshes_to_apply = self.meshes_to_apply.clone();
+        let images_to_apply = self.images_to_apply.clone();
         debug!("Queuing request for {:?}:{} at {}", asset_type, id, url);
         let max_transfer = self.max_transfer;
         self.download_pool.execute(move || {
@@ -130,18 +166,32 @@ impl SyncAssetTransfer {
                                 std::thread::sleep(Duration::from_millis(1));
                             }
                         }
+                        SyncAssetType::Image => {
+                            let mut lock = images_to_apply.write();
+                            loop {
+                                match lock {
+                                    Ok(mut map) => {
+                                        debug!("Received image {} with size {}", id, len);
+                                        map.insert(id, bytes);
+                                        break;
+                                    }
+                                    Err(_) => lock = images_to_apply.write(),
+                                }
+                                std::thread::sleep(Duration::from_millis(1));
+                            }
+                        }
                     }
                 }
             }
         });
     }
 
-    pub(crate) fn serve(&mut self, _: SyncAssetType, id: &Uuid, mesh: &Mesh) -> String {
+    pub(crate) fn serve_mesh(&mut self, id: &Uuid, mesh: &Mesh) -> String {
         let mut lock = self.meshes.write();
         loop {
             match lock {
                 Ok(mut map) => {
-                    debug!("Servig mesh {}", id);
+                    debug!("Serving mesh {}", id);
                     map.entry(*id).or_insert_with(|| mesh_to_bin(mesh));
                     break;
                 }
@@ -152,32 +202,84 @@ impl SyncAssetTransfer {
         format!("{}/mesh/{}", self.base_url, &id.to_string())
     }
 
-    fn respond(rx: Receiver<Request>, meshes: MeshCache, max_size: usize) {
+    pub(crate) fn serve_image(&mut self, id: &Uuid, image: &Image) -> String {
+        let mut lock = self.images.write();
+        loop {
+            match lock {
+                Ok(mut map) => {
+                    if let Some(bin) = image_to_bin(image) {
+                        debug!("Serving image {}", id);
+                        map.entry(*id).or_insert_with(|| bin);
+                    }
+                    break;
+                }
+                Err(_) => lock = self.meshes.write(),
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        format!("{}/image/{}", self.base_url, &id.to_string())
+    }
+
+    fn respond(rx: Receiver<Request>, meshes: MeshCache, images: ImageCache, max_size: usize) {
         for request in rx.iter() {
             let url = request.url();
-            let Some(id) = url.strip_prefix("/mesh/") else {
+            let (asset_type, id) = if url.contains("/image/") {
+                let Some(id) = url.strip_prefix("/image/") else {
+                    continue;
+                };
+                (SyncAssetType::Image, id)
+            } else if url.contains("/mesh/") {
+                let Some(id) = url.strip_prefix("/mesh/") else {
+                    continue;
+                };
+                (SyncAssetType::Mesh, id)
+            } else {
                 continue;
             };
             let Ok(id) = Uuid::parse_str(id) else {
                 continue;
             };
 
-            let Ok(meshesmap) = meshes.read() else {
-                request
-                    .respond(Response::from_string("").with_status_code(449))
-                    .unwrap_or(());
-                continue;
-            };
-            let Some(mesh) = meshesmap.get(&id) else {
-                request
-                    .respond(Response::from_string("").with_status_code(404))
-                    .unwrap_or(());
-                continue;
-            };
-            debug!("Responding to {} with size {}", url, mesh.len());
-            request
-                .respond(Response::from_data(mesh.clone()).with_chunked_threshold(max_size))
-                .unwrap_or(());
+            match asset_type {
+                SyncAssetType::Mesh => {
+                    let Ok(meshesmap) = meshes.read() else {
+                        request
+                            .respond(Response::from_string("").with_status_code(449))
+                            .unwrap_or(());
+                        continue;
+                    };
+                    let Some(mesh) = meshesmap.get(&id) else {
+                        request
+                            .respond(Response::from_string("").with_status_code(404))
+                            .unwrap_or(());
+                        continue;
+                    };
+                    debug!("Responding to {} with size {}", url, mesh.len());
+                    request
+                        .respond(Response::from_data(mesh.clone()).with_chunked_threshold(max_size))
+                        .unwrap_or(());
+                }
+                SyncAssetType::Image => {
+                    let Ok(imagesmap) = images.read() else {
+                        request
+                            .respond(Response::from_string("").with_status_code(449))
+                            .unwrap_or(());
+                        continue;
+                    };
+                    let Some(image) = imagesmap.get(&id) else {
+                        request
+                            .respond(Response::from_string("").with_status_code(404))
+                            .unwrap_or(());
+                        continue;
+                    };
+                    debug!("Responding to {} with size {}", url, image.len());
+                    request
+                        .respond(
+                            Response::from_data(image.clone()).with_chunked_threshold(max_size),
+                        )
+                        .unwrap_or(());
+                }
+            }
         }
     }
 }
