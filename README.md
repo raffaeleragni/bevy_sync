@@ -20,8 +20,10 @@ Current state is in development.
 - [X] Refactor asset transfer through http
   - [X] Asset: Mesh
     - [X] programmatically created mesh
-    - [X] mesh from gltf: static, rigged, with morphs
-  - [ ] Asset: Textures
+    - [X] mesh from gltf: static
+    - [ ] rigged
+    - [ ] with morphs
+  - [X] Asset: Textures
   - [ ] Asset: Audio
 
 **Asset are synchronized only if they are added to bevy by uuid.**
