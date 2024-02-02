@@ -13,12 +13,13 @@ use std::{
 use crate::{
     lib_priv::SyncTrackerRes, networking::assets::image_serde::image_to_bin, proto::SyncAssetType,
 };
+use ascii::AsciiString;
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashMap};
 use mesh_serde::{bin_to_mesh, mesh_to_bin};
 use std::io::Read;
 use threadpool::ThreadPool;
-use tiny_http::{Request, Response, Server};
+use tiny_http::{Header, Request, Response, Server};
 
 use self::image_serde::bin_to_image;
 
@@ -191,8 +192,8 @@ impl SyncAssetTransfer {
         loop {
             match lock {
                 Ok(mut map) => {
-                    debug!("Serving mesh {}", id);
-                    map.entry(*id).or_insert_with(|| mesh_to_bin(mesh));
+                    let mesh = map.entry(*id).or_insert_with(|| mesh_to_bin(mesh));
+                    debug!("Serving mesh {} with size {}", id, mesh.len());
                     break;
                 }
                 Err(_) => lock = self.meshes.write(),
@@ -208,8 +209,8 @@ impl SyncAssetTransfer {
             match lock {
                 Ok(mut map) => {
                     if let Some(bin) = image_to_bin(image) {
-                        debug!("Serving image {}", id);
-                        map.entry(*id).or_insert_with(|| bin);
+                        let image = map.entry(*id).or_insert_with(|| bin);
+                        debug!("Serving image {} with size {}", id, image.len());
                     }
                     break;
                 }
@@ -256,7 +257,14 @@ impl SyncAssetTransfer {
                     };
                     debug!("Responding to {} with size {}", url, mesh.len());
                     request
-                        .respond(Response::from_data(mesh.clone()).with_chunked_threshold(max_size))
+                        .respond(
+                            Response::from_data(mesh.clone())
+                                .with_header(Header {
+                                    field: "Content-Length".parse().unwrap(),
+                                    value: AsciiString::from_ascii(mesh.len().to_string()).unwrap(),
+                                })
+                                .with_chunked_threshold(max_size),
+                        )
                         .unwrap_or(());
                 }
                 SyncAssetType::Image => {
@@ -275,7 +283,13 @@ impl SyncAssetTransfer {
                     debug!("Responding to {} with size {}", url, image.len());
                     request
                         .respond(
-                            Response::from_data(image.clone()).with_chunked_threshold(max_size),
+                            Response::from_data(image.clone())
+                                .with_header(Header {
+                                    field: "Content-Length".parse().unwrap(),
+                                    value: AsciiString::from_ascii(image.len().to_string())
+                                        .unwrap(),
+                                })
+                                .with_chunked_threshold(max_size),
                         )
                         .unwrap_or(());
                 }

@@ -26,6 +26,8 @@ threadpool = "1.8.1"
 tiny_http = { version = "0.11", default-features = false }
 ureq = { version = "2.9.1", default-features = false }
 portpicker = "0.1.1"
+ascii = "1.1.0"
+lz4-compress = "0.1.1"
 
 [dev-dependencies]
 serial_test = "2.0.0"

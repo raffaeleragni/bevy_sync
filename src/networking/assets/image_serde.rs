@@ -2,10 +2,12 @@ use bevy::{
     prelude::*,
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
+use lz4_compress::{compress, decompress};
 use serde::{Deserialize, Serialize};
 
 pub(crate) fn bin_to_image(bin: &[u8]) -> Option<Image> {
-    let img = bincode::deserialize::<ImageData>(bin).ok()?;
+    let bin = decompress(bin).unwrap();
+    let img = bincode::deserialize::<ImageData>(&bin).ok()?;
     let dimension = match img.dimensions {
         1 => TextureDimension::D1,
         2 => TextureDimension::D2,
@@ -38,8 +40,7 @@ pub(crate) fn image_to_bin(image: &Image) -> Option<Vec<u8>> {
         format: image.texture_descriptor.format,
         data: image.data.clone(),
     };
-    let bin = bincode::serialize(&img).ok()?;
-    Some(bin)
+    Some(compress(&bincode::serialize(&img).ok()?))
 }
 
 #[derive(Serialize, Deserialize)]
