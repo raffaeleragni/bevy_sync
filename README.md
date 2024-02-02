@@ -25,7 +25,7 @@ Current state is in development.
     - [ ] with morphs
   - [X] Asset: Textures
   - [ ] Asset: Audio
-  - [ ] Compressed Assets
+  - [X] Compressed Assets
 
 **Asset are synchronized only if they are added to bevy by uuid.**
 
