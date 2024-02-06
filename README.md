@@ -19,14 +19,14 @@ Current state is in development.
 - [ ] Host switch / promotion
 - [X] SimpleMaterial (through sync channel)
 - [X] Refactor asset transfer through http
-  - [X] Asset: Mesh
-    - [X] programmatically created mesh
-    - [X] mesh from gltf: static
-    - [ ] rigged
-    - [ ] with morphs
-  - [X] Asset: Textures
-  - [ ] Asset: Audio
-  - [X] Compressed Assets
+- [X] Asset: Mesh
+  - [X] programmatically created mesh
+  - [X] mesh from gltf: static
+  - [ ] rigged
+  - [ ] with morphs
+- [X] Asset: Textures
+- [ ] Asset: Audio
+- [X] Compressed Assets
 
 **Asset are synchronized only if they are added to bevy by uuid.**
 
