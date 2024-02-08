@@ -91,7 +91,11 @@ pub(crate) struct SyncAssetTransfer {
 
 impl SyncAssetTransfer {
     pub(crate) fn new(addr: IpAddr, port: u16, max_transfer: usize) -> Self {
-        let base_url = format!("http://{}:{}", addr, port);
+        let base_url = if addr.is_ipv6() {
+            format!("http://[{}]:{}", addr, port)
+        } else {
+            format!("http://{}:{}", addr, port)
+        };
         debug!("Starting asset server on {}", base_url);
         let server = Server::http(SocketAddr::new(addr, port)).unwrap();
 
