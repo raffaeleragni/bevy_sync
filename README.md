@@ -18,7 +18,7 @@ Current state is in development.
 - [ ] Throttleable sync (time window queuing)
 - [ ] Host switch / promotion
 - [X] SimpleMaterial (through sync channel)
-- [X] Refactor asset transfer through http
+- [X] Serve assets through http
 - [X] Asset: Mesh
   - [X] programmatically created mesh
   - [X] mesh from gltf: static
