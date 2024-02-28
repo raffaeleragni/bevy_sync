@@ -35,14 +35,14 @@ pub(crate) fn entity_parented_on_client(
     query_parent: Query<(Entity, &SyncUp), With<Children>>,
 ) {
     for (p, sup) in query.iter() {
-        let Ok(parent) = query_parent.get_component::<SyncUp>(p.get()) else {
+        let Ok(parent) = query_parent.get(p.get()) else {
             continue;
         };
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntityParented {
                 server_entity_id: sup.server_entity_id,
-                server_parent_id: parent.server_entity_id,
+                server_parent_id: parent.1.server_entity_id,
             })
             .unwrap(),
         );

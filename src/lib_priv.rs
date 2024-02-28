@@ -91,7 +91,7 @@ impl SyncTrackerRes {
                 .pushed_component_from_network
                 .insert(ComponentChangeId { id: e_id, name });
             let entity = &mut world.entity_mut(e_id);
-            reflect_component.apply_or_insert(entity, component_data.as_reflect());
+            reflect_component.apply_or_insert(entity, component_data.as_reflect(), &registry);
             true
         } else {
             debug!(

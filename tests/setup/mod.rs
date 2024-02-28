@@ -8,7 +8,7 @@ use bevy::{
     pbr::PbrPlugin,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
-    render::{mesh::Indices, render_resource::PrimitiveTopology},
+    render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
     transform::TransformBundle,
     utils::Uuid,
     MinimalPlugins,
@@ -263,7 +263,10 @@ pub(crate) fn spawn_new_mesh_nouuid(app: &mut App) -> Handle<Mesh> {
 
 #[allow(dead_code)]
 pub(crate) fn sample_mesh() -> Mesh {
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
+    );
     mesh.insert_attribute(
         Mesh::ATTRIBUTE_POSITION,
         vec![[0., 0., 0.], [1., 2., 1.], [2., 0., 0.]],
@@ -271,7 +274,7 @@ pub(crate) fn sample_mesh() -> Mesh {
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0., 1., 0.]; 3]);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0., 0.]; 3]);
     mesh.insert_attribute(Mesh::ATTRIBUTE_TANGENT, vec![[0., 1., 0., 0.]; 3]);
-    mesh.set_indices(Some(Indices::U32(vec![0, 2, 1])));
+    mesh.insert_indices(Indices::U32(vec![0, 2, 1]));
 
     mesh
 }

@@ -1,6 +1,6 @@
 use bevy::{
     prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
+    render::{render_resource::{Extent3d, TextureDimension, TextureFormat}, render_asset::RenderAssetUsages},
 };
 use lz4_compress::{compress, decompress};
 use serde::{Deserialize, Serialize};
@@ -23,6 +23,7 @@ pub(crate) fn bin_to_image(bin: &[u8]) -> Option<Image> {
         dimension,
         img.data,
         img.format,
+        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
     ))
 }
 

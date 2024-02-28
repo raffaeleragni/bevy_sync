@@ -21,20 +21,20 @@ impl Plugin for ClientSyncPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SyncTrackerRes>();
 
-        app.add_state::<ClientState>();
+        app.init_state::<ClientState>();
 
         app.add_systems(
             Update,
-            client_connected.run_if(state_exists_and_equals(ClientState::Connecting)),
+            client_connected.run_if(in_state(ClientState::Connecting)),
         );
         app.add_systems(
             Update,
-            client_connecting.run_if(state_exists_and_equals(ClientState::Disconnected)),
+            client_connecting.run_if(in_state(ClientState::Disconnected)),
         );
         app.add_systems(
             Update,
             client_disconnected
-                .run_if(state_exists_and_equals(ClientState::Disconnected))
+                .run_if(in_state(ClientState::Disconnected))
                 .run_if(resource_removed::<NetcodeClientTransport>()),
         );
 
@@ -53,8 +53,8 @@ impl Plugin for ClientSyncPlugin {
                 receiver::poll_for_messages,
             )
                 .chain()
-                .run_if(resource_exists::<RenetClient>())
-                .run_if(state_exists_and_equals(ClientState::Connected)),
+                .run_if(resource_exists::<RenetClient>)
+                .run_if(in_state(ClientState::Connected)),
         );
     }
 }

@@ -33,11 +33,11 @@ pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16, max_transfer: usize) 
     app.insert_resource(http_transfer);
     app.add_systems(
         Update,
-        process_mesh_assets.run_if(resource_exists::<SyncAssetTransfer>()),
+        process_mesh_assets.run_if(resource_exists::<SyncAssetTransfer>),
     );
     app.add_systems(
         Update,
-        process_image_assets.run_if(resource_exists::<SyncAssetTransfer>()),
+        process_image_assets.run_if(resource_exists::<SyncAssetTransfer>),
     );
 }
 

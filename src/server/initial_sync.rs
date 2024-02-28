@@ -56,7 +56,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
         .filter(|arch| arch.contains(sync_down_id))
     {
         for arch_entity in arch.entities() {
-            let entity = world.entity(arch_entity.entity());
+            let entity = world.entity(arch_entity.id());
             let e_id = entity.id();
             if !entity_ids_sent.contains(&e_id) {
                 result.push(Message::EntitySpawn { id: e_id });
@@ -87,7 +87,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 .data::<ReflectComponent>()
                 .ok_or("missing #[reflect(Component)]")?;
             for arch_entity in arch.entities() {
-                let entity = world.entity(arch_entity.entity());
+                let entity = world.entity(arch_entity.id());
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).ok_or("not registered")?;
                 let Ok(compo_bin) = reflect_to_bin(component.as_reflect(), &registry) else {
@@ -122,7 +122,7 @@ fn check_parents(world: &World, result: &mut Vec<Message>) -> Result<(), Box<dyn
             .filter(|&c_id| c_id == parent_component_id)
         {
             for arch_entity in arch.entities() {
-                let entity = world.entity(arch_entity.entity());
+                let entity = world.entity(arch_entity.id());
                 let e_id = entity.id();
                 let Some(parent) = entity.get::<Parent>() else {
                     continue;

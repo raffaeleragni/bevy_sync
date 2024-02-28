@@ -28,17 +28,17 @@ impl Plugin for ServerSyncPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SyncTrackerRes>();
 
-        app.add_state::<ServerState>();
+        app.init_state::<ServerState>();
         app.add_systems(
             Update,
             server_connected
-                .run_if(state_exists_and_equals(ServerState::Disconnected))
-                .run_if(resource_added::<NetcodeServerTransport>()),
+                .run_if(in_state(ServerState::Disconnected))
+                .run_if(resource_added::<NetcodeServerTransport>),
         );
         app.add_systems(
             Update,
             server_disconnected
-                .run_if(state_exists_and_equals(ServerState::Connected))
+                .run_if(in_state(ServerState::Connected))
                 .run_if(resource_removed::<NetcodeServerTransport>()),
         );
 
@@ -57,15 +57,15 @@ impl Plugin for ServerSyncPlugin {
                 react_on_changed_meshes.run_if(sync_mesh_enabled),
             )
                 .chain()
-                .run_if(resource_exists::<RenetServer>())
-                .run_if(state_exists_and_equals(ServerState::Connected)),
+                .run_if(resource_exists::<RenetServer>)
+                .run_if(in_state(ServerState::Connected)),
         );
         app.add_systems(
             Update,
             (client_connected, receiver::poll_for_messages)
                 .chain()
-                .run_if(resource_exists::<RenetServer>())
-                .run_if(state_exists_and_equals(ServerState::Connected)),
+                .run_if(resource_exists::<RenetServer>)
+                .run_if(in_state(ServerState::Connected)),
         );
     }
 }
