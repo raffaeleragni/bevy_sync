@@ -27,11 +27,8 @@ pub(crate) fn setup_server(
     asset_port: u16,
     max_transfer: usize,
 ) {
-    app.add_plugins(RenetServerPlugin);
-    app.insert_resource(RenetServer::new(ConnectionConfig::default()));
-    app.add_plugins(NetcodeServerPlugin);
+    setup_networking(app, ip, asset_port, max_transfer);
     app.insert_resource(create_server(ip, port));
-    assets::init(app, ip, asset_port, max_transfer);
 }
 
 pub(crate) fn setup_client(
@@ -41,14 +38,23 @@ pub(crate) fn setup_client(
     asset_port: u16,
     max_transfer: usize,
 ) {
+    setup_networking(app, ip, asset_port, max_transfer);
+    app.insert_resource(create_client(ip, port));
+}
+
+fn setup_networking(app: &mut App, ip: IpAddr, asset_port: u16, max_transfer: usize) {
+    assets::init(app, ip, asset_port, max_transfer);
+
+    app.add_plugins(RenetServerPlugin);
+    app.insert_resource(RenetServer::new(ConnectionConfig::default()));
+    app.add_plugins(NetcodeServerPlugin);
+
     app.add_plugins(RenetClientPlugin);
     app.insert_resource(RenetClient::new(ConnectionConfig::default()));
     app.add_plugins(NetcodeClientPlugin);
-    app.insert_resource(create_client(ip, port));
-    assets::init(app, ip, asset_port, max_transfer);
 }
 
-fn create_server(ip: IpAddr, port: u16) -> NetcodeServerTransport {
+pub(crate) fn create_server(ip: IpAddr, port: u16) -> NetcodeServerTransport {
     let socket = UdpSocket::bind((ip, port)).unwrap();
     let server_addr = socket.local_addr().unwrap();
     const MAX_CLIENTS: usize = 64;

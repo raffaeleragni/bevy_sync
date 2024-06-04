@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::VecDeque};
+use std::{any::TypeId, collections::VecDeque, net::IpAddr};
 
 use bevy::{
     ecs::component::ComponentId,
@@ -11,8 +11,8 @@ use bevy_renet::renet::ClientId;
 
 use crate::{
     binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
-    proto::AssId, server::ServerSyncPlugin, ClientPlugin, ServerPlugin, SyncComponent, SyncDown,
-    SyncExclude, SyncMark, SyncPlugin, SyncUp,
+    proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, ServerPlugin, ServerState,
+    SyncComponent, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -24,6 +24,14 @@ pub(crate) struct ComponentChangeId {
 pub(crate) struct ComponentChange {
     pub(crate) change_id: ComponentChangeId,
     pub(crate) data: Box<dyn Reflect>,
+}
+
+#[derive(Resource)]
+pub(crate) struct SyncConnectionParameters {
+    pub ip: IpAddr,
+    pub port: u16,
+    pub web_port: u16,
+    pub max_transfer: usize,
 }
 
 #[derive(Resource, Default)]
@@ -216,19 +224,33 @@ impl Plugin for SyncPlugin {
         app.register_type::<SyncMark>();
         app.init_resource::<SyncTrackerRes>();
         app.add_plugins(BundleFixPlugin);
+        app.add_plugins(ServerSyncPlugin);
+        app.add_plugins(ClientSyncPlugin);
+        app.init_state::<ServerState>();
+        app.init_state::<ClientState>();
     }
 }
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(SyncConnectionParameters {
+            ip: self.ip,
+            port: self.port,
+            web_port: self.web_port,
+            max_transfer: self.max_transfer,
+        });
         crate::networking::setup_server(app, self.ip, self.port, self.web_port, self.max_transfer);
-        app.add_plugins(ServerSyncPlugin);
     }
 }
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(SyncConnectionParameters {
+            ip: self.ip,
+            port: self.port,
+            web_port: self.web_port,
+            max_transfer: self.max_transfer,
+        });
         crate::networking::setup_client(app, self.ip, self.port, self.web_port, self.max_transfer);
-        app.add_plugins(ClientSyncPlugin);
     }
 }

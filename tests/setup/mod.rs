@@ -18,6 +18,7 @@ use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncPlugin};
 use serde::{Deserialize, Serialize};
 
 #[derive(Component)]
+#[allow(dead_code)] // for some reason compiler thinks this is not used but it is
 pub(crate) struct MyNonSynched;
 
 #[derive(Component, Reflect, Default, PartialEq, Serialize, Deserialize, Debug)]

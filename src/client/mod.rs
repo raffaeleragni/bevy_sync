@@ -19,22 +19,24 @@ mod track;
 pub(crate) struct ClientSyncPlugin;
 impl Plugin for ClientSyncPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<SyncTrackerRes>();
-
-        app.init_state::<ClientState>();
-
         app.add_systems(
             Update,
-            client_connected.run_if(in_state(ClientState::Connecting)),
+            client_connected
+                .run_if(resource_exists::<NetcodeClientTransport>)
+                .run_if(in_state(ClientState::Connecting)),
         );
         app.add_systems(
             Update,
-            client_connecting.run_if(in_state(ClientState::Disconnected)),
+            client_connecting
+                .run_if(resource_exists::<RenetClient>)
+                .run_if(resource_added::<NetcodeClientTransport>)
+                .run_if(in_state(ClientState::Disconnected)),
         );
         app.add_systems(
             Update,
             client_disconnected
                 .run_if(in_state(ClientState::Disconnected))
+                .run_if(resource_exists::<RenetClient>)
                 .run_if(resource_removed::<NetcodeClientTransport>()),
         );
 

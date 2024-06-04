@@ -2,7 +2,7 @@ use bevy_renet::renet::ClientId;
 
 use crate::{
     logging::{log_message_received, Who},
-    networking::assets::SyncAssetTransfer,
+    networking::{assets::SyncAssetTransfer, create_client},
     proto::SyncAssetType,
 };
 
@@ -21,6 +21,7 @@ pub(crate) fn poll_for_messages(
             server_received_a_message(
                 client_id,
                 deser_message,
+                &mut server,
                 &mut track,
                 &mut sync_assets,
                 &mut commands,
@@ -32,6 +33,7 @@ pub(crate) fn poll_for_messages(
 fn server_received_a_message(
     client_id: ClientId,
     msg: Message,
+    server: &mut ResMut<RenetServer>,
     track: &mut ResMut<SyncTrackerRes>,
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
@@ -130,6 +132,28 @@ fn server_received_a_message(
                     &Message::ImageUpdated { id, url },
                 );
             })
+        }
+        // server is already host
+        Message::PromoteToHost => (),
+        Message::NewHost {
+            ip,
+            port,
+            web_port,
+            max_transfer,
+        } => {
+            repeat_except_for_client(
+                client_id,
+                server,
+                &Message::NewHost {
+                    ip,
+                    port,
+                    web_port,
+                    max_transfer,
+                },
+            );
+            server.disconnect_all();
+            cmd.remove_resource::<NetcodeServerTransport>();
+            cmd.insert_resource(create_client(ip, port));
         }
     }
 }

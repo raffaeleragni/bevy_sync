@@ -1,6 +1,9 @@
 use bevy::{
     prelude::*,
-    render::{render_resource::{Extent3d, TextureDimension, TextureFormat}, render_asset::RenderAssetUsages},
+    render::{
+        render_asset::RenderAssetUsages,
+        render_resource::{Extent3d, TextureDimension, TextureFormat},
+    },
 };
 use lz4_compress::{compress, decompress};
 use serde::{Deserialize, Serialize};

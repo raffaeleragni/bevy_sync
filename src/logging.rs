@@ -71,5 +71,14 @@ pub(crate) fn log_message_received(from: Who, message: &Message) {
                 from, id, url
             )
         }
+        Message::PromoteToHost => debug!("{:?} received PromoteToHost", from),
+        Message::NewHost {
+            ip,
+            port,
+            web_port,
+            max_transfer,
+        } => debug!(
+                "{:?} received NewHost {{ ip: {} }} {{ port: {} }} {{ web_port: {} }} {{ max_transfer: {} }}",
+                from, ip, port, web_port, max_transfer),
     }
 }

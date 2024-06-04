@@ -12,6 +12,8 @@ mod networking;
 mod proto;
 mod server;
 
+pub use proto::PromoteToHostEvent;
+
 pub mod prelude {
     pub use super::{
         ClientPlugin, ClientState, ServerPlugin, ServerState, SyncComponent, SyncDown, SyncExclude,

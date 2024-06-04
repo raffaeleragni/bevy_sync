@@ -1,6 +1,7 @@
 use crate::{
+    lib_priv::SyncConnectionParameters,
     logging::{log_message_received, Who},
-    networking::assets::SyncAssetTransfer,
+    networking::{assets::SyncAssetTransfer, create_client, create_server},
     proto::SyncAssetType,
 };
 
@@ -8,18 +9,28 @@ use super::*;
 
 pub(crate) fn poll_for_messages(
     mut commands: Commands,
+    connection_parameters: Res<SyncConnectionParameters>,
     mut track: ResMut<SyncTrackerRes>,
     mut sync_assets: ResMut<SyncAssetTransfer>,
     mut client: ResMut<RenetClient>,
 ) {
     while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         let deser_message = bincode::deserialize(&message).unwrap();
-        client_received_a_message(deser_message, &mut track, &mut sync_assets, &mut commands);
+        client_received_a_message(
+            deser_message,
+            &connection_parameters,
+            &mut client,
+            &mut track,
+            &mut sync_assets,
+            &mut commands,
+        );
     }
 }
 
 fn client_received_a_message(
     msg: Message,
+    connection_parameters: &Res<SyncConnectionParameters>,
+    client: &mut ResMut<RenetClient>,
     track: &mut ResMut<SyncTrackerRes>,
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
@@ -91,5 +102,33 @@ fn client_received_a_message(
         }),
         Message::MeshUpdated { id, url } => sync_assets.request(SyncAssetType::Mesh, id, url),
         Message::ImageUpdated { id, url } => sync_assets.request(SyncAssetType::Image, id, url),
+        Message::PromoteToHost => {
+            client.send_message(
+                DefaultChannel::ReliableOrdered,
+                bincode::serialize(&Message::NewHost {
+                    ip: connection_parameters.ip,
+                    port: connection_parameters.port,
+                    web_port: connection_parameters.web_port,
+                    max_transfer: connection_parameters.max_transfer,
+                })
+                .unwrap(),
+            );
+            client.disconnect();
+            cmd.remove_resource::<NetcodeClientTransport>();
+            cmd.insert_resource(create_server(
+                connection_parameters.ip,
+                connection_parameters.port,
+            ));
+        }
+        Message::NewHost {
+            ip,
+            port,
+            web_port: _,
+            max_transfer: _,
+        } => {
+            client.disconnect();
+            cmd.remove_resource::<NetcodeClientTransport>();
+            cmd.insert_resource(create_client(ip, port));
+        }
     }
 }

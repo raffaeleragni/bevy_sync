@@ -7,7 +7,7 @@ use crate::{
     lib_priv::{
         sync_material_enabled, sync_mesh_enabled, SyncClientGeneratedEntity, SyncTrackerRes,
     },
-    proto::Message,
+    proto::{Message, PromoteToHostEvent},
     server::initial_sync::send_initial_sync,
     ServerState,
 };
@@ -26,18 +26,19 @@ pub(crate) struct ServerSyncPlugin;
 
 impl Plugin for ServerSyncPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<SyncTrackerRes>();
+        app.add_event::<PromoteToHostEvent>();
 
-        app.init_state::<ServerState>();
         app.add_systems(
             Update,
             server_connected
+                .run_if(resource_exists::<RenetServer>)
                 .run_if(in_state(ServerState::Disconnected))
                 .run_if(resource_added::<NetcodeServerTransport>),
         );
         app.add_systems(
             Update,
             server_disconnected
+                .run_if(resource_exists::<RenetServer>)
                 .run_if(in_state(ServerState::Connected))
                 .run_if(resource_removed::<NetcodeServerTransport>()),
         );
@@ -55,9 +56,11 @@ impl Plugin for ServerSyncPlugin {
                 react_on_changed_materials.run_if(sync_material_enabled),
                 react_on_changed_images.run_if(sync_material_enabled),
                 react_on_changed_meshes.run_if(sync_mesh_enabled),
+                promote_to_host_event_reader,
             )
                 .chain()
                 .run_if(resource_exists::<RenetServer>)
+                .run_if(resource_exists::<NetcodeServerTransport>)
                 .run_if(in_state(ServerState::Connected)),
         );
         app.add_systems(
@@ -65,6 +68,7 @@ impl Plugin for ServerSyncPlugin {
             (client_connected, receiver::poll_for_messages)
                 .chain()
                 .run_if(resource_exists::<RenetServer>)
+                .run_if(resource_exists::<NetcodeServerTransport>)
                 .run_if(in_state(ServerState::Connected)),
         );
     }
@@ -100,4 +104,17 @@ fn server_connected(mut state: ResMut<NextState<ServerState>>) {
 
 fn server_reset(mut cmd: Commands) {
     cmd.insert_resource(SyncTrackerRes::default());
+}
+
+fn promote_to_host_event_reader(
+    mut server: ResMut<RenetServer>,
+    mut events: EventReader<PromoteToHostEvent>,
+) {
+    for event in events.read() {
+        server.send_message(
+            event.id,
+            DefaultChannel::ReliableOrdered,
+            bincode::serialize(&Message::PromoteToHost {}).unwrap(),
+        );
+    }
 }

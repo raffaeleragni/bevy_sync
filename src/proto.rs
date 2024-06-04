@@ -1,4 +1,7 @@
-use bevy::{prelude::Entity, utils::Uuid};
+use std::net::IpAddr;
+
+use bevy::{ecs::event::Event, prelude::Entity, utils::Uuid};
+use bevy_renet::renet::ClientId;
 use serde::{Deserialize, Serialize};
 
 pub type EntityId = Entity;
@@ -44,4 +47,16 @@ pub(crate) enum Message {
         id: Uuid,
         url: String,
     } = 8,
+    PromoteToHost,
+    NewHost {
+        ip: IpAddr,
+        port: u16,
+        web_port: u16,
+        max_transfer: usize,
+    },
+}
+
+#[derive(Event)]
+pub struct PromoteToHostEvent {
+    pub id: ClientId
 }
