@@ -111,6 +111,7 @@ fn promote_to_host_event_reader(
     mut events: EventReader<PromoteToHostEvent>,
 ) {
     for event in events.read() {
+        info!("Promoting {} to host", event.id);
         server.send_message(
             event.id,
             DefaultChannel::ReliableOrdered,

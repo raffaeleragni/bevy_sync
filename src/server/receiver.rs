@@ -141,6 +141,7 @@ fn server_received_a_message(
             web_port,
             max_transfer,
         } => {
+            info!("A new host has been promoted. Reconnecting to new host");
             repeat_except_for_client(
                 client_id,
                 server,
@@ -152,8 +153,11 @@ fn server_received_a_message(
                 },
             );
             server.disconnect_all();
-            cmd.remove_resource::<NetcodeServerTransport>();
-            cmd.insert_resource(create_client(ip, port));
+            cmd.add(move |world: &mut World| {
+                world.remove_resource::<NetcodeServerTransport>();
+                info!("Creating a new client connection to new host...");
+                world.insert_resource(create_client(ip, port));
+            });
         }
     }
 }

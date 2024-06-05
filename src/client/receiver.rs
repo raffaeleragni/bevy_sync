@@ -103,6 +103,7 @@ fn client_received_a_message(
         Message::MeshUpdated { id, url } => sync_assets.request(SyncAssetType::Mesh, id, url),
         Message::ImageUpdated { id, url } => sync_assets.request(SyncAssetType::Image, id, url),
         Message::PromoteToHost => {
+            info!("Client is being promoted to host");
             client.send_message(
                 DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::NewHost {
@@ -114,11 +115,13 @@ fn client_received_a_message(
                 .unwrap(),
             );
             client.disconnect();
-            cmd.remove_resource::<NetcodeClientTransport>();
-            cmd.insert_resource(create_server(
-                connection_parameters.ip,
-                connection_parameters.port,
-            ));
+            let ip = connection_parameters.ip;
+            let port = connection_parameters.port;
+            cmd.add(move |world: &mut World| {
+                world.remove_resource::<NetcodeClientTransport>();
+                info!("Starting as host...");
+                world.insert_resource(create_server(ip, port));
+            });
         }
         Message::NewHost {
             ip,
@@ -126,6 +129,7 @@ fn client_received_a_message(
             web_port: _,
             max_transfer: _,
         } => {
+            info!("A new host has been promoted. Reconnecting to new host");
             client.disconnect();
             cmd.remove_resource::<NetcodeClientTransport>();
             cmd.insert_resource(create_client(ip, port));
