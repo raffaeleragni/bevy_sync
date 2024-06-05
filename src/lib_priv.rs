@@ -10,7 +10,9 @@ use bevy::{
 use bevy_renet::renet::ClientId;
 
 use crate::{
-    binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, ServerPlugin, ServerState, SyncComponent, SyncConnectionParameters, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp
+    binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
+    proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, ServerPlugin, ServerState,
+    SyncComponent, SyncConnectionParameters, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]

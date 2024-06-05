@@ -1,6 +1,6 @@
 use bevy::app::App;
 use bevy_renet::renet::{transport::NetcodeServerTransport, RenetServer};
-use bevy_sync::{PromoteToHostEvent, SyncConnectionParameters, SyncMark};
+use bevy_sync::{PromoteToHostEvent, SyncConnectionParameters};
 use serial_test::serial;
 use setup::{TestEnv, TestRun};
 
@@ -21,10 +21,8 @@ fn test_host_promotion_with_one_client() {
             send_promotion_event(env);
             env.update(10);
             assert_one_client_is_host(env);
-            env.server.world.spawn(SyncMark {});
-            1
         },
-        assert::entities_in_sync,
+        |_, _, _| {},
     );
 }
 

@@ -58,5 +58,5 @@ pub(crate) enum Message {
 
 #[derive(Event)]
 pub struct PromoteToHostEvent {
-    pub id: ClientId
+    pub id: ClientId,
 }
