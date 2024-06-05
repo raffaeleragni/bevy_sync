@@ -1,7 +1,8 @@
 use crate::{
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client, create_server},
-    proto::SyncAssetType, SyncConnectionParameters,
+    proto::SyncAssetType,
+    SyncConnectionParameters,
 };
 
 use super::*;
@@ -113,11 +114,15 @@ fn client_received_a_message(
                 })
                 .unwrap(),
             );
-            client.disconnect();
             let ip = connection_parameters.ip;
             let port = connection_parameters.port;
             cmd.add(move |world: &mut World| {
-                world.remove_resource::<NetcodeClientTransport>();
+                // cannot remove client because the message above is still queued.
+                // found no way to flush client so far, but at least the previous server
+                // will still disconnect all the clients, so this client should still
+                // eventually disconnect
+                //world.resource_mut::<RenetClient>().disconnect();
+                //world.remove_resource::<NetcodeClientTransport>();
                 info!("Starting as host...");
                 world.insert_resource(create_server(ip, port));
             });
