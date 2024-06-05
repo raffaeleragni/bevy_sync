@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::VecDeque, net::IpAddr};
+use std::{any::TypeId, collections::VecDeque};
 
 use bevy::{
     ecs::component::ComponentId,
@@ -10,9 +10,7 @@ use bevy::{
 use bevy_renet::renet::ClientId;
 
 use crate::{
-    binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
-    proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, ServerPlugin, ServerState,
-    SyncComponent, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
+    binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, ServerPlugin, ServerState, SyncComponent, SyncConnectionParameters, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -24,14 +22,6 @@ pub(crate) struct ComponentChangeId {
 pub(crate) struct ComponentChange {
     pub(crate) change_id: ComponentChangeId,
     pub(crate) data: Box<dyn Reflect>,
-}
-
-#[derive(Resource)]
-pub(crate) struct SyncConnectionParameters {
-    pub ip: IpAddr,
-    pub port: u16,
-    pub web_port: u16,
-    pub max_transfer: usize,
 }
 
 #[derive(Resource, Default)]

@@ -1,6 +1,6 @@
 use bevy::app::App;
 use bevy_renet::renet::{transport::NetcodeServerTransport, RenetServer};
-use bevy_sync::{PromoteToHostEvent, SyncMark};
+use bevy_sync::{PromoteToHostEvent, SyncConnectionParameters, SyncMark};
 use serial_test::serial;
 use setup::TestRun;
 
@@ -14,6 +14,10 @@ fn test_host_promotion_with_one_client() {
         2,
         TestRun::no_pre_setup,
         |env| {
+            increment_port(&mut env.server);
+            for c in env.clients.iter_mut() {
+                increment_port(c);
+            }
             assert!(is_host(&mut env.server));
             let server = env.server.world.resource_mut::<RenetServer>();
             let event = PromoteToHostEvent {
@@ -32,3 +36,10 @@ fn test_host_promotion_with_one_client() {
 fn is_host(app: &mut App) -> bool {
     app.world.get_resource::<NetcodeServerTransport>().is_some()
 }
+
+// need this because the tests run on the same machine and the host promotion won't advance between
+// occupied server releasing connection on same port and client becoming server on same port
+fn increment_port(app: &mut App) {
+    app.world.resource_mut::<SyncConnectionParameters>().port += 1;
+}
+

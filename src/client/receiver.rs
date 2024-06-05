@@ -1,8 +1,7 @@
 use crate::{
-    lib_priv::SyncConnectionParameters,
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client, create_server},
-    proto::SyncAssetType,
+    proto::SyncAssetType, SyncConnectionParameters,
 };
 
 use super::*;

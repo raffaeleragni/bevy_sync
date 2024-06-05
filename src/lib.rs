@@ -83,3 +83,11 @@ pub trait SyncComponent {
     fn sync_materials(&mut self, enable: bool);
     fn sync_meshes(&mut self, enable: bool);
 }
+
+#[derive(Resource)]
+pub struct SyncConnectionParameters {
+    pub ip: IpAddr,
+    pub port: u16,
+    pub web_port: u16,
+    pub max_transfer: usize,
+}
