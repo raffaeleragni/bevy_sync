@@ -1,6 +1,7 @@
 use bevy_renet::renet::ClientId;
 
 use crate::{
+    lib_priv::PromotedToClient,
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client},
     proto::SyncAssetType,
@@ -13,6 +14,7 @@ pub(crate) fn poll_for_messages(
     mut server: ResMut<RenetServer>,
     mut track: ResMut<SyncTrackerRes>,
     mut sync_assets: ResMut<SyncAssetTransfer>,
+    mut send_promoted_event: EventWriter<PromotedToClient>,
 ) {
     for client_id in server.clients_id().into_iter() {
         while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered)
@@ -25,6 +27,7 @@ pub(crate) fn poll_for_messages(
                 &mut track,
                 &mut sync_assets,
                 &mut commands,
+                &mut send_promoted_event,
             );
         }
     }
@@ -37,6 +40,7 @@ fn server_received_a_message(
     track: &mut ResMut<SyncTrackerRes>,
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
+    send_promoted_event: &mut EventWriter<PromotedToClient>,
 ) {
     log_message_received(Who::Server, &msg);
     match msg {
@@ -158,6 +162,7 @@ fn server_received_a_message(
                 info!("Creating a new client connection to new host...");
                 world.insert_resource(create_client(ip, port));
             });
+            send_promoted_event.send(PromotedToClient {});
         }
     }
 }

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{
-    transport::{NetcodeClientTransport, NetcodeServerTransport}, DefaultChannel, RenetServer, ServerEvent,
+    transport::{NetcodeClientTransport, NetcodeServerTransport},
+    DefaultChannel, RenetServer, ServerEvent,
 };
 
 use crate::{
@@ -26,8 +27,6 @@ pub(crate) struct ServerSyncPlugin;
 
 impl Plugin for ServerSyncPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<PromoteToHostEvent>();
-
         app.add_systems(
             Update,
             server_connected

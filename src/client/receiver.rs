@@ -1,4 +1,5 @@
 use crate::{
+    lib_priv::PromotedToServer,
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client, create_server},
     proto::SyncAssetType,
@@ -13,6 +14,7 @@ pub(crate) fn poll_for_messages(
     mut track: ResMut<SyncTrackerRes>,
     mut sync_assets: ResMut<SyncAssetTransfer>,
     mut client: ResMut<RenetClient>,
+    mut send_promoted_event: EventWriter<PromotedToServer>,
 ) {
     while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         let deser_message = bincode::deserialize(&message).unwrap();
@@ -23,6 +25,7 @@ pub(crate) fn poll_for_messages(
             &mut track,
             &mut sync_assets,
             &mut commands,
+            &mut send_promoted_event,
         );
     }
 }
@@ -34,6 +37,7 @@ fn client_received_a_message(
     track: &mut ResMut<SyncTrackerRes>,
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
+    send_promoted_event: &mut EventWriter<PromotedToServer>,
 ) {
     log_message_received(Who::Client, &msg);
     match msg {
@@ -126,6 +130,7 @@ fn client_received_a_message(
                 info!("Starting as host...");
                 world.insert_resource(create_server(ip, port));
             });
+            send_promoted_event.send(PromotedToServer {});
         }
         Message::NewHost {
             ip,

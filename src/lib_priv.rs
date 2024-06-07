@@ -11,8 +11,9 @@ use bevy_renet::renet::ClientId;
 
 use crate::{
     binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
-    proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, ServerPlugin, ServerState,
-    SyncComponent, SyncConnectionParameters, SyncDown, SyncExclude, SyncMark, SyncPlugin, SyncUp,
+    proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, PromoteToHostEvent,
+    ServerPlugin, ServerState, SyncComponent, SyncConnectionParameters, SyncDown, SyncExclude,
+    SyncMark, SyncPlugin, SyncUp,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -25,6 +26,12 @@ pub(crate) struct ComponentChange {
     pub(crate) change_id: ComponentChangeId,
     pub(crate) data: Box<dyn Reflect>,
 }
+
+#[derive(Event)]
+pub(crate) struct PromotedToServer;
+
+#[derive(Event)]
+pub(crate) struct PromotedToClient;
 
 #[derive(Resource, Default)]
 pub(crate) struct SyncTrackerRes {
@@ -220,6 +227,9 @@ impl Plugin for SyncPlugin {
         app.add_plugins(ClientSyncPlugin);
         app.init_state::<ServerState>();
         app.init_state::<ClientState>();
+        app.add_event::<PromotedToServer>();
+        app.add_event::<PromotedToClient>();
+        app.add_event::<PromoteToHostEvent>();
     }
 }
 
