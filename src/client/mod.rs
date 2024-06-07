@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
+use bevy_renet::renet::{
+    transport::{NetcodeClientTransport, NetcodeServerTransport},
+    DefaultChannel, RenetClient,
+};
 
 use crate::{
     lib_priv::{sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
@@ -71,9 +74,12 @@ fn client_connecting(mut client_state: ResMut<NextState<ClientState>>) {
     client_state.set(ClientState::Connecting);
 }
 
-fn client_connected(mut client_state: ResMut<NextState<ClientState>>) {
+fn client_connected(mut client_state: ResMut<NextState<ClientState>>, mut cmd: Commands) {
     info!("Connected to server.");
     client_state.set(ClientState::Connected);
+    // remove any previous pending server since the instance is a client now
+    // this servers can be pending after a host promotion
+    cmd.remove_resource::<NetcodeServerTransport>();
 }
 
 fn client_reset(mut cmd: Commands) {

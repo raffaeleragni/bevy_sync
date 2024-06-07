@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{
-    transport::NetcodeServerTransport, DefaultChannel, RenetServer, ServerEvent,
+    transport::{NetcodeClientTransport, NetcodeServerTransport}, DefaultChannel, RenetServer, ServerEvent,
 };
 
 use crate::{
@@ -81,6 +81,9 @@ fn client_connected(mut cmd: Commands, mut server_events: EventReader<ServerEven
                 let client_id = *client_id;
                 info!("Client connected with client id: {}", client_id);
                 cmd.add(move |world: &mut World| send_initial_sync(client_id, world));
+                // remove any previous pending client since the instance is a server now
+                // this clients can be pending after a host promotion
+                cmd.remove_resource::<NetcodeClientTransport>();
             }
             ServerEvent::ClientDisconnected { client_id, reason } => {
                 info!(
