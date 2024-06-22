@@ -11,6 +11,7 @@ Uses `bevy_renet`.
 Current state is in development.
 
 - [X] Entity synchronization
+- [X] Entyty sync is based on UUIDs
 - [X] Component synchronization
 - [X] Parent/Child entity synchronization
 - [ ] Skippable channel for Unordered+Unreliable
