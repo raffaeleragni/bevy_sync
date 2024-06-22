@@ -13,7 +13,7 @@ use crate::{
 use self::track::{
     entity_created_on_client, entity_parented_on_client, entity_removed_from_client,
     react_on_changed_components, react_on_changed_images, react_on_changed_materials,
-    react_on_changed_meshes, track_spawn_client,
+    react_on_changed_meshes,
 };
 
 mod receiver;
@@ -47,7 +47,6 @@ impl Plugin for ClientSyncPlugin {
         app.add_systems(
             Update,
             (
-                track_spawn_client,
                 entity_created_on_client,
                 entity_parented_on_client,
                 react_on_changed_components,

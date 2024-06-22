@@ -135,8 +135,8 @@ fn check_parents(world: &World, result: &mut Vec<Message>) -> Result<(), Box<dyn
                 if let Some(sid) = track.entity_to_uuid.get(&e_id) {
                     if let Some(pid) = track.entity_to_uuid.get(&parent.get()) {
                         result.push(Message::EntityParented {
-                            server_entity_id: *sid,
-                            server_parent_id: *pid,
+                            entity_id: *sid,
+                            parent_id: *pid,
                         });
                     }
                 }

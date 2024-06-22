@@ -20,8 +20,8 @@ pub(crate) enum Message {
         id: EntityId,
     } = 1,
     EntityParented {
-        server_entity_id: EntityId,
-        server_parent_id: EntityId,
+        entity_id: EntityId,
+        parent_id: EntityId,
     } = 2,
     EntityDelete {
         id: EntityId,

@@ -53,11 +53,12 @@ fn server_received_a_message(
                 })
                 .id();
             // Need to update the map right away or else adjacent messages won't see each other entity
-            track.uuid_to_entity.insert(Uuid::new_v4(), e_id);
+            track.uuid_to_entity.insert(id, e_id);
+            track.entity_to_uuid.insert(e_id, id);
         }
         Message::EntityParented {
-            server_entity_id: me_id,
-            server_parent_id: mp_id,
+            entity_id: me_id,
+            parent_id: mp_id,
         } => {
             cmd.add(move |world: &mut World| {
                 let track = world.resource::<SyncTrackerRes>();
@@ -81,8 +82,8 @@ fn server_received_a_message(
                     client_id,
                     &mut world.resource_mut::<RenetServer>(),
                     &Message::EntityParented {
-                        server_entity_id: me_id,
-                        server_parent_id: mp_id,
+                        entity_id: me_id,
+                        parent_id: mp_id,
                     },
                 );
             });

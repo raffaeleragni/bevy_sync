@@ -10,16 +10,8 @@ use crate::{
     SyncEntity, SyncMark,
 };
 
-pub(crate) fn track_spawn_server(
-    mut track: ResMut<SyncTrackerRes>,
-    query: Query<(Entity, &SyncEntity), Added<SyncEntity>>,
-) {
-    for (e_id, sd) in query.iter() {
-        track.uuid_to_entity.insert(sd.uuid, e_id);
-    }
-}
-
 pub(crate) fn entity_created_on_server(
+    mut track: ResMut<SyncTrackerRes>,
     mut commands: Commands,
     mut server: ResMut<RenetServer>,
     mut query: Query<Entity, Added<SyncMark>>,
@@ -34,9 +26,9 @@ pub(crate) fn entity_created_on_server(
             );
         }
         let mut entity = commands.entity(id);
-        entity.remove::<SyncMark>().insert(SyncEntity {
-            uuid,
-        });
+        track.uuid_to_entity.insert(uuid, id);
+        track.entity_to_uuid.insert(id, uuid);
+        entity.remove::<SyncMark>().insert(SyncEntity { uuid });
     }
 }
 
@@ -57,8 +49,8 @@ pub(crate) fn entity_parented_on_server(
                 client_id,
                 DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::EntityParented {
-                    server_entity_id: *id,
-                    server_parent_id: *pid,
+                    entity_id: *id,
+                    parent_id: *pid,
                 })
                 .unwrap(),
             );
@@ -88,9 +80,7 @@ pub(crate) fn reply_back_to_client_generated_entity(
         let mut entity = commands.entity(entity_id);
         entity
             .remove::<SyncClientGeneratedEntity>()
-            .insert(SyncEntity {
-                uuid: *id,
-            });
+            .insert(SyncEntity { uuid: *id });
     }
 }
 

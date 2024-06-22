@@ -4,19 +4,11 @@ use uuid::Uuid;
 
 use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
-    proto::Message, SyncMark, SyncEntity,
+    proto::Message, SyncEntity, SyncMark,
 };
 
-pub(crate) fn track_spawn_client(
-    mut track: ResMut<SyncTrackerRes>,
-    query: Query<(Entity, &SyncEntity), Added<SyncEntity>>,
-) {
-    for (e_id, sync_up) in query.iter() {
-        track.uuid_to_entity.insert(sync_up.uuid, e_id);
-    }
-}
-
 pub(crate) fn entity_created_on_client(
+    mut track: ResMut<SyncTrackerRes>,
     mut client: ResMut<RenetClient>,
     mut query: Query<Entity, Added<SyncMark>>,
     mut cmd: Commands,
@@ -27,9 +19,11 @@ pub(crate) fn entity_created_on_client(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawn { id: uuid }).unwrap(),
         );
-        cmd.entity(id).insert(SyncEntity {
-             uuid,
-        });
+        cmd.entity(id)
+            .remove::<SyncMark>()
+            .insert(SyncEntity { uuid });
+        track.uuid_to_entity.insert(uuid, id);
+        track.entity_to_uuid.insert(id, uuid);
     }
 }
 
@@ -45,8 +39,8 @@ pub(crate) fn entity_parented_on_client(
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntityParented {
-                server_entity_id: sup.uuid,
-                server_parent_id: parent.1.uuid,
+                entity_id: sup.uuid,
+                parent_id: parent.1.uuid,
             })
             .unwrap(),
         );

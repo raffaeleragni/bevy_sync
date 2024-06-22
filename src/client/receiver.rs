@@ -47,17 +47,14 @@ fn client_received_a_message(
                     return;
                 }
             }
-            let e_id = cmd
-                .spawn(SyncEntity {
-                    uuid: id,
-                })
-                .id();
+            let e_id = cmd.spawn(SyncEntity { uuid: id }).id();
             // Need to update the map right away or else adjacent messages won't see each other entity
             track.uuid_to_entity.insert(id, e_id);
+            track.entity_to_uuid.insert(e_id, id);
         }
         Message::EntityParented {
-            server_entity_id: e_id,
-            server_parent_id: p_id,
+            entity_id: e_id,
+            parent_id: p_id,
         } => {
             let Some(&c_e_id) = track.uuid_to_entity.get(&e_id) else {
                 return;

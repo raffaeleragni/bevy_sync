@@ -16,8 +16,8 @@ pub(crate) fn log_message_received(from: Who, message: &Message) {
             id
         ),
         Message::EntityParented {
-            server_entity_id: eid,
-            server_parent_id: pid,
+            entity_id: eid,
+            parent_id: pid,
         } => debug!(
             "{:?} received EntityParented {{ eid: {}, pid: {} }}",
             from,
