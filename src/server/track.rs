@@ -3,11 +3,8 @@ use bevy_renet::renet::{DefaultChannel, RenetServer};
 use uuid::Uuid;
 
 use crate::{
-    binreflect::reflect_to_bin,
-    lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
-    networking::assets::SyncAssetTransfer,
-    proto::Message,
-    SyncEntity, SyncMark,
+    binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
+    proto::Message, SyncEntity, SyncMark,
 };
 
 pub(crate) fn entity_created_on_server(
@@ -55,32 +52,6 @@ pub(crate) fn entity_parented_on_server(
                 .unwrap(),
             );
         }
-    }
-}
-
-pub(crate) fn reply_back_to_client_generated_entity(
-    mut commands: Commands,
-    track: ResMut<SyncTrackerRes>,
-    mut server: ResMut<RenetServer>,
-    mut query: Query<(Entity, &SyncClientGeneratedEntity), Added<SyncClientGeneratedEntity>>,
-) {
-    for (entity_id, marker_component) in query.iter_mut() {
-        let Some(id) = track.entity_to_uuid.get(&entity_id) else {
-            continue;
-        };
-        for cid in server.clients_id().into_iter() {
-            if marker_component.client_id != cid {
-                server.send_message(
-                    cid,
-                    DefaultChannel::ReliableOrdered,
-                    bincode::serialize(&Message::EntitySpawn { id: *id }).unwrap(),
-                );
-            }
-        }
-        let mut entity = commands.entity(entity_id);
-        entity
-            .remove::<SyncClientGeneratedEntity>()
-            .insert(SyncEntity { uuid: *id });
     }
 }
 

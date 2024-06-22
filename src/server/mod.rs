@@ -5,9 +5,7 @@ use bevy_renet::renet::{
 };
 
 use crate::{
-    lib_priv::{
-        sync_material_enabled, sync_mesh_enabled, SyncClientGeneratedEntity, SyncTrackerRes,
-    },
+    lib_priv::{sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
     proto::{Message, PromoteToHostEvent},
     server::initial_sync::send_initial_sync,
     ServerState,
@@ -16,7 +14,7 @@ use crate::{
 use self::track::{
     entity_created_on_server, entity_parented_on_server, entity_removed_from_server,
     react_on_changed_components, react_on_changed_images, react_on_changed_materials,
-    react_on_changed_meshes, reply_back_to_client_generated_entity,
+    react_on_changed_meshes,
 };
 
 mod initial_sync;
@@ -46,7 +44,6 @@ impl Plugin for ServerSyncPlugin {
         app.add_systems(
             Update,
             (
-                reply_back_to_client_generated_entity,
                 entity_created_on_server,
                 entity_parented_on_server,
                 entity_removed_from_server,

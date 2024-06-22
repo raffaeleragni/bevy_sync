@@ -217,12 +217,6 @@ fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeReg
     }
 }
 
-#[derive(Component)]
-pub(crate) struct SyncClientGeneratedEntity {
-    pub(crate) client_id: ClientId,
-    pub(crate) client_entity_id: Uuid,
-}
-
 impl Plugin for SyncPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<SyncMark>();
