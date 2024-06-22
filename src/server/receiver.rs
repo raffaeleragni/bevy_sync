@@ -1,12 +1,11 @@
-use bevy::reflect::Map;
 use bevy_renet::renet::ClientId;
-use uuid::Uuid;
 
 use crate::{
     lib_priv::PromotedToClient,
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client},
-    proto::SyncAssetType, SyncEntity,
+    proto::SyncAssetType,
+    SyncEntity,
 };
 
 use super::*;
@@ -65,8 +64,8 @@ fn server_received_a_message(
                 let Some(p_id) = track.uuid_to_entity.get(&mp_id) else {
                     return;
                 };
-                let e_id = e_id.clone();
-                let p_id = p_id.clone();
+                let e_id = *e_id;
+                let p_id = *p_id;
                 let Some(mut entity) = world.get_entity_mut(e_id) else {
                     return;
                 };

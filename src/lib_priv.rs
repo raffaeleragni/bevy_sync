@@ -7,7 +7,6 @@ use bevy::{
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
     utils::{HashMap, HashSet},
 };
-use bevy_renet::renet::ClientId;
 use uuid::Uuid;
 
 use crate::{

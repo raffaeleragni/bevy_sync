@@ -24,6 +24,7 @@ pub(crate) fn entity_created_on_client(
             .insert(SyncEntity { uuid });
         track.uuid_to_entity.insert(uuid, id);
         track.entity_to_uuid.insert(id, uuid);
+        debug!("New entity tracked on client {}", uuid);
     }
 }
 
