@@ -1,3 +1,5 @@
+use bevy::reflect::Map;
+
 use crate::{
     lib_priv::PromotedToServer,
     logging::{log_message_received, Who},
@@ -78,6 +80,8 @@ fn client_received_a_message(
             let Some(mut e) = cmd.get_entity(e_id) else {
                 return;
             };
+            track.uuid_to_entity.remove(&id);
+            track.entity_to_uuid.remove(&e_id);
             e.despawn();
         }
         Message::ComponentUpdated { id, name, data } => {

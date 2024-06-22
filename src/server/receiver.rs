@@ -1,3 +1,4 @@
+use bevy::reflect::Map;
 use bevy_renet::renet::ClientId;
 use uuid::Uuid;
 
@@ -55,6 +56,7 @@ fn server_received_a_message(
             // Need to update the map right away or else adjacent messages won't see each other entity
             track.uuid_to_entity.insert(id, e_id);
             track.entity_to_uuid.insert(e_id, id);
+            repeat_except_for_client(client_id, server, &Message::EntitySpawn { id });
         }
         Message::EntityParented {
             entity_id: me_id,
@@ -90,10 +92,14 @@ fn server_received_a_message(
         }
         Message::EntityDelete { id: mid } => {
             if let Some(id) = track.uuid_to_entity.get(&mid) {
-                if let Some(mut e) = cmd.get_entity(*id) {
+                let id = *id;
+                if let Some(mut e) = cmd.get_entity(id) {
                     e.despawn();
+                    track.uuid_to_entity.remove(&mid);
+                    track.entity_to_uuid.remove(&id);
                 }
             }
+            repeat_except_for_client(client_id, server, &Message::EntityDelete { id: mid });
         }
         Message::ComponentUpdated { id, name, data } => {
             let Some(&e_id) = track.uuid_to_entity.get(&id) else {
