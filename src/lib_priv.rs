@@ -13,8 +13,8 @@ use uuid::Uuid;
 use crate::{
     binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
     proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, PromoteToHostEvent,
-    ServerPlugin, ServerState, SyncComponent, SyncConnectionParameters, SyncDown, SyncExclude,
-    SyncMark, SyncPlugin, SyncUp,
+    ServerPlugin, ServerState, SyncComponent, SyncConnectionParameters, SyncEntity, SyncExclude,
+    SyncMark, SyncPlugin,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -147,20 +147,20 @@ fn equals(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) ->
 #[allow(clippy::type_complexity)]
 fn sync_detect_server<T: Component + Reflect>(
     mut push: ResMut<SyncTrackerRes>,
-    q: Query<(&T, &SyncDown), (Without<SyncExclude<T>>, Changed<T>)>,
+    q: Query<(&T, &SyncEntity), (Without<SyncExclude<T>>, Changed<T>)>,
 ) {
     for (component, down) in q.iter() {
-        push.signal_component_changed(down.server_entity_id, component.clone_value());
+        push.signal_component_changed(down.uuid, component.clone_value());
     }
 }
 
 #[allow(clippy::type_complexity)]
 fn sync_detect_client<T: Component + Reflect>(
     mut push: ResMut<SyncTrackerRes>,
-    q: Query<(&SyncUp, &T), (With<SyncUp>, Without<SyncExclude<T>>, Changed<T>)>,
+    q: Query<(&SyncEntity, &T), (With<SyncEntity>, Without<SyncExclude<T>>, Changed<T>)>,
 ) {
     for (sup, component) in q.iter() {
-        push.signal_component_changed(sup.server_entity_id, component.clone_value());
+        push.signal_component_changed(sup.uuid, component.clone_value());
     }
 }
 

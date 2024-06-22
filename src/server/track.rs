@@ -7,15 +7,15 @@ use crate::{
     lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
     networking::assets::SyncAssetTransfer,
     proto::Message,
-    SyncDown, SyncMark,
+    SyncEntity, SyncMark,
 };
 
 pub(crate) fn track_spawn_server(
     mut track: ResMut<SyncTrackerRes>,
-    query: Query<(Entity, &SyncDown), Added<SyncDown>>,
+    query: Query<(Entity, &SyncEntity), Added<SyncEntity>>,
 ) {
     for (e_id, sd) in query.iter() {
-        track.uuid_to_entity.insert(sd.server_entity_id, e_id);
+        track.uuid_to_entity.insert(sd.uuid, e_id);
     }
 }
 
@@ -34,8 +34,8 @@ pub(crate) fn entity_created_on_server(
             );
         }
         let mut entity = commands.entity(id);
-        entity.remove::<SyncMark>().insert(SyncDown {
-            server_entity_id: uuid,
+        entity.remove::<SyncMark>().insert(SyncEntity {
+            uuid,
         });
     }
 }
@@ -88,8 +88,8 @@ pub(crate) fn reply_back_to_client_generated_entity(
         let mut entity = commands.entity(entity_id);
         entity
             .remove::<SyncClientGeneratedEntity>()
-            .insert(SyncDown {
-                server_entity_id: *id,
+            .insert(SyncEntity {
+                uuid: *id,
             });
     }
 }
@@ -97,7 +97,7 @@ pub(crate) fn reply_back_to_client_generated_entity(
 pub(crate) fn entity_removed_from_server(
     mut server: ResMut<RenetServer>,
     mut track: ResMut<SyncTrackerRes>,
-    query: Query<Entity, With<SyncDown>>,
+    query: Query<Entity, With<SyncEntity>>,
 ) {
     let mut despawned_entities = HashSet::new();
     track.entity_to_uuid.retain(|&e_id, &mut uuid| {

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
-use bevy_sync::{SyncDown, SyncUp};
+use bevy_sync::SyncEntity;
 use uuid::Uuid;
 
 use crate::setup::{sample_image, sample_mesh, MySynched, TestEnv};
@@ -9,15 +9,14 @@ use crate::setup::{sample_image, sample_mesh, MySynched, TestEnv};
 pub(crate) fn entities_in_sync<T>(env: &mut TestEnv, _: T, entity_count: u32) {
     for c in &mut env.clients {
         let mut count_check = 0;
-        for e in c.world.query::<&SyncUp>().iter(&c.world) {
-            let sid = e.server_entity_id;
+        for e in c.world.query::<&SyncEntity>().iter(&c.world) {
             for se in env
                 .server
                 .world
-                .query::<&SyncDown>()
+                .query::<&SyncEntity>()
                 .iter(&env.server.world)
             {
-                if se.server_entity_id == sid {
+                if se.uuid == e.uuid {
                     count_check += 1;
                 }
             }
@@ -54,9 +53,9 @@ pub(crate) fn no_messages_left_for_client(c: &mut App) {
 #[allow(dead_code)]
 pub(crate) fn initial_sync_for_client_happened(s: &mut App, c: &mut App, entity_count: u32) {
     let mut count_check = 0;
-    for (e, c) in c.world.query::<(&SyncUp, &MySynched)>().iter(&c.world) {
-        for se in s.world.query::<&SyncDown>().iter(&s.world) {
-            if se.server_entity_id == e.server_entity_id {
+    for (e, c) in c.world.query::<(&SyncEntity, &MySynched)>().iter(&c.world) {
+        for se in s.world.query::<&SyncEntity>().iter(&s.world) {
+            if se.uuid == e.uuid {
                 count_check += 1;
                 assert_eq!(c.value, 7);
             }
@@ -128,16 +127,9 @@ pub(crate) fn assets_has_sample_image(app: &mut App, id: AssetId<Image>) {
 }
 
 #[allow(dead_code)]
-pub(crate) fn find_entity_with_server_id(
-    app: &mut App,
-    server_entity_id: Uuid,
-) -> Option<Entity> {
-    for (entity, sup) in app
-        .world
-        .query_filtered::<(Entity, &SyncUp), With<SyncUp>>()
-        .iter(&app.world)
-    {
-        if sup.server_entity_id == server_entity_id {
+pub(crate) fn find_entity_with_server_id(app: &mut App, server_entity_id: Uuid) -> Option<Entity> {
+    for (entity, sup) in app.world.query::<(Entity, &SyncEntity)>().iter(&app.world) {
+        if sup.uuid == server_entity_id {
             return Some(entity);
         }
     }

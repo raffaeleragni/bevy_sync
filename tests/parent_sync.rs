@@ -2,11 +2,10 @@ mod assert;
 mod setup;
 
 use bevy::prelude::*;
-use bevy_sync::{SyncMark, SyncUp};
+use bevy_sync::{SyncEntity, SyncMark};
 use serial_test::serial;
 use setup::{TestEnv, TestRun};
 use uuid::Uuid;
-use wgpu_types::assertions::StrictAssertUnwrapExt;
 
 use crate::assert::find_entity_with_server_id;
 
@@ -27,16 +26,16 @@ fn test_entity_parent_is_transferred_from_server() {
                 .server
                 .world
                 .entity(e1)
-                .get::<SyncUp>()
+                .get::<SyncEntity>()
                 .unwrap()
-                .server_entity_id;
+                .uuid;
             let server_e_id2 = env
                 .server
                 .world
                 .entity(e2)
-                .get::<SyncUp>()
+                .get::<SyncEntity>()
                 .unwrap()
-                .server_entity_id;
+                .uuid;
             (server_e_id1, server_e_id2)
         },
         |env: &mut TestEnv, _, entities: (Uuid, Uuid)| {
@@ -88,9 +87,9 @@ fn test_entity_parent_is_transferred_from_client() {
             env.update(4);
 
             let e1 = &env.clients[0].world.entity(e_id1);
-            let server_e1 = e1.get::<SyncUp>().unwrap().server_entity_id;
+            let server_e1 = e1.get::<SyncEntity>().unwrap().uuid;
             let e2 = &env.clients[0].world.entity(e_id2);
-            let server_e2 = e2.get::<SyncUp>().unwrap().server_entity_id;
+            let server_e2 = e2.get::<SyncEntity>().unwrap().uuid;
 
             (server_e1, server_e2)
         },

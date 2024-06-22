@@ -1,5 +1,4 @@
-use bevy::prelude::Entity;
-use bevy_sync::{SyncMark, SyncUp};
+use bevy_sync::{SyncEntity, SyncMark};
 use serial_test::serial;
 use setup::TestRun;
 use uuid::Uuid;
@@ -95,7 +94,7 @@ fn test_entity_deleted_from_client() {
             let e_id = env.clients[0].world.spawn(SyncMark {}).id();
             env.update(5);
             let e = env.clients[0].world.entity_mut(e_id);
-            let server_e_id = e.get::<SyncUp>().unwrap().server_entity_id;
+            let server_e_id = e.get::<SyncEntity>().unwrap().uuid;
             e.despawn();
             server_e_id
         },

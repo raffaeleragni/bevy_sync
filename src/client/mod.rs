@@ -7,7 +7,7 @@ use bevy_renet::renet::{
 use crate::{
     lib_priv::{sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
     proto::Message,
-    ClientState, SyncUp,
+    ClientState,
 };
 
 use self::track::{

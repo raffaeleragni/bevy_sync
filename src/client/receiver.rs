@@ -3,7 +3,7 @@ use crate::{
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client, create_server},
     proto::SyncAssetType,
-    SyncConnectionParameters,
+    SyncConnectionParameters, SyncEntity,
 };
 
 use super::*;
@@ -48,8 +48,8 @@ fn client_received_a_message(
                 }
             }
             let e_id = cmd
-                .spawn(SyncUp {
-                    server_entity_id: id,
+                .spawn(SyncEntity {
+                    uuid: id,
                 })
                 .id();
             // Need to update the map right away or else adjacent messages won't see each other entity

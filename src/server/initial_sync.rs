@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
-    proto::Message, SyncDown,
+    proto::Message, SyncEntity,
 };
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashSet};
@@ -48,7 +48,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
     let registry = world.resource::<AppTypeRegistry>();
     let registry = registry.read();
     let sync_down_id = world
-        .component_id::<SyncDown>()
+        .component_id::<SyncEntity>()
         .ok_or("SyncDown is not registered")?;
     for arch in world
         .archetypes()
@@ -112,10 +112,10 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
 fn check_parents(world: &World, result: &mut Vec<Message>) -> Result<(), Box<dyn Error>> {
     let track = world.resource::<SyncTrackerRes>();
     let sync_down_id = world
-        .component_id::<SyncDown>()
+        .component_id::<SyncEntity>()
         .ok_or("SyncDown is not registered")?;
     let parent_component_id = world
-        .component_id::<SyncDown>()
+        .component_id::<SyncEntity>()
         .ok_or("Parent is not registered")?;
     for arch in world
         .archetypes()

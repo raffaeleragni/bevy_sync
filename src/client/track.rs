@@ -4,15 +4,15 @@ use uuid::Uuid;
 
 use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
-    proto::Message, SyncMark, SyncUp,
+    proto::Message, SyncMark, SyncEntity,
 };
 
 pub(crate) fn track_spawn_client(
     mut track: ResMut<SyncTrackerRes>,
-    query: Query<(Entity, &SyncUp), Added<SyncUp>>,
+    query: Query<(Entity, &SyncEntity), Added<SyncEntity>>,
 ) {
     for (e_id, sync_up) in query.iter() {
-        track.uuid_to_entity.insert(sync_up.server_entity_id, e_id);
+        track.uuid_to_entity.insert(sync_up.uuid, e_id);
     }
 }
 
@@ -27,16 +27,16 @@ pub(crate) fn entity_created_on_client(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawn { id: uuid }).unwrap(),
         );
-        cmd.entity(id).insert(SyncUp {
-            server_entity_id: uuid,
+        cmd.entity(id).insert(SyncEntity {
+             uuid,
         });
     }
 }
 
 pub(crate) fn entity_parented_on_client(
     mut client: ResMut<RenetClient>,
-    query: Query<(&Parent, &SyncUp), Changed<Parent>>,
-    query_parent: Query<(Entity, &SyncUp), With<Children>>,
+    query: Query<(&Parent, &SyncEntity), Changed<Parent>>,
+    query_parent: Query<(Entity, &SyncEntity), With<Children>>,
 ) {
     for (p, sup) in query.iter() {
         let Ok(parent) = query_parent.get(p.get()) else {
@@ -45,8 +45,8 @@ pub(crate) fn entity_parented_on_client(
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntityParented {
-                server_entity_id: sup.server_entity_id,
-                server_parent_id: parent.1.server_entity_id,
+                server_entity_id: sup.uuid,
+                server_parent_id: parent.1.uuid,
             })
             .unwrap(),
         );
@@ -56,7 +56,7 @@ pub(crate) fn entity_parented_on_client(
 pub(crate) fn entity_removed_from_client(
     mut client: ResMut<RenetClient>,
     mut track: ResMut<SyncTrackerRes>,
-    query: Query<Entity, With<SyncUp>>,
+    query: Query<Entity, With<SyncEntity>>,
 ) {
     let mut despawned_entities = HashSet::new();
     track.uuid_to_entity.retain(|&s_e_id, &mut e_id| {
