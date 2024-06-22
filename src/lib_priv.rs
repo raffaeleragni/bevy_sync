@@ -18,7 +18,7 @@ use crate::{
 
 #[derive(PartialEq, Eq, Hash)]
 pub(crate) struct ComponentChangeId {
-    pub(crate) id: Entity,
+    pub(crate) id: Uuid,
     pub(crate) name: String,
 }
 
@@ -64,10 +64,7 @@ pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
 impl SyncTrackerRes {
     pub(crate) fn signal_component_changed(&mut self, id: Uuid, data: Box<dyn Reflect>) {
         let name = data.get_represented_type_info().unwrap().type_path().into();
-        let Some(id) = self.uuid_to_entity.get(&id) else {
-            return;
-        };
-        let change_id = ComponentChangeId { id: *id, name };
+        let change_id = ComponentChangeId { id, name };
         if self.pushed_component_from_network.contains(&change_id) {
             self.pushed_component_from_network.remove(&change_id);
             return;
@@ -95,12 +92,16 @@ impl SyncTrackerRes {
         let component_data = bin_to_reflect(data, &registry);
         let registration = registry.get_with_type_path(name.as_str()).unwrap();
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
+        let Some(sync_entity) = world.entity(e_id).get::<SyncEntity>() else {
+            return false;
+        };
+        let uuid = sync_entity.uuid;
         let previous_value = reflect_component.reflect(world.entity(e_id));
         if equals(previous_value, &*component_data) {
             world
                 .resource_mut::<SyncTrackerRes>()
                 .pushed_component_from_network
-                .insert(ComponentChangeId { id: e_id, name });
+                .insert(ComponentChangeId { id: uuid, name });
             let entity = &mut world.entity_mut(e_id);
             reflect_component.apply_or_insert(entity, component_data.as_reflect(), &registry);
             true

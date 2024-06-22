@@ -22,10 +22,13 @@ pub(crate) fn entity_created_on_server(
                 bincode::serialize(&Message::EntitySpawn { id: uuid }).unwrap(),
             );
         }
-        let mut entity = commands.entity(id);
         track.uuid_to_entity.insert(uuid, id);
         track.entity_to_uuid.insert(id, uuid);
-        entity.remove::<SyncMark>().insert(SyncEntity { uuid });
+        commands
+            .entity(id)
+            .remove::<SyncMark>()
+            .insert(SyncEntity { uuid });
+        debug!("New entity tracked on server {}", uuid);
     }
 }
 
@@ -91,11 +94,8 @@ pub(crate) fn react_on_changed_components(
         let Ok(bin) = reflect_to_bin(change.data.as_reflect(), &registry) else {
             continue;
         };
-        let Some(id) = track.entity_to_uuid.get(&change.change_id.id) else {
-            continue;
-        };
         let msg = &Message::ComponentUpdated {
-            id: *id,
+            id: change.change_id.id,
             name: change.change_id.name.clone(),
             data: bin,
         };

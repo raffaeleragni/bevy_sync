@@ -15,6 +15,8 @@ pub(crate) fn entity_created_on_client(
 ) {
     for id in query.iter_mut() {
         let uuid = Uuid::new_v4();
+        track.uuid_to_entity.insert(uuid, id);
+        track.entity_to_uuid.insert(id, uuid);
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntitySpawn { id: uuid }).unwrap(),
@@ -22,8 +24,6 @@ pub(crate) fn entity_created_on_client(
         cmd.entity(id)
             .remove::<SyncMark>()
             .insert(SyncEntity { uuid });
-        track.uuid_to_entity.insert(uuid, id);
-        track.entity_to_uuid.insert(id, uuid);
         debug!("New entity tracked on client {}", uuid);
     }
 }
@@ -80,13 +80,10 @@ pub(crate) fn react_on_changed_components(
         let Ok(bin) = reflect_to_bin(change.data.as_reflect(), &registry) else {
             continue;
         };
-        let Some(id) = track.entity_to_uuid.get(&change.change_id.id) else {
-            continue;
-        };
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::ComponentUpdated {
-                id: *id,
+                id: change.change_id.id,
                 name: change.change_id.name,
                 data: bin,
             })
