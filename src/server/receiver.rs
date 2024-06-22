@@ -5,6 +5,7 @@ use crate::{
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client},
     proto::SyncAssetType,
+    SyncEntity,
 };
 
 use super::*;
@@ -45,20 +46,26 @@ fn server_received_a_message(
     log_message_received(Who::Server, &msg);
     match msg {
         Message::EntitySpawn { id } => {
-            let e_id = cmd
-                .spawn(SyncClientGeneratedEntity {
-                    client_id,
-                    client_entity_id: id,
-                })
-                .id();
+            let e_id = cmd.spawn(SyncEntity { uuid: id }).id();
             // Need to update the map right away or else adjacent messages won't see each other entity
-            track.server_to_client_entities.insert(e_id, e_id);
+            track.uuid_to_entity.insert(id, e_id);
+            track.entity_to_uuid.insert(e_id, id);
+            repeat_except_for_client(client_id, server, &Message::EntitySpawn { id });
         }
         Message::EntityParented {
-            server_entity_id: e_id,
-            server_parent_id: p_id,
+            entity_id: me_id,
+            parent_id: mp_id,
         } => {
             cmd.add(move |world: &mut World| {
+                let track = world.resource::<SyncTrackerRes>();
+                let Some(e_id) = track.uuid_to_entity.get(&me_id) else {
+                    return;
+                };
+                let Some(p_id) = track.uuid_to_entity.get(&mp_id) else {
+                    return;
+                };
+                let e_id = *e_id;
+                let p_id = *p_id;
                 let Some(mut entity) = world.get_entity_mut(e_id) else {
                     return;
                 };
@@ -71,24 +78,25 @@ fn server_received_a_message(
                     client_id,
                     &mut world.resource_mut::<RenetServer>(),
                     &Message::EntityParented {
-                        server_entity_id: e_id,
-                        server_parent_id: p_id,
+                        entity_id: me_id,
+                        parent_id: mp_id,
                     },
                 );
             });
         }
-        Message::EntityDelete { id } => {
-            if let Some(mut e) = cmd.get_entity(id) {
-                e.despawn();
+        Message::EntityDelete { id: mid } => {
+            if let Some(id) = track.uuid_to_entity.get(&mid) {
+                let id = *id;
+                if let Some(mut e) = cmd.get_entity(id) {
+                    e.despawn();
+                    track.uuid_to_entity.remove(&mid);
+                    track.entity_to_uuid.remove(&id);
+                }
             }
+            repeat_except_for_client(client_id, server, &Message::EntityDelete { id: mid });
         }
-        // This has no meaning on server side
-        Message::EntitySpawnBack {
-            server_entity_id: _,
-            client_entity_id: _,
-        } => {}
         Message::ComponentUpdated { id, name, data } => {
-            let Some(&e_id) = track.server_to_client_entities.get(&id) else {
+            let Some(&e_id) = track.uuid_to_entity.get(&id) else {
                 return;
             };
             cmd.add(move |world: &mut World| {

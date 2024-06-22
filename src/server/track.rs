@@ -1,53 +1,56 @@
 use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetServer};
+use uuid::Uuid;
 
 use crate::{
-    binreflect::reflect_to_bin,
-    lib_priv::{SyncClientGeneratedEntity, SyncTrackerRes},
-    networking::assets::SyncAssetTransfer,
-    proto::Message,
-    SyncDown, SyncMark,
+    binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
+    proto::Message, SyncEntity, SyncMark,
 };
 
-pub(crate) fn track_spawn_server(
-    mut track: ResMut<SyncTrackerRes>,
-    query: Query<Entity, Added<SyncDown>>,
-) {
-    for e_id in query.iter() {
-        track.server_to_client_entities.insert(e_id, e_id);
-    }
-}
-
 pub(crate) fn entity_created_on_server(
+    mut track: ResMut<SyncTrackerRes>,
     mut commands: Commands,
     mut server: ResMut<RenetServer>,
     mut query: Query<Entity, Added<SyncMark>>,
 ) {
     for id in query.iter_mut() {
+        let uuid = Uuid::new_v4();
         for client_id in server.clients_id().into_iter() {
             server.send_message(
                 client_id,
                 DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
+                bincode::serialize(&Message::EntitySpawn { id: uuid }).unwrap(),
             );
         }
-        let mut entity = commands.entity(id);
-        entity.remove::<SyncMark>().insert(SyncDown {});
+        track.uuid_to_entity.insert(uuid, id);
+        track.entity_to_uuid.insert(id, uuid);
+        commands
+            .entity(id)
+            .remove::<SyncMark>()
+            .insert(SyncEntity { uuid });
+        debug!("New entity tracked on server {}", uuid);
     }
 }
 
 pub(crate) fn entity_parented_on_server(
     mut server: ResMut<RenetServer>,
+    track: ResMut<SyncTrackerRes>,
     query: Query<(Entity, &Parent), Changed<Parent>>,
 ) {
     for (e_id, p) in query.iter() {
         for client_id in server.clients_id().into_iter() {
+            let Some(id) = track.entity_to_uuid.get(&e_id) else {
+                continue;
+            };
+            let Some(pid) = track.entity_to_uuid.get(&p.get()) else {
+                continue;
+            };
             server.send_message(
                 client_id,
                 DefaultChannel::ReliableOrdered,
                 bincode::serialize(&Message::EntityParented {
-                    server_entity_id: e_id,
-                    server_parent_id: p.get(),
+                    entity_id: *id,
+                    parent_id: *pid,
                 })
                 .unwrap(),
             );
@@ -55,57 +58,27 @@ pub(crate) fn entity_parented_on_server(
     }
 }
 
-pub(crate) fn reply_back_to_client_generated_entity(
-    mut commands: Commands,
-    mut server: ResMut<RenetServer>,
-    mut query: Query<(Entity, &SyncClientGeneratedEntity), Added<SyncClientGeneratedEntity>>,
-) {
-    for (entity_id, marker_component) in query.iter_mut() {
-        server.send_message(
-            marker_component.client_id,
-            DefaultChannel::ReliableOrdered,
-            bincode::serialize(&Message::EntitySpawnBack {
-                server_entity_id: entity_id,
-                client_entity_id: marker_component.client_entity_id,
-            })
-            .unwrap(),
-        );
-        for cid in server.clients_id().into_iter() {
-            if marker_component.client_id != cid {
-                server.send_message(
-                    cid,
-                    DefaultChannel::ReliableOrdered,
-                    bincode::serialize(&Message::EntitySpawn { id: entity_id }).unwrap(),
-                );
-            }
-        }
-        let mut entity = commands.entity(entity_id);
-        entity
-            .remove::<SyncClientGeneratedEntity>()
-            .insert(SyncDown {});
-    }
-}
-
 pub(crate) fn entity_removed_from_server(
     mut server: ResMut<RenetServer>,
     mut track: ResMut<SyncTrackerRes>,
-    query: Query<Entity, With<SyncDown>>,
+    query: Query<Entity, With<SyncEntity>>,
 ) {
     let mut despawned_entities = HashSet::new();
-    track.server_to_client_entities.retain(|&e_id, _| {
+    track.entity_to_uuid.retain(|&e_id, &mut uuid| {
         if query.get(e_id).is_err() {
-            despawned_entities.insert(e_id);
+            despawned_entities.insert(uuid);
             false
         } else {
             true
         }
     });
-    for &id in despawned_entities.iter() {
+    for uuid in despawned_entities.iter() {
+        track.uuid_to_entity.remove(uuid);
         for cid in server.clients_id().into_iter() {
             server.send_message(
                 cid,
                 DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::EntityDelete { id }).unwrap(),
+                bincode::serialize(&Message::EntityDelete { id: *uuid }).unwrap(),
             );
         }
     }

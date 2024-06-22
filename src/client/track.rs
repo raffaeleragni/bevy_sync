@@ -1,38 +1,37 @@
 use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetClient};
+use uuid::Uuid;
 
 use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
-    proto::Message, SyncMark, SyncUp,
+    proto::Message, SyncEntity, SyncMark,
 };
 
-pub(crate) fn track_spawn_client(
-    mut track: ResMut<SyncTrackerRes>,
-    query: Query<(Entity, &SyncUp), Added<SyncUp>>,
-) {
-    for (e_id, sync_up) in query.iter() {
-        track
-            .server_to_client_entities
-            .insert(sync_up.server_entity_id, e_id);
-    }
-}
-
 pub(crate) fn entity_created_on_client(
+    mut track: ResMut<SyncTrackerRes>,
     mut client: ResMut<RenetClient>,
     mut query: Query<Entity, Added<SyncMark>>,
+    mut cmd: Commands,
 ) {
     for id in query.iter_mut() {
+        let uuid = Uuid::new_v4();
+        track.uuid_to_entity.insert(uuid, id);
+        track.entity_to_uuid.insert(id, uuid);
         client.send_message(
             DefaultChannel::ReliableOrdered,
-            bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
+            bincode::serialize(&Message::EntitySpawn { id: uuid }).unwrap(),
         );
+        cmd.entity(id)
+            .remove::<SyncMark>()
+            .insert(SyncEntity { uuid });
+        debug!("New entity tracked on client {}", uuid);
     }
 }
 
 pub(crate) fn entity_parented_on_client(
     mut client: ResMut<RenetClient>,
-    query: Query<(&Parent, &SyncUp), Changed<Parent>>,
-    query_parent: Query<(Entity, &SyncUp), With<Children>>,
+    query: Query<(&Parent, &SyncEntity), Changed<Parent>>,
+    query_parent: Query<(Entity, &SyncEntity), With<Children>>,
 ) {
     for (p, sup) in query.iter() {
         let Ok(parent) = query_parent.get(p.get()) else {
@@ -41,8 +40,8 @@ pub(crate) fn entity_parented_on_client(
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::EntityParented {
-                server_entity_id: sup.server_entity_id,
-                server_parent_id: parent.1.server_entity_id,
+                entity_id: sup.uuid,
+                parent_id: parent.1.uuid,
             })
             .unwrap(),
         );
@@ -52,19 +51,17 @@ pub(crate) fn entity_parented_on_client(
 pub(crate) fn entity_removed_from_client(
     mut client: ResMut<RenetClient>,
     mut track: ResMut<SyncTrackerRes>,
-    query: Query<Entity, With<SyncUp>>,
+    query: Query<Entity, With<SyncEntity>>,
 ) {
     let mut despawned_entities = HashSet::new();
-    track
-        .server_to_client_entities
-        .retain(|&s_e_id, &mut e_id| {
-            if query.get(e_id).is_err() {
-                despawned_entities.insert(s_e_id);
-                false
-            } else {
-                true
-            }
-        });
+    track.uuid_to_entity.retain(|&s_e_id, &mut e_id| {
+        if query.get(e_id).is_err() {
+            despawned_entities.insert(s_e_id);
+            false
+        } else {
+            true
+        }
+    });
     for &id in despawned_entities.iter() {
         client.send_message(
             DefaultChannel::ReliableOrdered,

@@ -1,7 +1,9 @@
-use bevy::prelude::Entity;
-use bevy_sync::{SyncMark, SyncUp};
+use bevy_sync::{SyncEntity, SyncMark};
 use serial_test::serial;
 use setup::TestRun;
+use uuid::Uuid;
+
+use crate::assert::find_entity_with_server_id;
 
 mod assert;
 mod setup;
@@ -92,12 +94,13 @@ fn test_entity_deleted_from_client() {
             let e_id = env.clients[0].world.spawn(SyncMark {}).id();
             env.update(5);
             let e = env.clients[0].world.entity_mut(e_id);
-            let server_e_id = e.get::<SyncUp>().unwrap().server_entity_id;
+            let server_e_id = e.get::<SyncEntity>().unwrap().uuid;
             e.despawn();
             server_e_id
         },
-        |env, _, id: Entity| {
-            assert!(env.server.world.get_entity(id).is_none());
+        |env, _, id: Uuid| {
+            let e = find_entity_with_server_id(&mut env.server, id);
+            assert!(e.is_none());
         },
     );
 }

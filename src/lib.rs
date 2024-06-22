@@ -13,11 +13,12 @@ mod proto;
 mod server;
 
 pub use proto::PromoteToHostEvent;
+use uuid::Uuid;
 
 pub mod prelude {
     pub use super::{
-        ClientPlugin, ClientState, ServerPlugin, ServerState, SyncComponent, SyncDown, SyncExclude,
-        SyncMark, SyncPlugin, SyncUp,
+        ClientPlugin, ClientState, ServerPlugin, ServerState, SyncComponent, SyncEntity,
+        SyncExclude, SyncMark, SyncPlugin,
     };
 }
 
@@ -51,11 +52,8 @@ pub struct SyncExclude<T: Component> {
 }
 
 #[derive(Component)]
-pub struct SyncDown {}
-
-#[derive(Component)]
-pub struct SyncUp {
-    pub server_entity_id: Entity,
+pub struct SyncEntity {
+    pub uuid: Uuid,
 }
 
 pub struct SyncPlugin;

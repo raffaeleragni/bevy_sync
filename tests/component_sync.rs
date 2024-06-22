@@ -2,12 +2,14 @@ mod assert;
 mod setup;
 
 use bevy::{pbr::CubemapVisibleEntities, prelude::*, render::primitives::CubemapFrusta};
-use bevy_sync::{SyncExclude, SyncMark, SyncUp};
+use bevy_sync::{SyncEntity, SyncExclude, SyncMark};
 use serial_test::serial;
 use setup::{MyNonSynched, MySynched, TestEnv, TestRun};
+use uuid::Uuid;
 
 use crate::assert::{
-    count_entities_with_component, count_entities_without_component, get_first_entity_component,
+    count_entities_with_component, count_entities_without_component, find_entity_with_server_id,
+    get_first_entity_component,
 };
 
 #[test]
@@ -75,13 +77,13 @@ fn test_marked_component_is_transferred_from_server_then_changed() {
         |env: &mut TestEnv| {
             env.setup_registration::<MySynched>();
             let e_id = env.server.world.spawn(SyncMark {}).id();
-            env.update(3);
+            env.update(10);
 
             env.server
                 .world
                 .entity_mut(e_id)
                 .insert(MySynched { value: 7 });
-            env.update(3);
+            env.update(10);
 
             env.server
                 .world
@@ -89,7 +91,7 @@ fn test_marked_component_is_transferred_from_server_then_changed() {
                 .get_mut::<MySynched>()
                 .unwrap()
                 .value = 3;
-            env.update(3);
+            env.update(10);
 
             0
         },
@@ -112,11 +114,12 @@ fn test_marked_component_is_transferred_from_client() {
             env.update(4);
             let mut e = env.clients[0].world.entity_mut(e_id);
             e.insert(MySynched { value: 7 });
-            let server_e_id = e.get::<SyncUp>().unwrap().server_entity_id;
+            let server_e_id = e.get::<SyncEntity>().unwrap().uuid;
             server_e_id
         },
-        |env, _, id: Entity| {
-            let e = env.server.world.get_entity(id).unwrap();
+        |env, _, id: Uuid| {
+            let e = find_entity_with_server_id(&mut env.server, id).unwrap();
+            let e = env.server.world.entity(e);
             let compo = e.get::<MySynched>().unwrap();
             assert_eq!(compo.value, 7);
         },
@@ -149,13 +152,14 @@ fn test_marked_component_is_transferred_from_client_then_changed() {
             let server_e_id = env.clients[0]
                 .world
                 .entity_mut(e_id)
-                .get::<SyncUp>()
+                .get::<SyncEntity>()
                 .unwrap()
-                .server_entity_id;
+                .uuid;
             server_e_id
         },
-        |env: &mut TestEnv, _, id: Entity| {
-            let e = env.server.world.get_entity(id).unwrap();
+        |env: &mut TestEnv, _, id: Uuid| {
+            let e = find_entity_with_server_id(&mut env.server, id).unwrap();
+            let e = env.server.world.entity(e);
             let compo = e.get::<MySynched>().unwrap();
             assert_eq!(compo.value, 3);
         },

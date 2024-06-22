@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
-    proto::Message, SyncDown,
+    proto::Message, SyncEntity,
 };
 use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashSet};
@@ -48,7 +48,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
     let registry = world.resource::<AppTypeRegistry>();
     let registry = registry.read();
     let sync_down_id = world
-        .component_id::<SyncDown>()
+        .component_id::<SyncEntity>()
         .ok_or("SyncDown is not registered")?;
     for arch in world
         .archetypes()
@@ -58,9 +58,11 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
         for arch_entity in arch.entities() {
             let entity = world.entity(arch_entity.id());
             let e_id = entity.id();
-            if !entity_ids_sent.contains(&e_id) {
-                result.push(Message::EntitySpawn { id: e_id });
-                entity_ids_sent.insert(e_id);
+            if let Some(sid) = track.entity_to_uuid.get(&e_id) {
+                if !entity_ids_sent.contains(&e_id) {
+                    result.push(Message::EntitySpawn { id: *sid });
+                    entity_ids_sent.insert(e_id);
+                }
             }
         }
 
@@ -93,11 +95,13 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let Ok(compo_bin) = reflect_to_bin(component.as_reflect(), &registry) else {
                     continue;
                 };
-                result.push(Message::ComponentUpdated {
-                    id: e_id,
-                    name: type_name.into(),
-                    data: compo_bin,
-                });
+                if let Some(sid) = track.entity_to_uuid.get(&e_id) {
+                    result.push(Message::ComponentUpdated {
+                        id: *sid,
+                        name: type_name.into(),
+                        data: compo_bin,
+                    });
+                }
             }
         }
     }
@@ -106,11 +110,12 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
 }
 
 fn check_parents(world: &World, result: &mut Vec<Message>) -> Result<(), Box<dyn Error>> {
+    let track = world.resource::<SyncTrackerRes>();
     let sync_down_id = world
-        .component_id::<SyncDown>()
+        .component_id::<SyncEntity>()
         .ok_or("SyncDown is not registered")?;
     let parent_component_id = world
-        .component_id::<SyncDown>()
+        .component_id::<SyncEntity>()
         .ok_or("Parent is not registered")?;
     for arch in world
         .archetypes()
@@ -127,10 +132,14 @@ fn check_parents(world: &World, result: &mut Vec<Message>) -> Result<(), Box<dyn
                 let Some(parent) = entity.get::<Parent>() else {
                     continue;
                 };
-                result.push(Message::EntityParented {
-                    server_entity_id: e_id,
-                    server_parent_id: parent.get(),
-                });
+                if let Some(sid) = track.entity_to_uuid.get(&e_id) {
+                    if let Some(pid) = track.entity_to_uuid.get(&parent.get()) {
+                        result.push(Message::EntityParented {
+                            entity_id: *sid,
+                            parent_id: *pid,
+                        });
+                    }
+                }
             }
         }
     }

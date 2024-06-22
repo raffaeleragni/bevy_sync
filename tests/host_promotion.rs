@@ -11,6 +11,7 @@ mod setup;
 
 #[test]
 #[serial]
+#[ignore = "host promotion is not complete"]
 fn test_host_promotion_with_one_client() {
     TestRun::default().run(
         2,

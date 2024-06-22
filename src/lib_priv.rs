@@ -7,18 +7,18 @@ use bevy::{
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
     utils::{HashMap, HashSet},
 };
-use bevy_renet::renet::ClientId;
+use uuid::Uuid;
 
 use crate::{
     binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
     proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, PromoteToHostEvent,
-    ServerPlugin, ServerState, SyncComponent, SyncConnectionParameters, SyncDown, SyncExclude,
-    SyncMark, SyncPlugin, SyncUp,
+    ServerPlugin, ServerState, SyncComponent, SyncConnectionParameters, SyncEntity, SyncExclude,
+    SyncMark, SyncPlugin,
 };
 
 #[derive(PartialEq, Eq, Hash)]
 pub(crate) struct ComponentChangeId {
-    pub(crate) id: Entity,
+    pub(crate) id: Uuid,
     pub(crate) name: String,
 }
 
@@ -36,7 +36,8 @@ pub(crate) struct PromotedToClient;
 #[derive(Resource, Default)]
 pub(crate) struct SyncTrackerRes {
     /// Mapping of entity ids between server and clients. key: server, value: client
-    pub(crate) server_to_client_entities: HashMap<Entity, Entity>,
+    pub(crate) uuid_to_entity: HashMap<Uuid, Entity>,
+    pub(crate) entity_to_uuid: HashMap<Entity, Uuid>,
 
     pub(crate) registered_componets_for_sync: HashSet<ComponentId>,
     /// Tracks SyncExcludes for component T. key: component id of T, value: component id of SyncExcdlude<T>
@@ -61,7 +62,7 @@ pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
 }
 
 impl SyncTrackerRes {
-    pub(crate) fn signal_component_changed(&mut self, id: Entity, data: Box<dyn Reflect>) {
+    pub(crate) fn signal_component_changed(&mut self, id: Uuid, data: Box<dyn Reflect>) {
         let name = data.get_represented_type_info().unwrap().type_path().into();
         let change_id = ComponentChangeId { id, name };
         if self.pushed_component_from_network.contains(&change_id) {
@@ -91,14 +92,42 @@ impl SyncTrackerRes {
         let component_data = bin_to_reflect(data, &registry);
         let registration = registry.get_with_type_path(name.as_str()).unwrap();
         let reflect_component = registration.data::<ReflectComponent>().unwrap();
+        let Some(sync_entity) = world.entity(e_id).get::<SyncEntity>() else {
+            return false;
+        };
+        let uuid = sync_entity.uuid;
         let previous_value = reflect_component.reflect(world.entity(e_id));
-        if equals(previous_value, &*component_data) {
+        let change_id = ComponentChangeId {
+            id: uuid,
+            name: name.clone(),
+        };
+        if world
+            .resource::<SyncTrackerRes>()
+            .pushed_component_from_network
+            .get(&change_id)
+            .is_some()
+        {
+            debug!(
+                "Skipped component from network: {}v{} - {}",
+                e_id.index(),
+                e_id.generation(),
+                name
+            );
+            return false;
+        }
+        if is_value_different(previous_value, &*component_data) {
             world
                 .resource_mut::<SyncTrackerRes>()
                 .pushed_component_from_network
-                .insert(ComponentChangeId { id: e_id, name });
+                .insert(change_id);
             let entity = &mut world.entity_mut(e_id);
             reflect_component.apply_or_insert(entity, component_data.as_reflect(), &registry);
+            debug!(
+                "Applied component from network: {}v{} - {}",
+                e_id.index(),
+                e_id.generation(),
+                name
+            );
             true
         } else {
             debug!(
@@ -129,7 +158,7 @@ impl SyncTrackerRes {
     }
 }
 
-fn equals(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
+fn is_value_different(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
     if previous_value.is_none() {
         return true;
     }
@@ -140,22 +169,12 @@ fn equals(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) ->
 }
 
 #[allow(clippy::type_complexity)]
-fn sync_detect_server<T: Component + Reflect>(
+fn sync_detect<T: Component + Reflect>(
     mut push: ResMut<SyncTrackerRes>,
-    q: Query<(Entity, &T), (With<SyncDown>, Without<SyncExclude<T>>, Changed<T>)>,
-) {
-    for (e_id, component) in q.iter() {
-        push.signal_component_changed(e_id, component.clone_value());
-    }
-}
-
-#[allow(clippy::type_complexity)]
-fn sync_detect_client<T: Component + Reflect>(
-    mut push: ResMut<SyncTrackerRes>,
-    q: Query<(&SyncUp, &T), (With<SyncUp>, Without<SyncExclude<T>>, Changed<T>)>,
+    q: Query<(&SyncEntity, &T), (With<SyncEntity>, Without<SyncExclude<T>>, Changed<T>)>,
 ) {
     for (sup, component) in q.iter() {
-        push.signal_component_changed(sup.server_entity_id, component.clone_value());
+        push.signal_component_changed(sup.uuid, component.clone_value());
     }
 }
 
@@ -174,8 +193,7 @@ impl SyncComponent for App {
         track
             .sync_exclude_cid_of_component_cid
             .insert(c_id, c_exclude_id);
-        self.add_systems(Update, sync_detect_server::<T>);
-        self.add_systems(Update, sync_detect_client::<T>);
+        self.add_systems(Update, sync_detect::<T>);
 
         setup_cascade_registrations::<T>(self);
 
@@ -210,12 +228,6 @@ fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeReg
     if TypeId::of::<T>() == TypeId::of::<PointLight>() {
         app.register_type::<Color>();
     }
-}
-
-#[derive(Component)]
-pub(crate) struct SyncClientGeneratedEntity {
-    pub(crate) client_id: ClientId,
-    pub(crate) client_entity_id: Entity,
 }
 
 impl Plugin for SyncPlugin {
