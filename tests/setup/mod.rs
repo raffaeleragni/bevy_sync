@@ -5,7 +5,6 @@ use std::{
 };
 
 use bevy::{
-    log::{Level, LogPlugin},
     pbr::PbrPlugin,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
@@ -159,7 +158,6 @@ fn add_plugins(app: &mut App) {
     app.init_asset::<Mesh>();
     app.init_asset::<Image>();
     app.add_plugins(PbrPlugin::default());
-    // app.add_plugins(LogPlugin { ..default() });
 
     app.add_plugins(SyncPlugin);
 }

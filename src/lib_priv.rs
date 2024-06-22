@@ -115,7 +115,7 @@ impl SyncTrackerRes {
             );
             return false;
         }
-        if is_value_different(previous_value, &*component_data){
+        if is_value_different(previous_value, &*component_data) {
             world
                 .resource_mut::<SyncTrackerRes>()
                 .pushed_component_from_network
