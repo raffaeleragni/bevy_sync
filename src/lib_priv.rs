@@ -122,6 +122,12 @@ impl SyncTrackerRes {
                 .insert(change_id);
             let entity = &mut world.entity_mut(e_id);
             reflect_component.apply_or_insert(entity, component_data.as_reflect(), &registry);
+            debug!(
+                "Applied component from network: {}v{} - {}",
+                e_id.index(),
+                e_id.generation(),
+                name
+            );
             true
         } else {
             debug!(
@@ -163,17 +169,7 @@ fn is_value_different(previous_value: Option<&dyn Reflect>, component_data: &dyn
 }
 
 #[allow(clippy::type_complexity)]
-fn sync_detect_server<T: Component + Reflect>(
-    mut push: ResMut<SyncTrackerRes>,
-    q: Query<(&T, &SyncEntity), (Without<SyncExclude<T>>, Changed<T>)>,
-) {
-    for (component, down) in q.iter() {
-        push.signal_component_changed(down.uuid, component.clone_value());
-    }
-}
-
-#[allow(clippy::type_complexity)]
-fn sync_detect_client<T: Component + Reflect>(
+fn sync_detect<T: Component + Reflect>(
     mut push: ResMut<SyncTrackerRes>,
     q: Query<(&SyncEntity, &T), (With<SyncEntity>, Without<SyncExclude<T>>, Changed<T>)>,
 ) {
@@ -197,8 +193,7 @@ impl SyncComponent for App {
         track
             .sync_exclude_cid_of_component_cid
             .insert(c_id, c_exclude_id);
-        self.add_systems(Update, sync_detect_server::<T>);
-        self.add_systems(Update, sync_detect_client::<T>);
+        self.add_systems(Update, sync_detect::<T>);
 
         setup_cascade_registrations::<T>(self);
 
