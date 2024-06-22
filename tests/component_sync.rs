@@ -77,13 +77,13 @@ fn test_marked_component_is_transferred_from_server_then_changed() {
         |env: &mut TestEnv| {
             env.setup_registration::<MySynched>();
             let e_id = env.server.world.spawn(SyncMark {}).id();
-            env.update(3);
+            env.update(10);
 
             env.server
                 .world
                 .entity_mut(e_id)
                 .insert(MySynched { value: 7 });
-            env.update(3);
+            env.update(10);
 
             env.server
                 .world
@@ -91,7 +91,7 @@ fn test_marked_component_is_transferred_from_server_then_changed() {
                 .get_mut::<MySynched>()
                 .unwrap()
                 .value = 3;
-            env.update(3);
+            env.update(10);
 
             0
         },
