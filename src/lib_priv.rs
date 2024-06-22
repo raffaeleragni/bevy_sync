@@ -97,11 +97,29 @@ impl SyncTrackerRes {
         };
         let uuid = sync_entity.uuid;
         let previous_value = reflect_component.reflect(world.entity(e_id));
-        if equals(previous_value, &*component_data) {
+        let change_id = ComponentChangeId {
+            id: uuid,
+            name: name.clone(),
+        };
+        if world
+            .resource::<SyncTrackerRes>()
+            .pushed_component_from_network
+            .get(&change_id)
+            .is_some()
+        {
+            debug!(
+                "Skipped component from network: {}v{} - {}",
+                e_id.index(),
+                e_id.generation(),
+                name
+            );
+            return false;
+        }
+        if is_value_different(previous_value, &*component_data){
             world
                 .resource_mut::<SyncTrackerRes>()
                 .pushed_component_from_network
-                .insert(ComponentChangeId { id: uuid, name });
+                .insert(change_id);
             let entity = &mut world.entity_mut(e_id);
             reflect_component.apply_or_insert(entity, component_data.as_reflect(), &registry);
             true
@@ -134,7 +152,7 @@ impl SyncTrackerRes {
     }
 }
 
-fn equals(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
+fn is_value_different(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
     if previous_value.is_none() {
         return true;
     }
