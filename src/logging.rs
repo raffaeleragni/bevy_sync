@@ -11,45 +11,29 @@ pub(crate) enum Who {
 pub(crate) fn log_message_received(from: Who, message: &Message) {
     match message {
         Message::EntitySpawn { id } => debug!(
-            "{:?} received EntitySpawn {{ id: {}v{} }}",
+            "{:?} received EntitySpawn {{ id: {} }}",
             from,
-            id.index(),
-            id.generation()
+            id
         ),
         Message::EntityParented {
             server_entity_id: eid,
             server_parent_id: pid,
         } => debug!(
-            "{:?} received EntityParented {{ eid: {}v{}, pid: {}v{} }}",
+            "{:?} received EntityParented {{ eid: {}, pid: {} }}",
             from,
-            eid.index(),
-            eid.generation(),
-            pid.index(),
-            pid.generation()
-        ),
-        Message::EntitySpawnBack {
-            server_entity_id: sid,
-            client_entity_id: cid,
-        } => debug!(
-            "{:?} received EntitySpawnBack {{sid: {}v{}, cid: {}v{}",
-            from,
-            sid.index(),
-            sid.generation(),
-            cid.index(),
-            cid.generation()
+            eid,
+            pid,
         ),
         Message::EntityDelete { id } => debug!(
-            "{:?} received EntityDelete {{ id: {}v{} }}",
+            "{:?} received EntityDelete {{ id: {} }}",
             from,
-            id.index(),
-            id.generation()
+            id,
         ),
         Message::ComponentUpdated { id, name, data: _ } => {
             debug!(
-                "{:?} received ComponentUpdated {{ id: {}v{}, name: {} }}",
+                "{:?} received ComponentUpdated {{ id: {}, name: {} }}",
                 from,
-                id.index(),
-                id.generation(),
+                id,
                 name
             )
         }

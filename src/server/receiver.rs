@@ -1,4 +1,5 @@
 use bevy_renet::renet::ClientId;
+use uuid::Uuid;
 
 use crate::{
     lib_priv::PromotedToClient,
@@ -52,13 +53,22 @@ fn server_received_a_message(
                 })
                 .id();
             // Need to update the map right away or else adjacent messages won't see each other entity
-            track.server_to_client_entities.insert(e_id, e_id);
+            track.uuid_to_entity.insert(Uuid::new_v4(), e_id);
         }
         Message::EntityParented {
-            server_entity_id: e_id,
-            server_parent_id: p_id,
+            server_entity_id: me_id,
+            server_parent_id: mp_id,
         } => {
             cmd.add(move |world: &mut World| {
+                let track = world.resource::<SyncTrackerRes>();
+                let Some(e_id) = track.uuid_to_entity.get(&me_id) else {
+                    return;
+                };
+                let Some(p_id) = track.uuid_to_entity.get(&mp_id) else {
+                    return;
+                };
+                let e_id = e_id.clone();
+                let p_id = p_id.clone();
                 let Some(mut entity) = world.get_entity_mut(e_id) else {
                     return;
                 };
@@ -71,24 +81,21 @@ fn server_received_a_message(
                     client_id,
                     &mut world.resource_mut::<RenetServer>(),
                     &Message::EntityParented {
-                        server_entity_id: e_id,
-                        server_parent_id: p_id,
+                        server_entity_id: me_id,
+                        server_parent_id: mp_id,
                     },
                 );
             });
         }
-        Message::EntityDelete { id } => {
-            if let Some(mut e) = cmd.get_entity(id) {
-                e.despawn();
+        Message::EntityDelete { id: mid } => {
+            if let Some(id) = track.uuid_to_entity.get(&mid) {
+                if let Some(mut e) = cmd.get_entity(*id) {
+                    e.despawn();
+                }
             }
         }
-        // This has no meaning on server side
-        Message::EntitySpawnBack {
-            server_entity_id: _,
-            client_entity_id: _,
-        } => {}
         Message::ComponentUpdated { id, name, data } => {
-            let Some(&e_id) = track.server_to_client_entities.get(&id) else {
+            let Some(&e_id) = track.uuid_to_entity.get(&id) else {
                 return;
             };
             cmd.add(move |world: &mut World| {

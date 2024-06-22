@@ -1,5 +1,6 @@
 use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{DefaultChannel, RenetClient};
+use uuid::Uuid;
 
 use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
@@ -11,21 +12,24 @@ pub(crate) fn track_spawn_client(
     query: Query<(Entity, &SyncUp), Added<SyncUp>>,
 ) {
     for (e_id, sync_up) in query.iter() {
-        track
-            .server_to_client_entities
-            .insert(sync_up.server_entity_id, e_id);
+        track.uuid_to_entity.insert(sync_up.server_entity_id, e_id);
     }
 }
 
 pub(crate) fn entity_created_on_client(
     mut client: ResMut<RenetClient>,
     mut query: Query<Entity, Added<SyncMark>>,
+    mut cmd: Commands,
 ) {
     for id in query.iter_mut() {
+        let uuid = Uuid::new_v4();
         client.send_message(
             DefaultChannel::ReliableOrdered,
-            bincode::serialize(&Message::EntitySpawn { id }).unwrap(),
+            bincode::serialize(&Message::EntitySpawn { id: uuid }).unwrap(),
         );
+        cmd.entity(id).insert(SyncUp {
+            server_entity_id: uuid,
+        });
     }
 }
 
@@ -55,16 +59,14 @@ pub(crate) fn entity_removed_from_client(
     query: Query<Entity, With<SyncUp>>,
 ) {
     let mut despawned_entities = HashSet::new();
-    track
-        .server_to_client_entities
-        .retain(|&s_e_id, &mut e_id| {
-            if query.get(e_id).is_err() {
-                despawned_entities.insert(s_e_id);
-                false
-            } else {
-                true
-            }
-        });
+    track.uuid_to_entity.retain(|&s_e_id, &mut e_id| {
+        if query.get(e_id).is_err() {
+            despawned_entities.insert(s_e_id);
+            false
+        } else {
+            true
+        }
+    });
     for &id in despawned_entities.iter() {
         client.send_message(
             DefaultChannel::ReliableOrdered,
@@ -83,10 +85,13 @@ pub(crate) fn react_on_changed_components(
         let Ok(bin) = reflect_to_bin(change.data.as_reflect(), &registry) else {
             continue;
         };
+        let Some(id) = track.entity_to_uuid.get(&change.change_id.id) else {
+            continue;
+        };
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::ComponentUpdated {
-                id: change.change_id.id,
+                id: *id,
                 name: change.change_id.name,
                 data: bin,
             })

@@ -42,7 +42,7 @@ fn client_received_a_message(
     log_message_received(Who::Client, &msg);
     match msg {
         Message::EntitySpawn { id } => {
-            if let Some(e_id) = track.server_to_client_entities.get(&id) {
+            if let Some(e_id) = track.uuid_to_entity.get(&id) {
                 if cmd.get_entity(*e_id).is_some() {
                     return;
                 }
@@ -53,26 +53,16 @@ fn client_received_a_message(
                 })
                 .id();
             // Need to update the map right away or else adjacent messages won't see each other entity
-            track.server_to_client_entities.insert(id, e_id);
-        }
-        Message::EntitySpawnBack {
-            server_entity_id: id,
-            client_entity_id: back_id,
-        } => {
-            if let Some(mut e) = cmd.get_entity(back_id) {
-                e.remove::<SyncMark>().insert(SyncUp {
-                    server_entity_id: id,
-                });
-            }
+            track.uuid_to_entity.insert(id, e_id);
         }
         Message::EntityParented {
             server_entity_id: e_id,
             server_parent_id: p_id,
         } => {
-            let Some(&c_e_id) = track.server_to_client_entities.get(&e_id) else {
+            let Some(&c_e_id) = track.uuid_to_entity.get(&e_id) else {
                 return;
             };
-            let Some(&c_p_id) = track.server_to_client_entities.get(&p_id) else {
+            let Some(&c_p_id) = track.uuid_to_entity.get(&p_id) else {
                 return;
             };
             cmd.add(move |world: &mut World| {
@@ -85,7 +75,7 @@ fn client_received_a_message(
             });
         }
         Message::EntityDelete { id } => {
-            let Some(&e_id) = track.server_to_client_entities.get(&id) else {
+            let Some(&e_id) = track.uuid_to_entity.get(&id) else {
                 return;
             };
             let Some(mut e) = cmd.get_entity(e_id) else {
@@ -94,7 +84,7 @@ fn client_received_a_message(
             e.despawn();
         }
         Message::ComponentUpdated { id, name, data } => {
-            let Some(&e_id) = track.server_to_client_entities.get(&id) else {
+            let Some(&e_id) = track.uuid_to_entity.get(&id) else {
                 return;
             };
             cmd.add(move |world: &mut World| {

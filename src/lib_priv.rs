@@ -8,6 +8,7 @@ use bevy::{
     utils::{HashMap, HashSet},
 };
 use bevy_renet::renet::ClientId;
+use uuid::Uuid;
 
 use crate::{
     binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
@@ -36,7 +37,8 @@ pub(crate) struct PromotedToClient;
 #[derive(Resource, Default)]
 pub(crate) struct SyncTrackerRes {
     /// Mapping of entity ids between server and clients. key: server, value: client
-    pub(crate) server_to_client_entities: HashMap<Entity, Entity>,
+    pub(crate) uuid_to_entity: HashMap<Uuid, Entity>,
+    pub(crate) entity_to_uuid: HashMap<Entity, Uuid>,
 
     pub(crate) registered_componets_for_sync: HashSet<ComponentId>,
     /// Tracks SyncExcludes for component T. key: component id of T, value: component id of SyncExcdlude<T>
@@ -61,9 +63,12 @@ pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
 }
 
 impl SyncTrackerRes {
-    pub(crate) fn signal_component_changed(&mut self, id: Entity, data: Box<dyn Reflect>) {
+    pub(crate) fn signal_component_changed(&mut self, id: Uuid, data: Box<dyn Reflect>) {
         let name = data.get_represented_type_info().unwrap().type_path().into();
-        let change_id = ComponentChangeId { id, name };
+        let Some(id) = self.uuid_to_entity.get(&id) else {
+            return;
+        };
+        let change_id = ComponentChangeId { id: *id, name };
         if self.pushed_component_from_network.contains(&change_id) {
             self.pushed_component_from_network.remove(&change_id);
             return;
@@ -142,10 +147,10 @@ fn equals(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) ->
 #[allow(clippy::type_complexity)]
 fn sync_detect_server<T: Component + Reflect>(
     mut push: ResMut<SyncTrackerRes>,
-    q: Query<(Entity, &T), (With<SyncDown>, Without<SyncExclude<T>>, Changed<T>)>,
+    q: Query<(&T, &SyncDown), (Without<SyncExclude<T>>, Changed<T>)>,
 ) {
-    for (e_id, component) in q.iter() {
-        push.signal_component_changed(e_id, component.clone_value());
+    for (component, down) in q.iter() {
+        push.signal_component_changed(down.server_entity_id, component.clone_value());
     }
 }
 
@@ -215,7 +220,7 @@ fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeReg
 #[derive(Component)]
 pub(crate) struct SyncClientGeneratedEntity {
     pub(crate) client_id: ClientId,
-    pub(crate) client_entity_id: Entity,
+    pub(crate) client_entity_id: Uuid,
 }
 
 impl Plugin for SyncPlugin {

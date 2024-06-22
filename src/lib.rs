@@ -13,6 +13,7 @@ mod proto;
 mod server;
 
 pub use proto::PromoteToHostEvent;
+use uuid::Uuid;
 
 pub mod prelude {
     pub use super::{
@@ -51,11 +52,13 @@ pub struct SyncExclude<T: Component> {
 }
 
 #[derive(Component)]
-pub struct SyncDown {}
+pub struct SyncDown {
+    pub server_entity_id: Uuid,
+}
 
 #[derive(Component)]
 pub struct SyncUp {
-    pub server_entity_id: Entity,
+    pub server_entity_id: Uuid,
 }
 
 pub struct SyncPlugin;

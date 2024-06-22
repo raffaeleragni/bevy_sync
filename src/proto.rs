@@ -1,10 +1,10 @@
 use std::net::IpAddr;
 
-use bevy::{ecs::event::Event, prelude::Entity, utils::Uuid};
+use bevy::{ecs::event::Event, utils::Uuid};
 use bevy_renet::renet::ClientId;
 use serde::{Deserialize, Serialize};
 
-pub type EntityId = Entity;
+pub type EntityId = Uuid;
 pub type AssId = Uuid;
 
 #[derive(Debug)]
@@ -23,10 +23,6 @@ pub(crate) enum Message {
         server_entity_id: EntityId,
         server_parent_id: EntityId,
     } = 2,
-    EntitySpawnBack {
-        server_entity_id: EntityId,
-        client_entity_id: EntityId,
-    } = 3,
     EntityDelete {
         id: EntityId,
     } = 4,
