@@ -17,7 +17,7 @@ Current state is in development.
 - [ ] Skippable channel for Unordered+Unreliable
   - [ ] Transform
 - [ ] Throttleable sync (time window queuing)
-- [X] Host switch / promotion
+- [X] Host switch / promotion (>= 0.13.1)
 - [X] SimpleMaterial (through sync channel)
 - [X] Serve assets through http
 - [X] Asset: Mesh
@@ -47,4 +47,6 @@ Base version of bevy_sync is inherited from bevy version.
 | bevy | bevy_sync |
 | ---- | --------- |
 | 0.12 | 0.12.x    |
+| 0.13 | 0.13.x    |
+| ...  | ...       |
 
