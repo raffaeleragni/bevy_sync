@@ -5,7 +5,7 @@ use bevy_renet::renet::{
 };
 
 use crate::{
-    lib_priv::{sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
+    lib_priv::{sync_material_enabled, sync_mesh_enabled, PromotionState, SyncTrackerRes},
     proto::{Message, PromoteToHostEvent},
     server::initial_sync::send_initial_sync,
     ServerState,
@@ -40,7 +40,10 @@ impl Plugin for ServerSyncPlugin {
                 .run_if(resource_removed::<NetcodeServerTransport>()),
         );
 
-        app.add_systems(OnExit(ServerState::Connected), server_reset);
+        app.add_systems(
+            OnExit(ServerState::Connected),
+            server_reset.run_if(in_state(PromotionState::NeverPromoted)),
+        );
         app.add_systems(
             Update,
             (

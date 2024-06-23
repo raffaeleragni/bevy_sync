@@ -44,7 +44,10 @@ impl Plugin for ClientSyncPlugin {
                 .run_if(in_state(ClientState::Connected)),
         );
 
-        app.add_systems(OnExit(ClientState::Connected), client_reset);
+        app.add_systems(
+            OnExit(ClientState::Connected),
+            client_reset.run_if(in_state(PromotionState::NeverPromoted)),
+        );
         app.add_systems(
             Update,
             (
