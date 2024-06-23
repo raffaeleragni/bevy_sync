@@ -64,6 +64,6 @@ pub(crate) fn log_message_received(from: Who, message: &Message) {
         } => debug!(
                 "{:?} received NewHost {{ ip: {} }} {{ port: {} }} {{ web_port: {} }} {{ max_transfer: {} }}",
                 from, ip, port, web_port, max_transfer),
-        Message::RequestInitialSync => debug!("Reveived a request for initial sync")
+        Message::RequestInitialSync => debug!("Received a request for initial sync from client_id: {:?}", from)
     }
 }

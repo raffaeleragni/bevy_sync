@@ -19,9 +19,18 @@ use self::track::{
 mod receiver;
 mod track;
 
+#[derive(Event)]
+struct SessionStarted;
+
 pub(crate) struct ClientSyncPlugin;
 impl Plugin for ClientSyncPlugin {
     fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            request_initial_sync
+                .run_if(resource_exists::<RenetClient>)
+                .run_if(resource_exists::<NetcodeClientTransport>),
+        );
         app.add_systems(
             Update,
             client_connected
@@ -76,22 +85,27 @@ fn client_connecting(mut client_state: ResMut<NextState<ClientState>>) {
 fn client_connected(
     mut client_state: ResMut<NextState<ClientState>>,
     mut cmd: Commands,
-    mut client: ResMut<RenetClient>,
+    mut event: EventWriter<SessionStarted>,
     promotion_state: Res<State<PromotionState>>,
 ) {
     info!("Connected to server.");
     client_state.set(ClientState::Connected);
     if promotion_state.eq(&PromotionState::NeverPromoted) {
-        // this connection is a new session and requires the initial information
-        // from initial sync
-        client.send_message(
-            DefaultChannel::ReliableOrdered,
-            bincode::serialize(&Message::RequestInitialSync {}).unwrap(),
-        )
+        debug!("Starting new client session");
+        event.send(SessionStarted {});
     }
     // remove any previous pending server since the instance is a client now
     // this servers can be pending after a host promotion
     cmd.remove_resource::<NetcodeServerTransport>();
+}
+
+fn request_initial_sync(mut events: EventReader<SessionStarted>, mut client: ResMut<RenetClient>) {
+    for _ in events.read() {
+        client.send_message(
+            DefaultChannel::ReliableOrdered,
+            bincode::serialize(&Message::RequestInitialSync {}).unwrap(),
+        );
+    }
 }
 
 fn client_reset(mut cmd: Commands) {
