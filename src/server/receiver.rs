@@ -181,10 +181,8 @@ fn server_received_a_message(
             next_promotion_state.set(PromotionState::PromotedToClient);
         }
         Message::RequestInitialSync => {
-            if promotion_state.eq(&PromotionState::NeverPromoted) {
-                debug!("Sending initial sync to client id: {}", client_id);
-                cmd.add(move |world: &mut World| send_initial_sync(client_id, world));
-            }
+            debug!("Sending initial sync to client id: {}", client_id);
+            cmd.add(move |world: &mut World| send_initial_sync(client_id, world));
         }
     }
 }
