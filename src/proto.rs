@@ -50,6 +50,7 @@ pub(crate) enum Message {
         web_port: u16,
         max_transfer: usize,
     },
+    RequestInitialSync,
 }
 
 #[derive(Event)]

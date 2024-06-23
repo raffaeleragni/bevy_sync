@@ -1,10 +1,12 @@
 use std::{
+    env,
     error::Error,
     fmt::Display,
     net::{IpAddr, Ipv4Addr},
 };
 
 use bevy::{
+    log::{Level, LogPlugin},
     pbr::PbrPlugin,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
@@ -158,6 +160,13 @@ fn add_plugins(app: &mut App) {
     app.init_asset::<Mesh>();
     app.init_asset::<Image>();
     app.add_plugins(PbrPlugin::default());
+    if env::var("LOG").is_ok() {
+        app.add_plugins(LogPlugin {
+            filter: "error,bevy_sync=debug".to_string(),
+            level: Level::DEBUG,
+            ..default()
+        });
+    }
 
     app.add_plugins(SyncPlugin);
 }

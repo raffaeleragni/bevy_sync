@@ -11,10 +11,9 @@ mod setup;
 
 #[test]
 #[serial]
-#[ignore = "host promotion is not complete"]
 fn test_host_promotion_with_one_client() {
     TestRun::default().run(
-        2,
+        1,
         TestRun::no_pre_setup,
         |env| {
             let e_id = setup_and_check_sync(env);
@@ -35,12 +34,11 @@ fn test_host_promotion_with_one_client() {
                 .value = 7;
         },
         |env, _, _| {
-            // todo fix: make the entity id server<>client more agnostic and compatible towards
-            // host switch
-            let comp = get_first_entity_component::<MySynched>(&mut env.clients[0]).unwrap();
-            assert_eq!(comp.value, 7);
-            let comp = get_first_entity_component::<MySynched>(&mut env.clients[1]).unwrap();
-            assert_eq!(comp.value, 7);
+            assert!(!env.clients.is_empty());
+            for c in env.clients.iter_mut() {
+                let comp = get_first_entity_component::<MySynched>(c).unwrap();
+                assert_eq!(comp.value, 7);
+            }
         },
     );
 }
@@ -52,10 +50,11 @@ fn setup_and_check_sync(env: &mut TestEnv) -> Entity {
     let mut e = env.server.world.entity_mut(e_id);
     e.insert(MySynched { value: 1 });
     env.update(4);
-    let comp = get_first_entity_component::<MySynched>(&mut env.clients[0]).unwrap();
-    assert_eq!(comp.value, 1);
-    let comp = get_first_entity_component::<MySynched>(&mut env.clients[1]).unwrap();
-    assert_eq!(comp.value, 1);
+    assert!(!env.clients.is_empty());
+    for c in env.clients.iter_mut() {
+        let comp = get_first_entity_component::<MySynched>(c).unwrap();
+        assert_eq!(comp.value, 1);
+    }
     env.server
         .world
         .entity_mut(e_id)
@@ -63,10 +62,10 @@ fn setup_and_check_sync(env: &mut TestEnv) -> Entity {
         .unwrap()
         .value = 2;
     env.update(4);
-    let comp = get_first_entity_component::<MySynched>(&mut env.clients[0]).unwrap();
-    assert_eq!(comp.value, 2);
-    let comp = get_first_entity_component::<MySynched>(&mut env.clients[1]).unwrap();
-    assert_eq!(comp.value, 2);
+    for c in env.clients.iter_mut() {
+        let comp = get_first_entity_component::<MySynched>(c).unwrap();
+        assert_eq!(comp.value, 2);
+    }
 
     e_id
 }

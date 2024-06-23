@@ -33,6 +33,14 @@ pub(crate) struct PromotedToServer;
 #[derive(Event)]
 pub(crate) struct PromotedToClient;
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
+pub(crate) enum PromotionState {
+    #[default]
+    NeverPromoted,
+    PromotedToServer,
+    PromotedToClient,
+}
+
 #[derive(Resource, Default)]
 pub(crate) struct SyncTrackerRes {
     /// Mapping of entity ids between server and clients. key: server, value: client
@@ -237,6 +245,7 @@ impl Plugin for SyncPlugin {
         app.add_plugins(BundleFixPlugin);
         app.add_plugins(ServerSyncPlugin);
         app.add_plugins(ClientSyncPlugin);
+        app.init_state::<PromotionState>();
         app.init_state::<ServerState>();
         app.init_state::<ClientState>();
         app.add_event::<PromotedToServer>();
