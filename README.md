@@ -17,7 +17,7 @@ Current state is in development.
 - [ ] Skippable channel for Unordered+Unreliable
   - [ ] Transform
 - [ ] Throttleable sync (time window queuing)
-- [ ] Host switch / promotion
+- [X] Host switch / promotion
 - [X] SimpleMaterial (through sync channel)
 - [X] Serve assets through http
 - [X] Asset: Mesh
