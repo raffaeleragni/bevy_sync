@@ -16,7 +16,6 @@ pub(crate) fn poll_for_messages(
     mut track: ResMut<SyncTrackerRes>,
     mut sync_assets: ResMut<SyncAssetTransfer>,
     mut send_promoted_event: EventWriter<PromotedToClient>,
-    promotion_state: Res<State<PromotionState>>,
     mut next_promotion_state: ResMut<NextState<PromotionState>>,
 ) {
     for client_id in server.clients_id().into_iter() {
@@ -31,7 +30,6 @@ pub(crate) fn poll_for_messages(
                 &mut sync_assets,
                 &mut commands,
                 &mut send_promoted_event,
-                &promotion_state,
                 &mut next_promotion_state,
             );
         }
@@ -47,7 +45,6 @@ fn server_received_a_message(
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
     send_promoted_event: &mut EventWriter<PromotedToClient>,
-    promotion_state: &Res<State<PromotionState>>,
     next_promotion_state: &mut ResMut<NextState<PromotionState>>,
 ) {
     log_message_received(Who::Server, &msg);
