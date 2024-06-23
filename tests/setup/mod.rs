@@ -5,13 +5,7 @@ use std::{
 };
 
 use bevy::{
-    pbr::PbrPlugin,
-    prelude::*,
-    reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
-    render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
-    transform::TransformBundle,
-    utils::Uuid,
-    MinimalPlugins,
+    log::{Level, LogPlugin}, pbr::PbrPlugin, prelude::*, reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect}, render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}, transform::TransformBundle, utils::Uuid, MinimalPlugins
 };
 use bevy_renet::renet::RenetClient;
 use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncPlugin};
@@ -158,6 +152,7 @@ fn add_plugins(app: &mut App) {
     app.init_asset::<Mesh>();
     app.init_asset::<Image>();
     app.add_plugins(PbrPlugin::default());
+    app.add_plugins(LogPlugin{level:Level::DEBUG,..default()});
 
     app.add_plugins(SyncPlugin);
 }

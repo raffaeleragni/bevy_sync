@@ -1,7 +1,7 @@
 use bevy_renet::renet::ClientId;
 
 use crate::{
-    lib_priv::PromotedToClient,
+    lib_priv::{PromotedToClient, PromotionState},
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client},
     proto::SyncAssetType,
@@ -16,6 +16,8 @@ pub(crate) fn poll_for_messages(
     mut track: ResMut<SyncTrackerRes>,
     mut sync_assets: ResMut<SyncAssetTransfer>,
     mut send_promoted_event: EventWriter<PromotedToClient>,
+    promotion_state: Res<State<PromotionState>>,
+    mut next_promotion_state: ResMut<NextState<PromotionState>>,
 ) {
     for client_id in server.clients_id().into_iter() {
         while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered)
@@ -29,11 +31,14 @@ pub(crate) fn poll_for_messages(
                 &mut sync_assets,
                 &mut commands,
                 &mut send_promoted_event,
+                &promotion_state,
+                &mut next_promotion_state,
             );
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn server_received_a_message(
     client_id: ClientId,
     msg: Message,
@@ -42,6 +47,8 @@ fn server_received_a_message(
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
     send_promoted_event: &mut EventWriter<PromotedToClient>,
+    promotion_state: &Res<State<PromotionState>>,
+    next_promotion_state: &mut ResMut<NextState<PromotionState>>,
 ) {
     log_message_received(Who::Server, &msg);
     match msg {
@@ -145,7 +152,7 @@ fn server_received_a_message(
                 );
             })
         }
-        // server is already host
+        // server is already host, no operation to do
         Message::PromoteToHost => (),
         Message::NewHost {
             ip,
@@ -171,6 +178,13 @@ fn server_received_a_message(
                 world.insert_resource(create_client(ip, port));
             });
             send_promoted_event.send(PromotedToClient {});
+            next_promotion_state.set(PromotionState::PromotedToClient);
+        }
+        Message::RequestInitialSync => {
+            if promotion_state.eq(&PromotionState::NeverPromoted) {
+                debug!("Sending initial sync to client id: {}", client_id);
+                cmd.add(move |world: &mut World| send_initial_sync(client_id, world));
+            }
         }
     }
 }

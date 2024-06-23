@@ -5,7 +5,7 @@ use bevy_renet::renet::{
 };
 
 use crate::{
-    lib_priv::{sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
+    lib_priv::{sync_material_enabled, sync_mesh_enabled, PromotionState, SyncTrackerRes},
     proto::Message,
     ClientState,
 };
@@ -73,9 +73,22 @@ fn client_connecting(mut client_state: ResMut<NextState<ClientState>>) {
     client_state.set(ClientState::Connecting);
 }
 
-fn client_connected(mut client_state: ResMut<NextState<ClientState>>, mut cmd: Commands) {
+fn client_connected(
+    mut client_state: ResMut<NextState<ClientState>>,
+    mut cmd: Commands,
+    mut client: ResMut<RenetClient>,
+    promotion_state: Res<State<PromotionState>>,
+) {
     info!("Connected to server.");
     client_state.set(ClientState::Connected);
+    if promotion_state.eq(&PromotionState::NeverPromoted) {
+        // this connection is a new session and requires the initial information
+        // from initial sync
+        client.send_message(
+            DefaultChannel::ReliableOrdered,
+            bincode::serialize(&Message::RequestInitialSync {}).unwrap(),
+        )
+    }
     // remove any previous pending server since the instance is a client now
     // this servers can be pending after a host promotion
     cmd.remove_resource::<NetcodeServerTransport>();

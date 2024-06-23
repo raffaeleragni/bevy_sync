@@ -11,7 +11,6 @@ mod setup;
 
 #[test]
 #[serial]
-#[ignore = "host promotion is not complete"]
 fn test_host_promotion_with_one_client() {
     TestRun::default().run(
         2,
@@ -35,8 +34,6 @@ fn test_host_promotion_with_one_client() {
                 .value = 7;
         },
         |env, _, _| {
-            // todo fix: make the entity id server<>client more agnostic and compatible towards
-            // host switch
             let comp = get_first_entity_component::<MySynched>(&mut env.clients[0]).unwrap();
             assert_eq!(comp.value, 7);
             let comp = get_first_entity_component::<MySynched>(&mut env.clients[1]).unwrap();

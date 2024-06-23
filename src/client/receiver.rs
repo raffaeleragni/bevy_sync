@@ -1,5 +1,5 @@
 use crate::{
-    lib_priv::PromotedToServer,
+    lib_priv::{PromotedToServer, PromotionState},
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client, create_server},
     proto::SyncAssetType,
@@ -15,6 +15,7 @@ pub(crate) fn poll_for_messages(
     mut sync_assets: ResMut<SyncAssetTransfer>,
     mut client: ResMut<RenetClient>,
     mut send_promoted_event: EventWriter<PromotedToServer>,
+    mut promotion_state: ResMut<NextState<PromotionState>>,
 ) {
     while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         let deser_message = bincode::deserialize(&message).unwrap();
@@ -26,10 +27,12 @@ pub(crate) fn poll_for_messages(
             &mut sync_assets,
             &mut commands,
             &mut send_promoted_event,
+            &mut promotion_state,
         );
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn client_received_a_message(
     msg: Message,
     connection_parameters: &Res<SyncConnectionParameters>,
@@ -38,6 +41,7 @@ fn client_received_a_message(
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
     send_promoted_event: &mut EventWriter<PromotedToServer>,
+    promotion_state: &mut ResMut<NextState<PromotionState>>,
 ) {
     log_message_received(Who::Client, &msg);
     match msg {
@@ -120,6 +124,7 @@ fn client_received_a_message(
                 world.insert_resource(create_server(ip, port));
             });
             send_promoted_event.send(PromotedToServer {});
+            promotion_state.set(PromotionState::PromotedToServer);
         }
         Message::NewHost {
             ip,
@@ -131,6 +136,11 @@ fn client_received_a_message(
             client.disconnect();
             cmd.remove_resource::<NetcodeClientTransport>();
             cmd.insert_resource(create_client(ip, port));
+            // even if it was a client before, this connection is not a new session
+            // and won't need the initial_sync, so it's consider a client to client promotion
+            promotion_state.set(PromotionState::PromotedToClient);
         }
+        // Nothing to do, only servers send initial sync
+        Message::RequestInitialSync => {}
     }
 }

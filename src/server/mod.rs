@@ -75,7 +75,6 @@ fn client_connected(mut cmd: Commands, mut server_events: EventReader<ServerEven
             ServerEvent::ClientConnected { client_id } => {
                 let client_id = *client_id;
                 info!("Client connected with client id: {}", client_id);
-                cmd.add(move |world: &mut World| send_initial_sync(client_id, world));
                 // remove any previous pending client since the instance is a server now
                 // this clients can be pending after a host promotion
                 cmd.remove_resource::<NetcodeClientTransport>();
