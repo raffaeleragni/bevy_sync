@@ -14,9 +14,6 @@ Current state is in development.
 - [X] Entyty sync is based on UUIDs
 - [X] Component synchronization
 - [X] Parent/Child entity synchronization
-- [ ] Skippable channel for Unordered+Unreliable
-  - [ ] Transform
-- [ ] Throttleable sync (time window queuing)
 - [X] Host switch / promotion (>= 0.13.1)
 - [X] SimpleMaterial (through sync channel)
 - [X] Serve assets through http
@@ -28,6 +25,9 @@ Current state is in development.
 - [X] Asset: Textures
 - [ ] Asset: Audio
 - [X] Compressed Assets
+- [ ] Throttleable sync (time window queuing)
+- [ ] Skippable channel for Unordered+Unreliable
+  - [ ] Transform
 
 **Asset are synchronized only if they are added to bevy by uuid.**
 
