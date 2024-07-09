@@ -9,12 +9,12 @@ use crate::setup::{sample_image, sample_mesh, MySynched, TestEnv};
 pub(crate) fn entities_in_sync<T>(env: &mut TestEnv, _: T, entity_count: u32) {
     for c in &mut env.clients {
         let mut count_check = 0;
-        for e in c.world.query::<&SyncEntity>().iter(&c.world) {
+        for e in c.world_mut().query::<&SyncEntity>().iter(c.world()) {
             for se in env
                 .server
-                .world
+                .world_mut()
                 .query::<&SyncEntity>()
-                .iter(&env.server.world)
+                .iter(env.server.world())
             {
                 if se.uuid == e.uuid {
                     count_check += 1;
@@ -27,7 +27,7 @@ pub(crate) fn entities_in_sync<T>(env: &mut TestEnv, _: T, entity_count: u32) {
 
 #[allow(dead_code)]
 pub(crate) fn no_messages_left_for_server(s: &mut App) {
-    let mut server = s.world.resource_mut::<RenetServer>();
+    let mut server = s.world_mut().resource_mut::<RenetServer>();
     for client_id in server.clients_id().into_iter() {
         assert!(server
             .receive_message(client_id, DefaultChannel::ReliableOrdered)
@@ -44,7 +44,7 @@ pub(crate) fn no_messages_left_for_clients(cs: &mut Vec<App>) {
 
 #[allow(dead_code)]
 pub(crate) fn no_messages_left_for_client(c: &mut App) {
-    let mut client = c.world.resource_mut::<RenetClient>();
+    let mut client = c.world_mut().resource_mut::<RenetClient>();
     assert!(client
         .receive_message(DefaultChannel::ReliableOrdered)
         .is_none());
@@ -53,8 +53,12 @@ pub(crate) fn no_messages_left_for_client(c: &mut App) {
 #[allow(dead_code)]
 pub(crate) fn initial_sync_for_client_happened(s: &mut App, c: &mut App, entity_count: u32) {
     let mut count_check = 0;
-    for (e, c) in c.world.query::<(&SyncEntity, &MySynched)>().iter(&c.world) {
-        for se in s.world.query::<&SyncEntity>().iter(&s.world) {
+    for (e, c) in c
+        .world_mut()
+        .query::<(&SyncEntity, &MySynched)>()
+        .iter(c.world())
+    {
+        for se in s.world_mut().query::<&SyncEntity>().iter(s.world()) {
             if se.uuid == e.uuid {
                 count_check += 1;
                 assert_eq!(c.value, 7);
@@ -68,9 +72,9 @@ pub(crate) fn initial_sync_for_client_happened(s: &mut App, c: &mut App, entity_
 pub(crate) fn count_entities_with_component<T: Component>(app: &mut App) -> u32 {
     let mut count = 0;
     for _ in app
-        .world
+        .world_mut()
         .query_filtered::<Entity, With<T>>()
-        .iter(&app.world)
+        .iter(app.world())
     {
         count += 1;
     }
@@ -81,9 +85,9 @@ pub(crate) fn count_entities_with_component<T: Component>(app: &mut App) -> u32 
 pub(crate) fn count_entities_without_component<T: Component>(app: &mut App) -> u32 {
     let mut count = 0;
     for _ in app
-        .world
+        .world_mut()
         .query_filtered::<Entity, Without<T>>()
-        .iter(&app.world)
+        .iter(app.world())
     {
         count += 1;
     }
@@ -92,19 +96,19 @@ pub(crate) fn count_entities_without_component<T: Component>(app: &mut App) -> u
 
 #[allow(dead_code)]
 pub(crate) fn get_first_entity_component<T: Component>(app: &mut App) -> Option<&T> {
-    app.world.query::<&T>().iter(&app.world).next()
+    app.world_mut().query::<&T>().iter(app.world()).next()
 }
 
 #[allow(dead_code)]
 pub(crate) fn material_has_color(app: &mut App, id: AssetId<StandardMaterial>, color: Color) {
-    let materials = app.world.resource_mut::<Assets<StandardMaterial>>();
+    let materials = app.world_mut().resource_mut::<Assets<StandardMaterial>>();
     let material = materials.get(id).unwrap();
     assert_eq!(material.base_color, color);
 }
 
 #[allow(dead_code)]
 pub(crate) fn assets_has_sample_mesh(app: &mut App, id: AssetId<Mesh>) {
-    let meshes = app.world.resource_mut::<Assets<Mesh>>();
+    let meshes = app.world_mut().resource_mut::<Assets<Mesh>>();
     let mesh = meshes.get(id).unwrap();
     let sample = sample_mesh();
     assert_eq!(
@@ -120,7 +124,7 @@ pub(crate) fn assets_has_sample_mesh(app: &mut App, id: AssetId<Mesh>) {
 
 #[allow(dead_code)]
 pub(crate) fn assets_has_sample_image(app: &mut App, id: AssetId<Image>) {
-    let images = app.world.resource_mut::<Assets<Image>>();
+    let images = app.world_mut().resource_mut::<Assets<Image>>();
     let image = images.get(id).unwrap();
     let sample = sample_image();
     assert_eq!(image.data, sample.data);
@@ -128,7 +132,11 @@ pub(crate) fn assets_has_sample_image(app: &mut App, id: AssetId<Image>) {
 
 #[allow(dead_code)]
 pub(crate) fn find_entity_with_server_id(app: &mut App, server_entity_id: Uuid) -> Option<Entity> {
-    for (entity, sup) in app.world.query::<(Entity, &SyncEntity)>().iter(&app.world) {
+    for (entity, sup) in app
+        .world_mut()
+        .query::<(Entity, &SyncEntity)>()
+        .iter(app.world())
+    {
         if sup.uuid == server_entity_id {
             return Some(entity);
         }

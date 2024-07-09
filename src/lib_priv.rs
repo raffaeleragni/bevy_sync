@@ -194,9 +194,9 @@ impl SyncComponent for App {
     ) -> &mut Self {
         self.register_type::<T>();
         self.register_type_data::<T, ReflectFromReflect>();
-        let c_id = self.world.init_component::<T>();
-        let c_exclude_id = self.world.init_component::<SyncExclude<T>>();
-        let mut track = self.world.resource_mut::<SyncTrackerRes>();
+        let c_id = self.world_mut().init_component::<T>();
+        let c_exclude_id = self.world_mut().init_component::<SyncExclude<T>>();
+        let mut track = self.world_mut().resource_mut::<SyncTrackerRes>();
         track.registered_componets_for_sync.insert(c_id);
         track
             .sync_exclude_cid_of_component_cid
@@ -209,12 +209,12 @@ impl SyncComponent for App {
     }
 
     fn sync_materials(&mut self, enable: bool) {
-        let mut tracker = self.world.resource_mut::<SyncTrackerRes>();
+        let mut tracker = self.world_mut().resource_mut::<SyncTrackerRes>();
         tracker.sync_materials = enable;
     }
 
     fn sync_meshes(&mut self, enable: bool) {
-        let mut tracker = self.world.resource_mut::<SyncTrackerRes>();
+        let mut tracker = self.world_mut().resource_mut::<SyncTrackerRes>();
         tracker.sync_meshes = enable;
     }
 }

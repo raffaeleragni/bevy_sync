@@ -14,12 +14,12 @@ use crate::{
     lib_priv::SyncTrackerRes, networking::assets::image_serde::image_to_bin, proto::SyncAssetType,
 };
 use ascii::AsciiString;
-use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashMap};
 use mesh_serde::{bin_to_mesh, mesh_to_bin};
 use std::io::Read;
 use threadpool::ThreadPool;
 use tiny_http::{Header, Request, Response, Server};
+use uuid::Uuid;
 
 use self::image_serde::bin_to_image;
 

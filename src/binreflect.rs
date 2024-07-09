@@ -1,8 +1,7 @@
 use bevy::reflect::{
-    serde::{ReflectSerializer, UntypedReflectDeserializer},
+    serde::{ReflectDeserializer, ReflectSerializer},
     DynamicStruct, Reflect, ReflectFromReflect, TypeRegistry,
 };
-
 use bincode::{DefaultOptions, ErrorKind, Options};
 use serde::de::DeserializeSeed;
 
@@ -18,7 +17,7 @@ pub(crate) fn reflect_to_bin(
 }
 
 pub(crate) fn bin_to_reflect(data: &[u8], registry: &TypeRegistry) -> Box<dyn Reflect> {
-    let reflect_deserializer = UntypedReflectDeserializer::new(registry);
+    let reflect_deserializer = ReflectDeserializer::new(registry);
     let binoptions = DefaultOptions::new()
         .with_fixint_encoding()
         .allow_trailing_bytes();
@@ -98,7 +97,7 @@ mod test {
     #[test]
     fn material_serde() {
         let material_orig = StandardMaterial {
-            base_color: Color::RED,
+            base_color: Color::srgb(1.0, 0.0, 0.0),
             ..StandardMaterial::default()
         };
 
@@ -124,7 +123,7 @@ mod test {
     #[test]
     fn reflect_material_no_dependencies() {
         let compo = StandardMaterial {
-            base_color: Color::RED,
+            base_color: Color::srgb(1.0, 0.0, 0.0),
             ..StandardMaterial::default()
         };
 
