@@ -1,6 +1,6 @@
 # bevy_sync
 
-[![crates.io](https://img.shields.io/crates/v/bevy_sync)](https://crates.io/crates/bevy_sync)
+![crates.io](https://img.shields.io/crates/v/bevy_sync)
 ![build](https://github.com/raffaeleragni/bevy_sync/actions/workflows/build.yml/badge.svg)
 
 ![Sync](docs/sync.gif)
