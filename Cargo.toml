@@ -33,4 +33,5 @@ lz4-compress = "0.1"
 
 [dev-dependencies]
 serial_test = "3.1"
-bevy_editor_pls = "0.8"
+bevy_editor_pls = { git = "https://github.com/zhaop/bevy_editor_pls", branch = "bevy-0.14" }
+#bevy_editor_pls = "0.8"
