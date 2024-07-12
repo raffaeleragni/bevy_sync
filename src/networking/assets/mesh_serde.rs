@@ -6,9 +6,6 @@ use lz4_compress::{compress, decompress};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-struct AssetImage;
-
-#[derive(Serialize, Deserialize)]
 struct MeshData {
     mesh_type: u8,
     positions: Option<Vec<[f32; 3]>>,
@@ -21,7 +18,7 @@ struct MeshData {
     joint_indices: Option<Vec<[u16; 4]>>,
     indices32: Option<Vec<u32>>,
     indices16: Option<Vec<u16>>,
-    morph_targets: Option<AssetImage>, //TODO serialize Image type
+    morph_targets: Option<AssetId<Image>>,
     morph_target_names: Option<Vec<String>>,
 }
 
@@ -86,7 +83,18 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
         None
     };
 
-    let morph_targets = None;
+    let refmesh = mesh as &dyn Struct;
+    let morph_targets = refmesh
+        .field("morph_targets")
+        .unwrap()
+        .downcast_ref::<Option<Handle<Image>>>()
+        .unwrap();
+    let morph_targets = morph_targets
+        .as_ref()
+        .and_then(|m| match m {
+            Handle::Strong(_) => None,
+            Handle::Weak(id) => Some(*id),
+        });
     let morph_target_names = mesh.morph_target_names().map(|v| v.to_vec());
     let mesh_type_num = match mesh.primitive_topology() {
         PrimitiveTopology::PointList => 0,
