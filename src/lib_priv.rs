@@ -200,6 +200,19 @@ impl SyncTrackerRes {
         let mat = *component_data.downcast::<StandardMaterial>().unwrap();
         materials.insert(id, mat);
     }
+
+    pub(crate) fn to_skinned_mapper(&self, component: &SkinnedMesh) -> SkinnedMeshSyncMapper {
+        let mut joints_uuid = Vec::<Uuid>::new();
+        for e in &component.joints {
+            if let Some(uuid) = self.entity_to_uuid.get(e) {
+                joints_uuid.push(*uuid);
+            }
+        }
+        SkinnedMeshSyncMapper {
+            inverse_bindposes: component.inverse_bindposes.clone(),
+            joints: joints_uuid,
+        }
+    }
 }
 
 fn is_value_different(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
@@ -250,7 +263,7 @@ impl SyncComponent for App {
 
 #[derive(Component, Debug, Clone, Reflect, Default)]
 #[reflect(Component, Default)]
-struct SkinnedMeshSyncMapper {
+pub(crate) struct SkinnedMeshSyncMapper {
     pub inverse_bindposes: Handle<SkinnedMeshInverseBindposes>,
     pub joints: Vec<Uuid>,
 }
@@ -268,16 +281,7 @@ fn sync_skinned_mesh(
     >,
 ) {
     for (sup, component) in q.iter() {
-        let mut joints_uuid = Vec::<Uuid>::new();
-        for e in &component.joints {
-            if let Some(uuid) = tracker.entity_to_uuid.get(e) {
-                joints_uuid.push(*uuid);
-            }
-        }
-        let component_to_send = SkinnedMeshSyncMapper {
-            inverse_bindposes: component.inverse_bindposes.clone(),
-            joints: joints_uuid,
-        };
+        let component_to_send = tracker.to_skinned_mapper(component);
         tracker.signal_component_changed(sup.uuid, component_to_send.clone_value());
     }
 }

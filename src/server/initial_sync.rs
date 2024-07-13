@@ -1,10 +1,10 @@
-use std::error::Error;
+use std::{any::TypeId, error::Error};
 
 use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
     proto::Message, SyncEntity,
 };
-use bevy::{prelude::*, utils::HashSet};
+use bevy::{prelude::*, render::mesh::skinning::SkinnedMesh, utils::HashSet};
 use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
 use uuid::Uuid;
 
@@ -92,6 +92,14 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let entity = world.entity(arch_entity.id());
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).ok_or("not registered")?;
+                let component = if component.type_id() == TypeId::of::<SkinnedMesh>() {
+                    let compo = track
+                        .to_skinned_mapper(component.downcast_ref::<SkinnedMesh>().unwrap())
+                        .clone_value();
+                    compo
+                } else {
+                    component.clone_value()
+                };
                 let Ok(compo_bin) = reflect_to_bin(component.as_reflect(), &registry) else {
                     continue;
                 };
