@@ -77,8 +77,15 @@ pub(crate) fn react_on_changed_components(
 ) {
     let registry = registry.read();
     while let Some(change) = track.changed_components_to_send.pop_front() {
-        let Ok(bin) = reflect_to_bin(change.data.as_reflect(), &registry) else {
-            continue;
+        let bin = match reflect_to_bin(change.data.as_reflect(), &registry) {
+            Ok(bin) => bin,
+            Err(e) => {
+                debug!(
+                    "Could not send component {:?}, {:?}",
+                    change.change_id.name, e
+                );
+                continue;
+            }
         };
         client.send_message(
             DefaultChannel::ReliableOrdered,

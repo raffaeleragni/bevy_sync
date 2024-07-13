@@ -1,10 +1,15 @@
 use std::{any::TypeId, error::Error};
 
 use crate::{
-    binreflect::reflect_to_bin, lib_priv::{SkinnedMeshSyncMapper, SyncTrackerRes}, networking::assets::SyncAssetTransfer,
-    proto::Message, SyncEntity,
+    binreflect::reflect_to_bin,
+    lib_priv::{SkinnedMeshSyncMapper, SyncTrackerRes},
+    networking::assets::SyncAssetTransfer,
+    proto::Message,
+    SyncEntity,
 };
-use bevy::{prelude::*, reflect::DynamicTypePath, render::mesh::skinning::SkinnedMesh, utils::HashSet};
+use bevy::{
+    prelude::*, reflect::DynamicTypePath, render::mesh::skinning::SkinnedMesh, utils::HashSet,
+};
 use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
 use uuid::Uuid;
 
@@ -93,7 +98,9 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).ok_or("not registered")?;
                 let type_name = if component.type_id() == TypeId::of::<SkinnedMesh>() {
-                    SkinnedMeshSyncMapper::default().reflect_type_path().to_string()
+                    SkinnedMeshSyncMapper::default()
+                        .reflect_type_path()
+                        .to_string()
                 } else {
                     type_name.to_string()
                 };
@@ -106,8 +113,15 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 } else {
                     component.clone_value()
                 };
-                let Ok(compo_bin) = reflect_to_bin(component.as_reflect(), &registry) else {
-                    continue;
+                let compo_bin = match reflect_to_bin(component.as_reflect(), &registry) {
+                    Ok(compo_bin) => compo_bin,
+                    Err(e) => {
+                        debug!(
+                            "Initial sync: Could not send component {:?}, {:?}",
+                            type_name, e
+                        );
+                        continue;
+                    }
                 };
                 if let Some(sid) = track.entity_to_uuid.get(&e_id) {
                     result.push(Message::ComponentUpdated {
