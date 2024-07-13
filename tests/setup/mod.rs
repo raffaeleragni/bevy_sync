@@ -6,7 +6,13 @@ use std::{
 };
 
 use bevy::{
-    log::{Level, LogPlugin}, pbr::PbrPlugin, prelude::*, reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect}, render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}, state::app::StatesPlugin, MinimalPlugins
+    log::{Level, LogPlugin},
+    pbr::PbrPlugin,
+    prelude::*,
+    reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
+    render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
+    state::app::StatesPlugin,
+    MinimalPlugins,
 };
 use bevy_renet::renet::RenetClient;
 use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncPlugin};

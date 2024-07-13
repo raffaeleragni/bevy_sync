@@ -2,7 +2,7 @@ use bevy::render::mesh::Indices;
 use bevy::render::mesh::VertexAttributeValues::{Float32x2, Float32x3, Float32x4, Uint16x4};
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::{prelude::*, render::render_resource::PrimitiveTopology};
-use lz4_compress::{compress, decompress};
+use lz4_compression::{compress, decompress};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -112,7 +112,7 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
         morph_target_names,
     };
 
-    compress(&bincode::serialize(&data).unwrap())
+    compress::compress(&bincode::serialize(&data).unwrap())
 }
 
 fn extract_morph_targets(mesh: &Mesh) -> &Option<Handle<Image>> {
@@ -126,7 +126,7 @@ fn extract_morph_targets(mesh: &Mesh) -> &Option<Handle<Image>> {
 }
 
 pub(crate) fn bin_to_mesh(binary: &[u8]) -> Mesh {
-    let binary = decompress(binary).unwrap();
+    let binary = decompress::decompress(binary).unwrap();
     let Ok(data) = bincode::deserialize::<MeshData>(&binary) else {
         return Mesh::new(
             PrimitiveTopology::TriangleList,

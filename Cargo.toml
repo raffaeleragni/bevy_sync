@@ -29,7 +29,7 @@ tiny_http = { version = "0", default-features = false }
 ureq = { version = "2.10", default-features = false }
 portpicker = "0.1"
 ascii = "1.1"
-lz4-compress = "0.1"
+lz4-compression = "0.7"
 
 [dev-dependencies]
 serial_test = "3.1"
