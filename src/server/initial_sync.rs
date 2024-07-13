@@ -93,6 +93,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).ok_or("not registered")?;
                 let component = if component.type_id() == TypeId::of::<SkinnedMesh>() {
+                    debug!("Initial sync: Converting SkinnedMesh to SkinnedMeshSyncMapper");
                     let compo = track
                         .to_skinned_mapper(component.downcast_ref::<SkinnedMesh>().unwrap())
                         .clone_value();

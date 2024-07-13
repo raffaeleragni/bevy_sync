@@ -75,6 +75,10 @@ impl SyncTrackerRes {
         let name = data.get_represented_type_info().unwrap().type_path().into();
         let change_id = ComponentChangeId { id, name };
         if self.pushed_component_from_network.contains(&change_id) {
+            debug!(
+                "Deboucing changed component, was already pushed. {:?},{:?}",
+                change_id.id, change_id.name
+            );
             self.pushed_component_from_network.remove(&change_id);
             return;
         }
@@ -84,6 +88,10 @@ impl SyncTrackerRes {
 
     pub(crate) fn skip_network_handle_change(&mut self, id: AssId) -> bool {
         if self.pushed_handles_from_network.contains(&id) {
+            debug!(
+                "Deboucing network handle change, was already pushed. {:?}",
+                id
+            );
             self.pushed_handles_from_network.remove(&id);
             return true;
         }
@@ -152,7 +160,7 @@ impl SyncTrackerRes {
             .is_some()
         {
             debug!(
-                "Skipped component from network: {}v{} - {}",
+                "Skipped component from network, already pushed: {}v{} - {}",
                 e_id.index(),
                 e_id.generation(),
                 name
@@ -175,7 +183,7 @@ impl SyncTrackerRes {
             true
         } else {
             debug!(
-                "Skipped component from network: {}v{} - {}",
+                "Skipped component from network, value was not changed: {}v{} - {}",
                 e_id.index(),
                 e_id.generation(),
                 name
