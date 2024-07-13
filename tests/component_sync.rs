@@ -322,11 +322,8 @@ fn test_skinned_mesh_component_from_initial() {
             for i in 0..4 {
                 joints.push(world.spawn((SyncMark {}, Name::new(format!("{i}")))).id());
             }
-            env.update(10);
-
             let ib_handle = Uuid::new_v4();
             let e_id = env.server.world_mut().spawn(SyncMark {}).id();
-            env.update(4);
             let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(SkinnedMesh {
                 inverse_bindposes: Handle::Weak(AssetId::Uuid { uuid: ib_handle }),

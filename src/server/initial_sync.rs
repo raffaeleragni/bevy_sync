@@ -1,10 +1,10 @@
 use std::{any::TypeId, error::Error};
 
 use crate::{
-    binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
+    binreflect::reflect_to_bin, lib_priv::{SkinnedMeshSyncMapper, SyncTrackerRes}, networking::assets::SyncAssetTransfer,
     proto::Message, SyncEntity,
 };
-use bevy::{prelude::*, render::mesh::skinning::SkinnedMesh, utils::HashSet};
+use bevy::{prelude::*, reflect::DynamicTypePath, render::mesh::skinning::SkinnedMesh, utils::HashSet};
 use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
 use uuid::Uuid;
 
@@ -92,6 +92,11 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let entity = world.entity(arch_entity.id());
                 let e_id = entity.id();
                 let component = reflect_component.reflect(entity).ok_or("not registered")?;
+                let type_name = if component.type_id() == TypeId::of::<SkinnedMesh>() {
+                    SkinnedMeshSyncMapper::default().reflect_type_path().to_string()
+                } else {
+                    type_name.to_string()
+                };
                 let component = if component.type_id() == TypeId::of::<SkinnedMesh>() {
                     debug!("Initial sync: Converting SkinnedMesh to SkinnedMeshSyncMapper");
                     let compo = track
@@ -107,7 +112,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 if let Some(sid) = track.entity_to_uuid.get(&e_id) {
                     result.push(Message::ComponentUpdated {
                         id: *sid,
-                        name: type_name.into(),
+                        name: type_name,
                         data: compo_bin,
                     });
                 }
