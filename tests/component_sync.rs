@@ -1,7 +1,11 @@
 mod assert;
 mod setup;
 
-use bevy::{pbr::CubemapVisibleEntities, prelude::*, render::primitives::CubemapFrusta};
+use bevy::{
+    pbr::CubemapVisibleEntities,
+    prelude::*,
+    render::{mesh::skinning::SkinnedMesh, primitives::CubemapFrusta},
+};
 use bevy_sync::{SyncEntity, SyncExclude, SyncMark};
 use serial_test::serial;
 use setup::{MyNonSynched, MySynched, TestEnv, TestRun};
@@ -260,6 +264,48 @@ fn test_auto_spawn_for_point_light() {
             let _ = get_first_entity_component::<CubemapFrusta>(&mut env.clients[0]).unwrap();
             let _ =
                 get_first_entity_component::<CubemapVisibleEntities>(&mut env.clients[0]).unwrap();
+        },
+    );
+}
+
+#[test]
+fn test_skinned_mesh_component() {
+    TestRun::default().run(
+        1,
+        TestRun::no_pre_setup,
+        |env| {
+            env.setup_registration::<SkinnedMesh>();
+            env.setup_registration::<Name>();
+            let world = &mut env.server.world_mut();
+            let mut joints = Vec::<Entity>::new();
+            for i in 0..4 {
+                joints.push(world.spawn((SyncMark {}, Name::new(format!("{i}")))).id());
+            }
+            env.update(10);
+
+            let ib_handle = Uuid::new_v4();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
+            env.update(4);
+            let mut e = env.server.world_mut().entity_mut(e_id);
+            e.insert(SkinnedMesh {
+                inverse_bindposes: Handle::Weak(AssetId::Uuid { uuid: ib_handle }),
+                joints,
+            });
+            ib_handle
+        },
+        |env, _, ib_handle| {
+            let compo = get_first_entity_component::<SkinnedMesh>(&mut env.clients[0]).unwrap();
+            let handle = Handle::Weak(AssetId::Uuid { uuid: ib_handle });
+            assert_eq!(compo.inverse_bindposes, handle);
+            assert_eq!(compo.joints.len(), 4);
+            let joints = compo.joints.clone();
+            for (i, e) in joints.into_iter().enumerate() {
+                let joint_entity_on_client = env.clients[0].world().get_entity(e);
+                assert!(joint_entity_on_client.is_some());
+                let entity = joint_entity_on_client.unwrap();
+                let name = entity.get::<Name>().unwrap();
+                assert_eq!(name.as_str(), format!("{i}"));
+            }
         },
     );
 }

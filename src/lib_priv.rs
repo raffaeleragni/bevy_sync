@@ -5,6 +5,7 @@ use bevy::{
     pbr::OpaqueRendererMethod,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect, ReflectFromReflect},
+    render::mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
     utils::{HashMap, HashSet},
 };
 use uuid::Uuid;
@@ -98,16 +99,51 @@ impl SyncTrackerRes {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let component_data = bin_to_reflect(data, &registry);
-        let registration = registry.get_with_type_path(name.as_str()).unwrap();
-        let reflect_component = registration.data::<ReflectComponent>().unwrap();
+        let name = if (*component_data).type_id() == TypeId::of::<SkinnedMeshSyncMapper>() {
+            SkinnedMesh::default().reflect_type_path().to_string()
+        } else {
+            name
+        };
+        let component_data = if (*component_data).type_id() == TypeId::of::<SkinnedMeshSyncMapper>()
+        {
+            let component = component_data
+                .downcast_ref::<SkinnedMeshSyncMapper>()
+                .unwrap();
+            let mut joints = Vec::<Entity>::new();
+            let tracker = world.resource::<SyncTrackerRes>();
+            for uuid in &component.joints {
+                if let Some(e) = tracker.uuid_to_entity.get(uuid) {
+                    joints.push(*e);
+                }
+            }
+            SkinnedMesh {
+                inverse_bindposes: component.inverse_bindposes.clone(),
+                joints,
+            }
+            .clone_value()
+        } else {
+            component_data
+        };
+        let Some(registration) = registry.get_with_type_path(name.as_str()) else {
+            debug!("Could not obtain registration for {:?}", name);
+            return false;
+        };
+        let Some(reflect_component) = registration.data::<ReflectComponent>() else {
+            debug!("Could not obtain reflect_component for {:?}", name);
+            return false;
+        };
         let Some(sync_entity) = world.entity(e_id).get::<SyncEntity>() else {
+            debug!(
+                "Could not find entity {:?} to apply comopnent change of type {:?}",
+                e_id, name
+            );
             return false;
         };
         let uuid = sync_entity.uuid;
         let previous_value = reflect_component.reflect(world.entity(e_id));
         let change_id = ComponentChangeId {
             id: uuid,
-            name: name.clone(),
+            name: name.to_string(),
         };
         if world
             .resource::<SyncTrackerRes>()
@@ -176,16 +212,6 @@ fn is_value_different(previous_value: Option<&dyn Reflect>, component_data: &dyn
         .unwrap_or(true)
 }
 
-#[allow(clippy::type_complexity)]
-fn sync_detect<T: Component + Reflect>(
-    mut push: ResMut<SyncTrackerRes>,
-    q: Query<(&SyncEntity, &T), (With<SyncEntity>, Without<SyncExclude<T>>, Changed<T>)>,
-) {
-    for (sup, component) in q.iter() {
-        push.signal_component_changed(sup.uuid, component.clone_value());
-    }
-}
-
 impl SyncComponent for App {
     fn sync_component<
         T: Component + TypePath + DynamicTypePath + Reflect + FromReflect + GetTypeRegistration,
@@ -201,8 +227,11 @@ impl SyncComponent for App {
         track
             .sync_exclude_cid_of_component_cid
             .insert(c_id, c_exclude_id);
-        self.add_systems(Update, sync_detect::<T>);
-
+        if TypeId::of::<T>() == TypeId::of::<SkinnedMesh>() {
+            self.add_systems(Update, sync_skinned_mesh);
+        } else {
+            self.add_systems(Update, sync_detect::<T>);
+        }
         setup_cascade_registrations::<T>(self);
 
         self
@@ -219,9 +248,62 @@ impl SyncComponent for App {
     }
 }
 
+#[derive(Component, Debug, Clone, Reflect, Default)]
+#[reflect(Component, Default)]
+struct SkinnedMeshSyncMapper {
+    pub inverse_bindposes: Handle<SkinnedMeshInverseBindposes>,
+    pub joints: Vec<Uuid>,
+}
+
+#[allow(clippy::type_complexity)]
+fn sync_skinned_mesh(
+    mut tracker: ResMut<SyncTrackerRes>,
+    q: Query<
+        (&SyncEntity, &SkinnedMesh),
+        (
+            With<SyncEntity>,
+            Without<SyncExclude<SkinnedMesh>>,
+            Changed<SkinnedMesh>,
+        ),
+    >,
+) {
+    for (sup, component) in q.iter() {
+        let mut joints_uuid = Vec::<Uuid>::new();
+        for e in &component.joints {
+            if let Some(uuid) = tracker.entity_to_uuid.get(e) {
+                joints_uuid.push(*uuid);
+            }
+        }
+        let component_to_send = SkinnedMeshSyncMapper {
+            inverse_bindposes: component.inverse_bindposes.clone(),
+            joints: joints_uuid,
+        };
+        tracker.signal_component_changed(sup.uuid, component_to_send.clone_value());
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn sync_detect<T: Component + Reflect>(
+    mut push: ResMut<SyncTrackerRes>,
+    q: Query<(&SyncEntity, &T), (With<SyncEntity>, Without<SyncExclude<T>>, Changed<T>)>,
+) {
+    for (sup, component) in q.iter() {
+        push.signal_component_changed(sup.uuid, component.clone_value());
+    }
+}
+
 fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeRegistration>(
     app: &mut App,
 ) {
+    if TypeId::of::<T>() == TypeId::of::<SkinnedMesh>() {
+        app.register_type::<SkinnedMeshSyncMapper>();
+    }
+
+    if TypeId::of::<T>() == TypeId::of::<Mesh>() {
+        app.register_type::<Image>();
+        app.register_type::<Handle<Image>>();
+    }
+
     if TypeId::of::<T>() == TypeId::of::<Handle<StandardMaterial>>() {
         app.register_type_data::<StandardMaterial, ReflectFromReflect>();
         app.register_type::<Color>();
@@ -234,6 +316,12 @@ fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeReg
     }
 
     if TypeId::of::<T>() == TypeId::of::<PointLight>() {
+        app.register_type::<Color>();
+    }
+    if TypeId::of::<T>() == TypeId::of::<SpotLight>() {
+        app.register_type::<Color>();
+    }
+    if TypeId::of::<T>() == TypeId::of::<DirectionalLight>() {
         app.register_type::<Color>();
     }
 }
