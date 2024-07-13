@@ -27,7 +27,7 @@ fn test_host_promotion_with_one_client() {
             assert_one_client_is_host(env);
 
             env.server
-                .world
+                .world_mut()
                 .entity_mut(e_id)
                 .get_mut::<MySynched>()
                 .unwrap()
@@ -45,9 +45,9 @@ fn test_host_promotion_with_one_client() {
 
 fn setup_and_check_sync(env: &mut TestEnv) -> Entity {
     env.setup_registration::<MySynched>();
-    let e_id = env.server.world.spawn(SyncMark {}).id();
+    let e_id = env.server.world_mut().spawn(SyncMark {}).id();
     env.update(4);
-    let mut e = env.server.world.entity_mut(e_id);
+    let mut e = env.server.world_mut().entity_mut(e_id);
     e.insert(MySynched { value: 1 });
     env.update(4);
     assert!(!env.clients.is_empty());
@@ -56,7 +56,7 @@ fn setup_and_check_sync(env: &mut TestEnv) -> Entity {
         assert_eq!(comp.value, 1);
     }
     env.server
-        .world
+        .world_mut()
         .entity_mut(e_id)
         .get_mut::<MySynched>()
         .unwrap()
@@ -78,15 +78,17 @@ fn alter_connection_port(env: &mut TestEnv) {
 }
 
 fn increment_port(app: &mut App) {
-    app.world.resource_mut::<SyncConnectionParameters>().port += 1;
+    app.world_mut()
+        .resource_mut::<SyncConnectionParameters>()
+        .port += 1;
 }
 
 fn send_promotion_event(env: &mut TestEnv) {
-    let server = env.server.world.resource_mut::<RenetServer>();
+    let server = env.server.world_mut().resource_mut::<RenetServer>();
     let event = PromoteToHostEvent {
         id: server.clients_id().first().unwrap().to_owned(),
     };
-    env.server.world.send_event(event);
+    env.server.world_mut().send_event(event);
 }
 
 fn assert_server_is_host(env: &TestEnv) {
@@ -108,5 +110,7 @@ fn assert_one_client_is_host(env: &TestEnv) {
 }
 
 fn is_host(app: &App) -> bool {
-    app.world.get_resource::<NetcodeServerTransport>().is_some()
+    app.world()
+        .get_resource::<NetcodeServerTransport>()
+        .is_some()
 }

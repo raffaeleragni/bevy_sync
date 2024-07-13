@@ -2,11 +2,8 @@ use bevy::render::mesh::Indices;
 use bevy::render::mesh::VertexAttributeValues::{Float32x2, Float32x3, Float32x4, Uint16x4};
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::{prelude::*, render::render_resource::PrimitiveTopology};
-use lz4_compress::{compress, decompress};
+use lz4_compression::{compress, decompress};
 use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize)]
-struct AssetImage;
 
 #[derive(Serialize, Deserialize)]
 struct MeshData {
@@ -21,7 +18,7 @@ struct MeshData {
     joint_indices: Option<Vec<[u16; 4]>>,
     indices32: Option<Vec<u32>>,
     indices16: Option<Vec<u16>>,
-    morph_targets: Option<AssetImage>, //TODO serialize Image type
+    morph_targets: Option<AssetId<Image>>,
     morph_target_names: Option<Vec<String>>,
 }
 
@@ -86,7 +83,10 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
         None
     };
 
-    let morph_targets = None;
+    let morph_targets = extract_morph_targets(mesh).as_ref().and_then(|m| match m {
+        Handle::Strong(_) => None,
+        Handle::Weak(id) => Some(*id),
+    });
     let morph_target_names = mesh.morph_target_names().map(|v| v.to_vec());
     let mesh_type_num = match mesh.primitive_topology() {
         PrimitiveTopology::PointList => 0,
@@ -112,11 +112,21 @@ pub(crate) fn mesh_to_bin(mesh: &Mesh) -> Vec<u8> {
         morph_target_names,
     };
 
-    compress(&bincode::serialize(&data).unwrap())
+    compress::compress(&bincode::serialize(&data).unwrap())
+}
+
+fn extract_morph_targets(mesh: &Mesh) -> &Option<Handle<Image>> {
+    let refmesh = mesh as &dyn Struct;
+    let morph_targets = refmesh
+        .field("morph_targets")
+        .unwrap()
+        .downcast_ref::<Option<Handle<Image>>>()
+        .unwrap();
+    morph_targets
 }
 
 pub(crate) fn bin_to_mesh(binary: &[u8]) -> Mesh {
-    let binary = decompress(binary).unwrap();
+    let binary = decompress::decompress(binary).unwrap();
     let Ok(data) = bincode::deserialize::<MeshData>(&binary) else {
         return Mesh::new(
             PrimitiveTopology::TriangleList,
@@ -177,9 +187,9 @@ pub(crate) fn bin_to_mesh(binary: &[u8]) -> Mesh {
         mesh.insert_indices(Indices::U16(indices));
     }
 
-    //if let Some(morph_targets) = data.morph_targets {
-    //    mesh.set_morph_targets(morph_targets);
-    //}
+    if let Some(morph_targets) = data.morph_targets {
+        mesh.set_morph_targets(Handle::Weak(morph_targets));
+    }
 
     if let Some(morph_target_names) = data.morph_target_names {
         mesh.set_morph_target_names(morph_target_names);
@@ -258,6 +268,7 @@ mod test {
         };
         assert_eq!(mesh.morph_target_names(), mesh2.morph_target_names());
         assert_eq!(v1, v2);
+        assert_eq!(extract_morph_targets(&mesh), extract_morph_targets(&mesh2));
     }
 
     #[test]
@@ -389,6 +400,7 @@ mod test {
         );
         mesh.insert_indices(Indices::U32(vec![0, 2, 1]));
         mesh.set_morph_target_names(vec!["name1".into(), "name2".into()]);
+        mesh.set_morph_targets(Handle::weak_from_u128(1234));
         mesh
     }
 

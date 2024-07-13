@@ -24,9 +24,9 @@ fn test_initial_world_sync_sent_from_server() {
             env.setup_registration::<Handle<Image>>();
             env.server.sync_materials(true);
             env.server.sync_meshes(true);
-            let e_id = env.server.world.spawn(SyncMark {}).id();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
 
-            let mut e = env.server.world.entity_mut(e_id);
+            let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(MySynched { value: 7 });
 
             let id = spawn_new_material(&mut env.server);
@@ -52,7 +52,7 @@ fn test_initial_world_sync_sent_from_server() {
             assert::no_messages_left_for_server(&mut env.server);
             assert::no_messages_left_for_client(&mut env.clients[0]);
 
-            material_has_color(&mut env.clients[0], id, Color::RED);
+            material_has_color(&mut env.clients[0], id, Color::srgb(1.0, 0.0, 0.0));
             assets_has_sample_mesh(&mut env.clients[0], m_id);
             assets_has_sample_image(&mut env.clients[0], i_id);
         },
@@ -69,9 +69,9 @@ fn test_init_sync_multiple_clients() {
             env.setup_registration::<Handle<StandardMaterial>>();
             env.server.sync_materials(true);
             env.server.sync_meshes(true);
-            let e_id = env.server.world.spawn(SyncMark {}).id();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
 
-            let mut e = env.server.world.entity_mut(e_id);
+            let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(MySynched { value: 7 });
 
             let id = spawn_new_material(&mut env.server);
@@ -85,7 +85,7 @@ fn test_init_sync_multiple_clients() {
          _| {
             for capp in &mut env.clients {
                 assert::initial_sync_for_client_happened(&mut env.server, capp, entity_count);
-                material_has_color(capp, id, Color::RED);
+                material_has_color(capp, id, Color::srgb(1.0, 0.0, 0.0));
                 assets_has_sample_mesh(capp, m_id);
             }
 
@@ -106,11 +106,11 @@ fn test_initial_world_sync_not_transfer_excluded_components() {
             env.server.sync_materials(true);
             let e_id = env
                 .server
-                .world
+                .world_mut()
                 .spawn((SyncMark {}, SyncExclude::<MySynched>::default()))
                 .id();
 
-            let mut e = env.server.world.entity_mut(e_id);
+            let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(MySynched { value: 7 });
 
             0
@@ -133,7 +133,7 @@ fn test_initial_with_parenting() {
             env.setup_registration::<MySynched2>();
             let _ = env
                 .server
-                .world
+                .world_mut()
                 .spawn((SyncMark, MySynched { value: 7 }))
                 .with_children(|parent| {
                     parent.spawn((SyncMark, MySynched2 { value: 8 }));
@@ -148,16 +148,16 @@ fn test_initial_with_parenting() {
 
             let app = &mut env.clients[0];
             let entity_value = app
-                .world
+                .world_mut()
                 .query_filtered::<&MySynched, Without<Parent>>()
-                .iter(&app.world)
+                .iter(app.world())
                 .next();
             assert_eq!(entity_value.unwrap().value, 7);
 
             let child_value = app
-                .world
+                .world_mut()
                 .query_filtered::<&MySynched2, With<Parent>>()
-                .iter(&app.world)
+                .iter(app.world())
                 .next();
             assert_eq!(child_value.unwrap().value, 8);
         },
@@ -175,12 +175,12 @@ fn test_initial_world_sync_without_uuid() {
             env.setup_registration::<Handle<Mesh>>();
             env.server.sync_materials(true);
             env.server.sync_meshes(true);
-            let e_id = env.server.world.spawn(SyncMark {}).id();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
 
             let material_id = spawn_new_material_nouuid(&mut env.server);
             let mesh_id = spawn_new_mesh_nouuid(&mut env.server);
 
-            let mut e = env.server.world.entity_mut(e_id);
+            let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert((MySynched { value: 7 }, material_id, mesh_id));
 
             1

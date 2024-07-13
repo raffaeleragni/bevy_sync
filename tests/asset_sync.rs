@@ -21,7 +21,7 @@ fn sync_material_from_server() {
             spawn_new_material(app)
         },
         |env, _, id| {
-            material_has_color(&mut env.clients[0], id, Color::RED);
+            material_has_color(&mut env.clients[0], id, Color::srgb(1.0, 0.0, 0.0));
         },
     );
 }
@@ -41,7 +41,7 @@ fn sync_material_from_client() {
             spawn_new_material(app)
         },
         |env, _, id| {
-            material_has_color(&mut env.clients[0], id, Color::RED);
+            material_has_color(&mut env.clients[0], id, Color::srgb(1.0, 0.0, 0.0));
         },
     );
 }
@@ -61,7 +61,7 @@ fn sync_material_from_client_to_client_across_server() {
             spawn_new_material(app)
         },
         |env, _, id| {
-            material_has_color(&mut env.clients[0], id, Color::RED);
+            material_has_color(&mut env.clients[0], id, Color::srgb(1.0, 0.0, 0.0));
         },
     );
 }

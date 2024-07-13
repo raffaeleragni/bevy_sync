@@ -1,7 +1,11 @@
 mod assert;
 mod setup;
 
-use bevy::{pbr::CubemapVisibleEntities, prelude::*, render::primitives::CubemapFrusta};
+use bevy::{
+    pbr::CubemapVisibleEntities,
+    prelude::*,
+    render::{mesh::skinning::SkinnedMesh, primitives::CubemapFrusta},
+};
 use bevy_sync::{SyncEntity, SyncExclude, SyncMark};
 use serial_test::serial;
 use setup::{MyNonSynched, MySynched, TestEnv, TestRun};
@@ -19,7 +23,7 @@ fn test_non_marked_component_is_not_transferred_from_server() {
         1,
         TestRun::no_pre_setup,
         |env| {
-            env.server.world.spawn((SyncMark {}, MyNonSynched {}));
+            env.server.world_mut().spawn((SyncMark {}, MyNonSynched {}));
             0
         },
         |env, _, _| {
@@ -37,7 +41,7 @@ fn test_non_marked_component_is_not_transferred_from_client() {
         TestRun::no_pre_setup,
         |env| {
             env.clients[0]
-                .world
+                .world_mut()
                 .spawn((SyncMark {}, MyNonSynched {}))
                 .id()
         },
@@ -56,9 +60,9 @@ fn test_marked_component_is_transferred_from_server() {
         TestRun::no_pre_setup,
         |env| {
             env.setup_registration::<MySynched>();
-            let e_id = env.server.world.spawn(SyncMark {}).id();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(4);
-            let mut e = env.server.world.entity_mut(e_id);
+            let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(MySynched { value: 7 });
         },
         |env, _, _| {
@@ -76,17 +80,17 @@ fn test_marked_component_is_transferred_from_server_then_changed() {
         TestRun::no_pre_setup,
         |env: &mut TestEnv| {
             env.setup_registration::<MySynched>();
-            let e_id = env.server.world.spawn(SyncMark {}).id();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(10);
 
             env.server
-                .world
+                .world_mut()
                 .entity_mut(e_id)
                 .insert(MySynched { value: 7 });
             env.update(10);
 
             env.server
-                .world
+                .world_mut()
                 .entity_mut(e_id)
                 .get_mut::<MySynched>()
                 .unwrap()
@@ -110,16 +114,16 @@ fn test_marked_component_is_transferred_from_client() {
         TestRun::no_pre_setup,
         |env| {
             env.setup_registration::<MySynched>();
-            let e_id = env.clients[0].world.spawn(SyncMark {}).id();
+            let e_id = env.clients[0].world_mut().spawn(SyncMark {}).id();
             env.update(4);
-            let mut e = env.clients[0].world.entity_mut(e_id);
+            let mut e = env.clients[0].world_mut().entity_mut(e_id);
             e.insert(MySynched { value: 7 });
             let server_e_id = e.get::<SyncEntity>().unwrap().uuid;
             server_e_id
         },
         |env, _, id: Uuid| {
             let e = find_entity_with_server_id(&mut env.server, id).unwrap();
-            let e = env.server.world.entity(e);
+            let e = env.server.world_mut().entity(e);
             let compo = e.get::<MySynched>().unwrap();
             assert_eq!(compo.value, 7);
         },
@@ -134,15 +138,15 @@ fn test_marked_component_is_transferred_from_client_then_changed() {
         TestRun::no_pre_setup,
         |env: &mut TestEnv| {
             env.setup_registration::<MySynched>();
-            let e_id = env.clients[0].world.spawn(SyncMark {}).id();
+            let e_id = env.clients[0].world_mut().spawn(SyncMark {}).id();
             env.update(3);
 
-            let mut e = env.clients[0].world.entity_mut(e_id);
+            let mut e = env.clients[0].world_mut().entity_mut(e_id);
             e.insert(MySynched { value: 7 });
             env.update(3);
 
             env.clients[0]
-                .world
+                .world_mut()
                 .entity_mut(e_id)
                 .get_mut::<MySynched>()
                 .unwrap()
@@ -150,7 +154,7 @@ fn test_marked_component_is_transferred_from_client_then_changed() {
             env.update(3);
 
             let server_e_id = env.clients[0]
-                .world
+                .world_mut()
                 .entity_mut(e_id)
                 .get::<SyncEntity>()
                 .unwrap()
@@ -159,7 +163,7 @@ fn test_marked_component_is_transferred_from_client_then_changed() {
         },
         |env: &mut TestEnv, _, id: Uuid| {
             let e = find_entity_with_server_id(&mut env.server, id).unwrap();
-            let e = env.server.world.entity(e);
+            let e = env.server.world_mut().entity(e);
             let compo = e.get::<MySynched>().unwrap();
             assert_eq!(compo.value, 3);
         },
@@ -176,20 +180,20 @@ fn exclusion_marked_will_not_be_synced() {
             env.setup_registration::<MySynched>();
             let e_id = env
                 .server
-                .world
+                .world_mut()
                 .spawn((SyncMark {}, SyncExclude::<MySynched>::default()))
                 .id();
             env.update(4);
-            let mut e = env.server.world.entity_mut(e_id);
+            let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(MySynched { value: 7 });
             0
         },
         |env, _, _| {
             let mut count_check = 0;
             for _ in env.clients[0]
-                .world
+                .world_mut()
                 .query_filtered::<Entity, With<MySynched>>()
-                .iter(&env.clients[0].world)
+                .iter(env.clients[0].world())
             {
                 count_check += 1;
             }
@@ -206,9 +210,9 @@ fn test_auto_spawn_for_global_transform() {
         TestRun::no_pre_setup,
         |env| {
             env.setup_registration::<Transform>();
-            let e_id = env.server.world.spawn(SyncMark {}).id();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(4);
-            let mut e = env.server.world.entity_mut(e_id);
+            let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(Transform::from_xyz(1.0, 2.0, 3.0));
         },
         |env, _, _| {
@@ -230,9 +234,9 @@ fn test_auto_spawn_for_computed_visibility() {
         TestRun::no_pre_setup,
         |env| {
             env.setup_registration::<Visibility>();
-            let e_id = env.server.world.spawn(SyncMark {}).id();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(4);
-            let mut e = env.server.world.entity_mut(e_id);
+            let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(VisibilityBundle::default());
         },
         |env, _, _| {
@@ -250,9 +254,9 @@ fn test_auto_spawn_for_point_light() {
         TestRun::no_pre_setup,
         |env| {
             env.setup_registration::<PointLight>();
-            let e_id = env.server.world.spawn(SyncMark {}).id();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(4);
-            let mut e = env.server.world.entity_mut(e_id);
+            let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(PointLightBundle::default());
         },
         |env, _, _| {
@@ -260,6 +264,48 @@ fn test_auto_spawn_for_point_light() {
             let _ = get_first_entity_component::<CubemapFrusta>(&mut env.clients[0]).unwrap();
             let _ =
                 get_first_entity_component::<CubemapVisibleEntities>(&mut env.clients[0]).unwrap();
+        },
+    );
+}
+
+#[test]
+fn test_skinned_mesh_component() {
+    TestRun::default().run(
+        1,
+        TestRun::no_pre_setup,
+        |env| {
+            env.setup_registration::<SkinnedMesh>();
+            env.setup_registration::<Name>();
+            let world = &mut env.server.world_mut();
+            let mut joints = Vec::<Entity>::new();
+            for i in 0..4 {
+                joints.push(world.spawn((SyncMark {}, Name::new(format!("{i}")))).id());
+            }
+            env.update(10);
+
+            let ib_handle = Uuid::new_v4();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
+            env.update(4);
+            let mut e = env.server.world_mut().entity_mut(e_id);
+            e.insert(SkinnedMesh {
+                inverse_bindposes: Handle::Weak(AssetId::Uuid { uuid: ib_handle }),
+                joints,
+            });
+            ib_handle
+        },
+        |env, _, ib_handle| {
+            let compo = get_first_entity_component::<SkinnedMesh>(&mut env.clients[0]).unwrap();
+            let handle = Handle::Weak(AssetId::Uuid { uuid: ib_handle });
+            assert_eq!(compo.inverse_bindposes, handle);
+            assert_eq!(compo.joints.len(), 4);
+            let joints = compo.joints.clone();
+            for (i, e) in joints.into_iter().enumerate() {
+                let joint_entity_on_client = env.clients[0].world().get_entity(e);
+                assert!(joint_entity_on_client.is_some());
+                let entity = joint_entity_on_client.unwrap();
+                let name = entity.get::<Name>().unwrap();
+                assert_eq!(name.as_str(), format!("{i}"));
+            }
         },
     );
 }

@@ -15,7 +15,7 @@ fn test_one_entity_spawned_from_server() {
         1,
         TestRun::no_pre_setup,
         |env| {
-            env.server.world.spawn(SyncMark {});
+            env.server.world_mut().spawn(SyncMark {});
             1
         },
         assert::entities_in_sync,
@@ -29,7 +29,7 @@ fn test_one_entity_spawned_from_client() {
         1,
         TestRun::no_pre_setup,
         |env| {
-            env.clients[0].world.spawn(SyncMark {});
+            env.clients[0].world_mut().spawn(SyncMark {});
             1
         },
         assert::entities_in_sync,
@@ -43,9 +43,9 @@ fn test_more_entities_spawned_from_server() {
         1,
         TestRun::no_pre_setup,
         |env| {
-            env.server.world.spawn(SyncMark {});
-            env.server.world.spawn(SyncMark {});
-            env.server.world.spawn(SyncMark {});
+            env.server.world_mut().spawn(SyncMark {});
+            env.server.world_mut().spawn(SyncMark {});
+            env.server.world_mut().spawn(SyncMark {});
             3
         },
         assert::entities_in_sync,
@@ -59,9 +59,9 @@ fn test_more_entities_spawned_from_client() {
         1,
         TestRun::no_pre_setup,
         |env| {
-            env.clients[0].world.spawn(SyncMark {});
-            env.clients[0].world.spawn(SyncMark {});
-            env.clients[0].world.spawn(SyncMark {});
+            env.clients[0].world_mut().spawn(SyncMark {});
+            env.clients[0].world_mut().spawn(SyncMark {});
+            env.clients[0].world_mut().spawn(SyncMark {});
             3
         },
         assert::entities_in_sync,
@@ -75,9 +75,9 @@ fn test_entity_deleted_from_server() {
         1,
         TestRun::no_pre_setup,
         |env| {
-            let e_id = env.server.world.spawn(SyncMark {}).id();
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(3);
-            env.server.world.entity_mut(e_id).despawn();
+            env.server.world_mut().entity_mut(e_id).despawn();
             0
         },
         assert::entities_in_sync,
@@ -91,9 +91,9 @@ fn test_entity_deleted_from_client() {
         1,
         TestRun::no_pre_setup,
         |env| {
-            let e_id = env.clients[0].world.spawn(SyncMark {}).id();
+            let e_id = env.clients[0].world_mut().spawn(SyncMark {}).id();
             env.update(5);
-            let e = env.clients[0].world.entity_mut(e_id);
+            let e = env.clients[0].world_mut().entity_mut(e_id);
             let server_e_id = e.get::<SyncEntity>().unwrap().uuid;
             e.despawn();
             server_e_id

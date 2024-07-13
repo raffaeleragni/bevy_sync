@@ -4,9 +4,9 @@ use crate::{
     binreflect::reflect_to_bin, lib_priv::SyncTrackerRes, networking::assets::SyncAssetTransfer,
     proto::Message, SyncEntity,
 };
-use bevy::utils::Uuid;
 use bevy::{prelude::*, utils::HashSet};
 use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
+use uuid::Uuid;
 
 pub(crate) fn send_initial_sync(client_id: ClientId, world: &mut World) {
     info!("Sending initial sync to client id {}", client_id);

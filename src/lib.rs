@@ -13,7 +13,7 @@ mod proto;
 mod server;
 
 pub use proto::PromoteToHostEvent;
-use uuid::Uuid;
+pub use uuid::Uuid;
 
 pub mod prelude {
     pub use super::{

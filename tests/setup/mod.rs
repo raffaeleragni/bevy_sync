@@ -11,13 +11,13 @@ use bevy::{
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
     render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
-    transform::TransformBundle,
-    utils::Uuid,
+    state::app::StatesPlugin,
     MinimalPlugins,
 };
 use bevy_renet::renet::RenetClient;
 use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncPlugin};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Component)]
 #[allow(dead_code)] // for some reason compiler thinks this is not used but it is
@@ -143,7 +143,7 @@ fn create_server() -> Result<App, Box<dyn Error>> {
     let mut sapp = App::new();
     add_plugins(&mut sapp);
     // Start a non synched entity only on server so the id is intentionally offseted between server and client
-    sapp.world.spawn(TransformBundle::default());
+    sapp.world_mut().spawn(TransformBundle::default());
     Ok(sapp)
 }
 
@@ -155,6 +155,7 @@ fn create_client() -> Result<App, Box<dyn Error>> {
 
 fn add_plugins(app: &mut App) {
     app.add_plugins(MinimalPlugins);
+    app.add_plugins(StatesPlugin);
     app.add_plugins(AssetPlugin::default());
     app.init_asset::<Shader>();
     app.init_asset::<Mesh>();
@@ -205,7 +206,7 @@ fn wait_until_connected(
     while count < updates {
         sapp.update();
         capp.update();
-        if !capp.world.resource::<RenetClient>().is_disconnected() {
+        if !capp.world().resource::<RenetClient>().is_disconnected() {
             return Ok(());
         }
         count += 1;
@@ -216,58 +217,58 @@ fn wait_until_connected(
 
 #[allow(dead_code)]
 pub(crate) fn spawn_new_material(app: &mut App) -> AssetId<StandardMaterial> {
-    let mut materials = app.world.resource_mut::<Assets<StandardMaterial>>();
+    let mut materials = app.world_mut().resource_mut::<Assets<StandardMaterial>>();
     let id = Uuid::new_v4();
     let material = StandardMaterial {
-        base_color: Color::RED,
+        base_color: Color::srgb(1.0, 0.0, 0.0),
         ..Default::default()
     };
     let handle = Handle::<StandardMaterial>::Weak(id.into());
     materials.insert(id, material);
 
-    app.world.spawn(handle);
+    app.world_mut().spawn(handle);
 
     id.into()
 }
 
 #[allow(dead_code)]
 pub(crate) fn spawn_new_mesh(app: &mut App) -> AssetId<Mesh> {
-    let mut meshes = app.world.resource_mut::<Assets<Mesh>>();
+    let mut meshes = app.world_mut().resource_mut::<Assets<Mesh>>();
     let id = Uuid::new_v4();
     let mesh = sample_mesh();
     let handle = Handle::<Mesh>::Weak(id.into());
     meshes.insert(id, mesh);
 
-    app.world.spawn(handle);
+    app.world_mut().spawn(handle);
 
     id.into()
 }
 
 #[allow(dead_code)]
 pub(crate) fn spawn_new_image(app: &mut App) -> AssetId<Image> {
-    let mut images = app.world.resource_mut::<Assets<Image>>();
+    let mut images = app.world_mut().resource_mut::<Assets<Image>>();
     let id = Uuid::new_v4();
     let mesh = sample_image();
     let handle = Handle::<Image>::Weak(id.into());
     images.insert(id, mesh);
 
-    app.world.spawn(handle);
+    app.world_mut().spawn(handle);
 
     id.into()
 }
 
 #[allow(dead_code)]
 pub(crate) fn spawn_new_material_nouuid(app: &mut App) -> Handle<StandardMaterial> {
-    let mut materials = app.world.resource_mut::<Assets<StandardMaterial>>();
+    let mut materials = app.world_mut().resource_mut::<Assets<StandardMaterial>>();
     materials.add(StandardMaterial {
-        base_color: Color::RED,
+        base_color: Color::srgb(1.0, 0.0, 0.0),
         ..Default::default()
     })
 }
 
 #[allow(dead_code)]
 pub(crate) fn spawn_new_mesh_nouuid(app: &mut App) -> Handle<Mesh> {
-    let mut meshes = app.world.resource_mut::<Assets<Mesh>>();
+    let mut meshes = app.world_mut().resource_mut::<Assets<Mesh>>();
     meshes.add(sample_mesh())
 }
 

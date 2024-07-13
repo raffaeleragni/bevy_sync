@@ -1,8 +1,9 @@
 use std::net::IpAddr;
 
-use bevy::{ecs::event::Event, utils::Uuid};
+use bevy::ecs::event::Event;
 use bevy_renet::renet::ClientId;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub type EntityId = Uuid;
 pub type AssId = Uuid;
