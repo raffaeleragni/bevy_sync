@@ -5,11 +5,10 @@
 
 ![Sync](docs/sync.gif)
 
-Plugin for synchronizing entities and components between server and its clients. This plugin is meant to support collaborative editing environment through editors and supports bi-directional updates between server and client.
-
+Plugin for synchronizing entities and components between server and its clients.
 Uses `bevy_renet`.
 
-Current state is in development.
+== Basic features
 
 - [X] Entity synchronization
 - [X] Entyty sync is based on UUIDs
@@ -26,6 +25,9 @@ Current state is in development.
 - [X] Asset: Textures
 - [X] Asset: Audio (>= 0.14.0)
 - [X] Compressed Assets
+
+== Advanced features
+
 - [ ] Throttleable sync (time window queuing)
 - [ ] Skippable channel for Unordered+Unreliable
   - [ ] Transform
@@ -49,5 +51,6 @@ Base version of bevy_sync is inherited from bevy version.
 | ---- | --------- |
 | 0.12 | 0.12.x    |
 | 0.13 | 0.13.x    |
+| 0.14 | 0.14.x    |
 | ...  | ...       |
 
