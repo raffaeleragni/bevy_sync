@@ -21,8 +21,8 @@ Current state is in development.
 - [X] Asset: Mesh
   - [X] programmatically created mesh
   - [X] mesh from gltf: static
-  - [ ] rigged
-  - [ ] with morphs
+  - [X] rigged (>= 0.14.0)
+  - [X] with morphs (>= 0.14.0)
 - [X] Asset: Textures
 - [ ] Asset: Audio
 - [X] Compressed Assets
