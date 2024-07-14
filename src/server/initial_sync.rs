@@ -8,7 +8,10 @@ use crate::{
     SyncEntity,
 };
 use bevy::{
-    prelude::*, reflect::DynamicTypePath, render::mesh::skinning::SkinnedMesh, utils::HashSet,
+    prelude::*,
+    reflect::DynamicTypePath,
+    render::mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
+    utils::HashSet,
 };
 use bevy_renet::renet::{ClientId, DefaultChannel, RenetServer};
 use uuid::Uuid;
@@ -107,7 +110,10 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 let component = if component.type_id() == TypeId::of::<SkinnedMesh>() {
                     debug!("Initial sync: Converting SkinnedMesh to SkinnedMeshSyncMapper");
                     let compo = track
-                        .to_skinned_mapper(component.downcast_ref::<SkinnedMesh>().unwrap())
+                        .to_skinned_mapper(
+                            world.resource::<Assets<SkinnedMeshInverseBindposes>>(),
+                            component.downcast_ref::<SkinnedMesh>().unwrap(),
+                        )
                         .clone_value();
                     compo
                 } else {

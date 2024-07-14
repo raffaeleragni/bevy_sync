@@ -10,7 +10,11 @@ use bevy::{
     pbr::PbrPlugin,
     prelude::*,
     reflect::{DynamicTypePath, FromReflect, GetTypeRegistration, Reflect},
-    render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
+    render::{
+        mesh::{skinning::SkinnedMeshInverseBindposes, Indices},
+        render_asset::RenderAssetUsages,
+        render_resource::PrimitiveTopology,
+    },
     state::app::StatesPlugin,
     MinimalPlugins,
 };
@@ -160,6 +164,7 @@ fn add_plugins(app: &mut App) {
     app.init_asset::<Shader>();
     app.init_asset::<Mesh>();
     app.init_asset::<Image>();
+    app.init_asset::<SkinnedMeshInverseBindposes>();
     app.add_plugins(PbrPlugin::default());
     if env::var("LOG").is_ok() {
         app.add_plugins(LogPlugin {

@@ -105,10 +105,10 @@ fn server_received_a_message(
             };
             cmd.add(move |world: &mut World| {
                 let changed = SyncTrackerRes::apply_component_change_from_network(
+                    world,
                     e_id,
                     name.clone(),
                     &data,
-                    world,
                 );
 
                 if changed {

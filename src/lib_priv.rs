@@ -99,10 +99,10 @@ impl SyncTrackerRes {
     }
 
     pub(crate) fn apply_component_change_from_network(
+        world: &mut World,
         e_id: Entity,
         name: String,
         data: &[u8],
-        world: &mut World,
     ) -> bool {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
@@ -117,18 +117,7 @@ impl SyncTrackerRes {
             let component = component_data
                 .downcast_ref::<SkinnedMeshSyncMapper>()
                 .unwrap();
-            let mut joints = Vec::<Entity>::new();
-            let tracker = world.resource::<SyncTrackerRes>();
-            for uuid in &component.joints {
-                if let Some(e) = tracker.uuid_to_entity.get(uuid) {
-                    joints.push(*e);
-                }
-            }
-            SkinnedMesh {
-                inverse_bindposes: component.inverse_bindposes.clone(),
-                joints,
-            }
-            .clone_value()
+            SyncTrackerRes::to_skinned_mesh(world, component.clone()).clone_value()
         } else {
             component_data
         };
@@ -209,17 +198,44 @@ impl SyncTrackerRes {
         materials.insert(id, mat);
     }
 
-    pub(crate) fn to_skinned_mapper(&self, component: &SkinnedMesh) -> SkinnedMeshSyncMapper {
+    pub(crate) fn to_skinned_mapper(
+        &self,
+        assets: &Assets<SkinnedMeshInverseBindposes>,
+        component: &SkinnedMesh,
+    ) -> SkinnedMeshSyncMapper {
         let mut joints_uuid = Vec::<Uuid>::new();
         for e in &component.joints {
             if let Some(uuid) = self.entity_to_uuid.get(e) {
                 joints_uuid.push(*uuid);
             }
         }
+        let poses = assets.get(component.inverse_bindposes.id()).unwrap();
+        let poses = (**poses).to_vec();
         SkinnedMeshSyncMapper {
-            inverse_bindposes: component.inverse_bindposes.clone(),
+            inverse_bindposes: poses,
             joints: joints_uuid,
         }
+    }
+
+    pub(crate) fn to_skinned_mesh(world: &mut World, mapper: SkinnedMeshSyncMapper) -> SkinnedMesh {
+        world.resource_scope(
+            |world, mut assets: Mut<Assets<SkinnedMeshInverseBindposes>>| {
+                let tracker = world.resource::<SyncTrackerRes>();
+                let mut joints = Vec::<Entity>::new();
+                for uuid in &mapper.joints {
+                    if let Some(e) = tracker.uuid_to_entity.get(uuid) {
+                        joints.push(*e);
+                    }
+                }
+                let poses = mapper.inverse_bindposes;
+                let poses: SkinnedMeshInverseBindposes = poses.into();
+                let handle = assets.add(poses);
+                SkinnedMesh {
+                    inverse_bindposes: handle,
+                    joints,
+                }
+            },
+        )
     }
 }
 
@@ -272,12 +288,13 @@ impl SyncComponent for App {
 #[derive(Component, Debug, Clone, Reflect, Default)]
 #[reflect(Component, Default)]
 pub(crate) struct SkinnedMeshSyncMapper {
-    pub inverse_bindposes: Handle<SkinnedMeshInverseBindposes>,
+    pub inverse_bindposes: Vec<Mat4>,
     pub joints: Vec<Uuid>,
 }
 
 #[allow(clippy::type_complexity)]
 fn sync_skinned_mesh(
+    assets: Res<Assets<SkinnedMeshInverseBindposes>>,
     mut tracker: ResMut<SyncTrackerRes>,
     q: Query<
         (&SyncEntity, &SkinnedMesh),
@@ -289,7 +306,7 @@ fn sync_skinned_mesh(
     >,
 ) {
     for (sup, component) in q.iter() {
-        let component_to_send = tracker.to_skinned_mapper(component);
+        let component_to_send = tracker.to_skinned_mapper(&assets, component);
         tracker.signal_component_changed(sup.uuid, component_to_send.clone_value());
     }
 }

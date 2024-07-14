@@ -36,7 +36,8 @@ fn test_host_promotion_with_one_client() {
         |env, _, _| {
             assert!(!env.clients.is_empty());
             for c in env.clients.iter_mut() {
-                let comp = get_first_entity_component::<MySynched>(c).unwrap();
+                let world = c.world_mut();
+                let comp = get_first_entity_component::<MySynched>(world).unwrap();
                 assert_eq!(comp.value, 7);
             }
         },
@@ -52,7 +53,8 @@ fn setup_and_check_sync(env: &mut TestEnv) -> Entity {
     env.update(4);
     assert!(!env.clients.is_empty());
     for c in env.clients.iter_mut() {
-        let comp = get_first_entity_component::<MySynched>(c).unwrap();
+        let world = c.world_mut();
+        let comp = get_first_entity_component::<MySynched>(world).unwrap();
         assert_eq!(comp.value, 1);
     }
     env.server
@@ -63,7 +65,8 @@ fn setup_and_check_sync(env: &mut TestEnv) -> Entity {
         .value = 2;
     env.update(4);
     for c in env.clients.iter_mut() {
-        let comp = get_first_entity_component::<MySynched>(c).unwrap();
+        let world = c.world_mut();
+        let comp = get_first_entity_component::<MySynched>(world).unwrap();
         assert_eq!(comp.value, 2);
     }
 

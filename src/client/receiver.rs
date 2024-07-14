@@ -91,7 +91,7 @@ fn client_received_a_message(
                 return;
             };
             cmd.add(move |world: &mut World| {
-                SyncTrackerRes::apply_component_change_from_network(e_id, name, &data, world);
+                SyncTrackerRes::apply_component_change_from_network(world, e_id, name, &data);
             });
         }
         Message::StandardMaterialUpdated { id, material } => cmd.add(move |world: &mut World| {

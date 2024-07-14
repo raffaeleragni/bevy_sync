@@ -95,8 +95,8 @@ pub(crate) fn count_entities_without_component<T: Component>(app: &mut App) -> u
 }
 
 #[allow(dead_code)]
-pub(crate) fn get_first_entity_component<T: Component>(app: &mut App) -> Option<&T> {
-    app.world_mut().query::<&T>().iter(app.world()).next()
+pub(crate) fn get_first_entity_component<T: Component>(world: &mut World) -> Option<&T> {
+    world.query::<&T>().iter(world).next()
 }
 
 #[allow(dead_code)]
