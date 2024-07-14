@@ -24,7 +24,7 @@ Current state is in development.
   - [X] rigged (>= 0.14.0)
   - [X] with morphs (>= 0.14.0)
 - [X] Asset: Textures
-- [ ] Asset: Audio
+- [X] Asset: Audio (>= 0.14.0)
 - [X] Compressed Assets
 - [ ] Throttleable sync (time window queuing)
 - [ ] Skippable channel for Unordered+Unreliable

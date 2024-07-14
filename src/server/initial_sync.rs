@@ -47,6 +47,7 @@ fn build_initial_sync(world: &mut World) -> Result<Vec<Message>, Box<dyn Error>>
     check_images(world, &mut result)?;
     check_materials(world, &mut result)?;
     check_meshes(world, &mut result)?;
+    check_audios(world, &mut result)?;
     Ok(result)
 }
 
@@ -195,6 +196,26 @@ fn check_materials(world: &World, result: &mut Vec<Message>) -> Result<(), Box<d
             };
             result.push(Message::StandardMaterialUpdated { id, material: bin });
         }
+    }
+    Ok(())
+}
+
+fn check_audios(world: &mut World, result: &mut Vec<Message>) -> Result<(), Box<dyn Error>> {
+    let track = world.resource_mut::<SyncTrackerRes>();
+    let mut audios_to_add = Vec::<(Uuid, AudioSource)>::new();
+    if track.sync_audios {
+        let audios = world.resource::<Assets<AudioSource>>();
+        for (id, audio) in audios.iter() {
+            let AssetId::Uuid { uuid: id } = id else {
+                continue;
+            };
+            audios_to_add.push((id, audio.clone()));
+        }
+    }
+    let mut sync_assets = world.resource_mut::<SyncAssetTransfer>();
+    for (id, audio) in audios_to_add.iter() {
+        let url = sync_assets.serve_audio(id, audio);
+        result.push(Message::AudioUpdated { id: *id, url });
     }
     Ok(())
 }

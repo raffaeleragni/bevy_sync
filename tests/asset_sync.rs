@@ -1,11 +1,13 @@
 mod assert;
 mod setup;
 
-use assert::{assets_has_sample_image, assets_has_sample_mesh, material_has_color};
+use assert::{
+    assets_has_sample_audio, assets_has_sample_image, assets_has_sample_mesh, material_has_color,
+};
 use bevy::prelude::*;
 use bevy_sync::SyncComponent;
 use serial_test::serial;
-use setup::{spawn_new_image, spawn_new_material, spawn_new_mesh, TestRun};
+use setup::{spawn_new_audio, spawn_new_image, spawn_new_material, spawn_new_mesh, TestRun};
 
 #[test]
 #[serial]
@@ -144,6 +146,65 @@ fn test_images_transferred_from_client() {
         },
         |env, _, id| {
             assets_has_sample_image(&mut env.server, id);
+        },
+    );
+}
+
+#[serial]
+#[test]
+fn test_audio_transferred_from_server() {
+    TestRun::default().run(
+        1,
+        |env| {
+            env.setup_registration::<Handle<AudioSource>>();
+            env.server.sync_audios(true);
+            env.clients[0].sync_audios(true);
+        },
+        |env| {
+            let app = &mut env.server;
+            spawn_new_audio(app)
+        },
+        |env, _, id| {
+            assets_has_sample_audio(&mut env.clients[0], id);
+        },
+    );
+}
+
+#[serial]
+#[test]
+fn test_audio_transferred_from_client() {
+    TestRun::default().run(
+        1,
+        |env| {
+            env.setup_registration::<Handle<AudioSource>>();
+            env.server.sync_audios(true);
+            env.clients[0].sync_audios(true);
+        },
+        |env| {
+            let app = &mut env.clients[0];
+            spawn_new_audio(app)
+        },
+        |env, _, id| {
+            assets_has_sample_audio(&mut env.server, id);
+        },
+    );
+}
+
+#[serial]
+#[test]
+fn test_audio_transferred_initial_sync() {
+    TestRun::default().run(
+        1,
+        |env| {
+            env.setup_registration::<Handle<AudioSource>>();
+            env.server.sync_audios(true);
+            env.clients[0].sync_audios(true);
+            let app = &mut env.server;
+            spawn_new_audio(app)
+        },
+        TestRun::no_setup,
+        |env, id, _| {
+            assets_has_sample_audio(&mut env.clients[0], id);
         },
     );
 }

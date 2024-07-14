@@ -39,6 +39,10 @@ pub(crate) fn init(app: &mut App, addr: IpAddr, port: u16, max_transfer: usize) 
         Update,
         process_image_assets.run_if(resource_exists::<SyncAssetTransfer>),
     );
+    app.add_systems(
+        Update,
+        process_audio_assets.run_if(resource_exists::<SyncAssetTransfer>),
+    );
 }
 
 fn process_mesh_assets(
@@ -74,8 +78,29 @@ fn process_image_assets(
     }
 }
 
+fn process_audio_assets(
+    mut audios: ResMut<Assets<AudioSource>>,
+    sync: ResMut<SyncAssetTransfer>,
+    mut sync_tracker: ResMut<SyncTrackerRes>,
+) {
+    let Ok(mut map) = sync.audios_to_apply.write() else {
+        return;
+    };
+    for (id, audio) in map.drain() {
+        sync_tracker.pushed_handles_from_network.insert(id);
+        let id: AssetId<AudioSource> = AssetId::Uuid { uuid: id };
+        audios.insert(
+            id,
+            AudioSource {
+                bytes: audio.into(),
+            },
+        );
+    }
+}
+
 type MeshCache = Arc<RwLock<HashMap<Uuid, Vec<u8>>>>;
 type ImageCache = Arc<RwLock<HashMap<Uuid, Vec<u8>>>>;
+type AudioCache = Arc<RwLock<HashMap<Uuid, Vec<u8>>>>;
 
 #[derive(Resource)]
 pub(crate) struct SyncAssetTransfer {
@@ -86,6 +111,8 @@ pub(crate) struct SyncAssetTransfer {
     meshes_to_apply: MeshCache,
     images: ImageCache,
     images_to_apply: ImageCache,
+    audios: AudioCache,
+    audios_to_apply: AudioCache,
     max_transfer: usize,
 }
 
@@ -106,6 +133,8 @@ impl SyncAssetTransfer {
         let meshes_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
         let images = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
         let images_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
+        let audios = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
+        let audios_to_apply = Arc::new(RwLock::new(HashMap::<Uuid, Vec<u8>>::new()));
 
         let result = Self {
             base_url,
@@ -116,6 +145,8 @@ impl SyncAssetTransfer {
             max_transfer,
             images,
             images_to_apply,
+            audios,
+            audios_to_apply,
         };
 
         let (server_tx, server_rx) = channel::<Request>();
@@ -127,9 +158,10 @@ impl SyncAssetTransfer {
         });
         let meshes = result.meshes.clone();
         let images = result.images.clone();
+        let audios = result.audios.clone();
         result
             .server_pool
-            .execute(move || Self::respond(server_rx, meshes, images, max_transfer));
+            .execute(move || Self::respond(server_rx, meshes, images, audios, max_transfer));
         result
     }
 
@@ -141,6 +173,7 @@ impl SyncAssetTransfer {
         }
         let meshes_to_apply = self.meshes_to_apply.clone();
         let images_to_apply = self.images_to_apply.clone();
+        let audios_to_apply = self.audios_to_apply.clone();
         debug!("Queuing request for {:?}:{} at {}", asset_type, id, url);
         let max_transfer = self.max_transfer;
         self.download_pool.execute(move || {
@@ -185,6 +218,20 @@ impl SyncAssetTransfer {
                                 std::thread::sleep(Duration::from_millis(1));
                             }
                         }
+                        SyncAssetType::Audio => {
+                            let mut lock = audios_to_apply.write();
+                            loop {
+                                match lock {
+                                    Ok(mut map) => {
+                                        debug!("Received audio {} with size {}", id, len);
+                                        map.insert(id, bytes);
+                                        break;
+                                    }
+                                    Err(_) => lock = audios_to_apply.write(),
+                                }
+                                std::thread::sleep(Duration::from_millis(1));
+                            }
+                        }
                     }
                 }
             }
@@ -225,7 +272,30 @@ impl SyncAssetTransfer {
         format!("{}/image/{}", self.base_url, &id.to_string())
     }
 
-    fn respond(rx: Receiver<Request>, meshes: MeshCache, images: ImageCache, max_size: usize) {
+    pub(crate) fn serve_audio(&mut self, id: &Uuid, audio: &AudioSource) -> String {
+        let mut lock = self.audios.write();
+        loop {
+            match lock {
+                Ok(mut map) => {
+                    let bin = Vec::<u8>::from(audio.as_ref());
+                    let audio = map.entry(*id).or_insert_with(|| bin);
+                    debug!("Serving audio {} with size {}", id, audio.len());
+                    break;
+                }
+                Err(_) => lock = self.meshes.write(),
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        format!("{}/audio/{}", self.base_url, &id.to_string())
+    }
+
+    fn respond(
+        rx: Receiver<Request>,
+        meshes: MeshCache,
+        images: ImageCache,
+        audios: AudioCache,
+        max_size: usize,
+    ) {
         for request in rx.iter() {
             let url = request.url();
             let (asset_type, id) = if url.contains("/image/") {
@@ -238,6 +308,11 @@ impl SyncAssetTransfer {
                     continue;
                 };
                 (SyncAssetType::Mesh, id)
+            } else if url.contains("/audio/") {
+                let Some(id) = url.strip_prefix("/audio/") else {
+                    continue;
+                };
+                (SyncAssetType::Audio, id)
             } else {
                 continue;
             };
@@ -291,6 +366,32 @@ impl SyncAssetTransfer {
                                 .with_header(Header {
                                     field: "Content-Length".parse().unwrap(),
                                     value: AsciiString::from_ascii(image.len().to_string())
+                                        .unwrap(),
+                                })
+                                .with_chunked_threshold(max_size),
+                        )
+                        .unwrap_or(());
+                }
+                SyncAssetType::Audio => {
+                    let Ok(audiosmap) = audios.read() else {
+                        request
+                            .respond(Response::from_string("").with_status_code(449))
+                            .unwrap_or(());
+                        continue;
+                    };
+                    let Some(audio) = audiosmap.get(&id) else {
+                        request
+                            .respond(Response::from_string("").with_status_code(404))
+                            .unwrap_or(());
+                        continue;
+                    };
+                    debug!("Responding to {} with size {}", url, audio.len());
+                    request
+                        .respond(
+                            Response::from_data(audio.clone())
+                                .with_header(Header {
+                                    field: "Content-Length".parse().unwrap(),
+                                    value: AsciiString::from_ascii(audio.len().to_string())
                                         .unwrap(),
                                 })
                                 .with_chunked_threshold(max_size),

@@ -36,25 +36,31 @@ pub(crate) fn log_message_received(from: Who, message: &Message) {
                 id,
                 name
             )
-        }
+        },
         Message::StandardMaterialUpdated { id, material: _ } => {
             debug!(
                 "{:?} received StandardMaterialUpdated {{ uuid: {} }}",
                 from, id
             )
-        }
+        },
         Message::MeshUpdated { id, url } => {
             debug!(
                 "{:?} received MeshUpdated {{ uuid: {} }} {{ url: {} }}",
                 from, id, url
             )
-        }
+        },
         Message::ImageUpdated { id, url } => {
             debug!(
                 "{:?} received ImageUpdated {{ uuid: {} }} {{ url: {} }}",
                 from, id, url
             )
-        }
+        },
+        Message::AudioUpdated { id, url } => {
+            debug!(
+                "{:?} received AudioUpdated {{ uuid: {} }} {{ url: {} }}",
+                from, id, url
+            )
+        },
         Message::PromoteToHost => debug!("{:?} received PromoteToHost", from),
         Message::NewHost {
             ip,

@@ -60,6 +60,7 @@ pub(crate) struct SyncTrackerRes {
 
     pub(crate) sync_materials: bool,
     pub(crate) sync_meshes: bool,
+    pub(crate) sync_audios: bool,
 }
 
 pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {
@@ -68,6 +69,10 @@ pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {
 
 pub(crate) fn sync_mesh_enabled(tracker: Res<SyncTrackerRes>) -> bool {
     tracker.sync_meshes
+}
+
+pub(crate) fn sync_audio_enabled(tracker: Res<SyncTrackerRes>) -> bool {
+    tracker.sync_audios
 }
 
 impl SyncTrackerRes {
@@ -282,6 +287,11 @@ impl SyncComponent for App {
     fn sync_meshes(&mut self, enable: bool) {
         let mut tracker = self.world_mut().resource_mut::<SyncTrackerRes>();
         tracker.sync_meshes = enable;
+    }
+
+    fn sync_audios(&mut self, enable: bool) {
+        let mut tracker = self.world_mut().resource_mut::<SyncTrackerRes>();
+        tracker.sync_audios = enable;
     }
 }
 

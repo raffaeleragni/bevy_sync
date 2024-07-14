@@ -164,6 +164,7 @@ fn add_plugins(app: &mut App) {
     app.init_asset::<Shader>();
     app.init_asset::<Mesh>();
     app.init_asset::<Image>();
+    app.init_asset::<AudioSource>();
     app.init_asset::<SkinnedMeshInverseBindposes>();
     app.add_plugins(PbrPlugin::default());
     if env::var("LOG").is_ok() {
@@ -298,4 +299,23 @@ pub(crate) fn sample_mesh() -> Mesh {
 #[allow(dead_code)]
 pub(crate) fn sample_image() -> Image {
     Image::default()
+}
+
+#[allow(dead_code)]
+pub(crate) fn spawn_new_audio(app: &mut App) -> AssetId<AudioSource> {
+    let mut assets = app.world_mut().resource_mut::<Assets<AudioSource>>();
+    let id = Uuid::new_v4();
+    let asset = sample_audio();
+    let handle = Handle::<AudioSource>::Weak(id.into());
+    assets.insert(id, asset);
+
+    app.world_mut().spawn(handle);
+
+    id.into()
+}
+
+pub(crate) fn sample_audio() -> AudioSource {
+    AudioSource {
+        bytes: vec![9, 2, 1, 45, 12].into(),
+    }
 }

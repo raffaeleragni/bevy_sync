@@ -149,6 +149,16 @@ fn server_received_a_message(
                 );
             })
         }
+        Message::AudioUpdated { id, url } => {
+            sync_assets.request(SyncAssetType::Audio, id, url.clone());
+            cmd.add(move |world: &mut World| {
+                repeat_except_for_client(
+                    client_id,
+                    &mut world.resource_mut::<RenetServer>(),
+                    &Message::AudioUpdated { id, url },
+                );
+            })
+        }
         // server is already host, no operation to do
         Message::PromoteToHost => (),
         Message::NewHost {

@@ -99,6 +99,7 @@ fn client_received_a_message(
         }),
         Message::MeshUpdated { id, url } => sync_assets.request(SyncAssetType::Mesh, id, url),
         Message::ImageUpdated { id, url } => sync_assets.request(SyncAssetType::Image, id, url),
+        Message::AudioUpdated { id, url } => sync_assets.request(SyncAssetType::Audio, id, url),
         Message::PromoteToHost => {
             info!("Client is being promoted to host");
             client.send_message(

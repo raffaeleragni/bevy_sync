@@ -80,6 +80,7 @@ pub trait SyncComponent {
     ) -> &mut Self;
     fn sync_materials(&mut self, enable: bool);
     fn sync_meshes(&mut self, enable: bool);
+    fn sync_audios(&mut self, enable: bool);
 }
 
 #[derive(Resource)]

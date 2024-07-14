@@ -12,6 +12,7 @@ pub type AssId = Uuid;
 pub(crate) enum SyncAssetType {
     Mesh,
     Image,
+    Audio,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -44,14 +45,18 @@ pub(crate) enum Message {
         id: Uuid,
         url: String,
     } = 8,
-    PromoteToHost,
+    AudioUpdated {
+        id: Uuid,
+        url: String,
+    } = 9,
+    PromoteToHost = 10,
     NewHost {
         ip: IpAddr,
         port: u16,
         web_port: u16,
         max_transfer: usize,
-    },
-    RequestInitialSync,
+    } = 11,
+    RequestInitialSync = 12,
 }
 
 #[derive(Event)]

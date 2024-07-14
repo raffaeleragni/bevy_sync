@@ -157,6 +157,44 @@ pub(crate) fn react_on_changed_materials(
     }
 }
 
+pub(crate) fn react_on_changed_audios(
+    mut track: ResMut<SyncTrackerRes>,
+    mut server: ResMut<RenetServer>,
+    assets: Res<Assets<AudioSource>>,
+    mut events: EventReader<AssetEvent<AudioSource>>,
+    mut sync_assets: ResMut<SyncAssetTransfer>,
+) {
+    for event in &mut events.read() {
+        match event {
+            AssetEvent::Added { id } | AssetEvent::Modified { id } => {
+                let Some(asset) = assets.get(*id) else {
+                    continue;
+                };
+                let AssetId::Uuid { uuid: id } = id else {
+                    continue;
+                };
+                if track.skip_network_handle_change(*id) {
+                    continue;
+                }
+                let url = sync_assets.serve_audio(id, asset);
+                for cid in server.clients_id().into_iter() {
+                    server.send_message(
+                        cid,
+                        DefaultChannel::ReliableOrdered,
+                        bincode::serialize(&Message::AudioUpdated {
+                            id: *id,
+                            url: url.clone(),
+                        })
+                        .unwrap(),
+                    );
+                }
+            }
+            AssetEvent::Removed { id: _ } => {}
+            _ => (),
+        }
+    }
+}
+
 pub(crate) fn react_on_changed_meshes(
     mut track: ResMut<SyncTrackerRes>,
     mut server: ResMut<RenetServer>,

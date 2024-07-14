@@ -3,7 +3,7 @@ use bevy_renet::renet::{DefaultChannel, RenetClient, RenetServer};
 use bevy_sync::SyncEntity;
 use uuid::Uuid;
 
-use crate::setup::{sample_image, sample_mesh, MySynched, TestEnv};
+use crate::setup::{sample_audio, sample_image, sample_mesh, MySynched, TestEnv};
 
 #[allow(dead_code)]
 pub(crate) fn entities_in_sync<T>(env: &mut TestEnv, _: T, entity_count: u32) {
@@ -142,4 +142,12 @@ pub(crate) fn find_entity_with_server_id(app: &mut App, server_entity_id: Uuid) 
         }
     }
     None
+}
+
+#[allow(dead_code)]
+pub(crate) fn assets_has_sample_audio(app: &mut App, id: AssetId<AudioSource>) {
+    let assets = app.world_mut().resource_mut::<Assets<AudioSource>>();
+    let asset = assets.get(id).unwrap();
+    let sample = sample_audio();
+    assert_eq!(asset.as_ref(), sample.as_ref());
 }

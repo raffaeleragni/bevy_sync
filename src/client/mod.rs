@@ -5,15 +5,18 @@ use bevy_renet::renet::{
 };
 
 use crate::{
-    lib_priv::{sync_material_enabled, sync_mesh_enabled, PromotionState, SyncTrackerRes},
+    lib_priv::{
+        sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, PromotionState,
+        SyncTrackerRes,
+    },
     proto::Message,
     ClientState,
 };
 
 use self::track::{
     entity_created_on_client, entity_parented_on_client, entity_removed_from_client,
-    react_on_changed_components, react_on_changed_images, react_on_changed_materials,
-    react_on_changed_meshes,
+    react_on_changed_audios, react_on_changed_components, react_on_changed_images,
+    react_on_changed_materials, react_on_changed_meshes,
 };
 
 mod receiver;
@@ -58,6 +61,7 @@ impl Plugin for ClientSyncPlugin {
                 react_on_changed_materials.run_if(sync_material_enabled),
                 react_on_changed_images.run_if(sync_material_enabled),
                 react_on_changed_meshes.run_if(sync_mesh_enabled),
+                react_on_changed_audios.run_if(sync_audio_enabled),
                 receiver::poll_for_messages,
             )
                 .chain()

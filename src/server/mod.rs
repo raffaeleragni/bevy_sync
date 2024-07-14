@@ -5,7 +5,10 @@ use bevy_renet::renet::{
 };
 
 use crate::{
-    lib_priv::{sync_material_enabled, sync_mesh_enabled, PromotionState, SyncTrackerRes},
+    lib_priv::{
+        sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, PromotionState,
+        SyncTrackerRes,
+    },
     proto::{Message, PromoteToHostEvent},
     server::initial_sync::send_initial_sync,
     ServerState,
@@ -13,8 +16,8 @@ use crate::{
 
 use self::track::{
     entity_created_on_server, entity_parented_on_server, entity_removed_from_server,
-    react_on_changed_components, react_on_changed_images, react_on_changed_materials,
-    react_on_changed_meshes,
+    react_on_changed_audios, react_on_changed_components, react_on_changed_images,
+    react_on_changed_materials, react_on_changed_meshes,
 };
 
 mod initial_sync;
@@ -54,6 +57,7 @@ impl Plugin for ServerSyncPlugin {
                 react_on_changed_materials.run_if(sync_material_enabled),
                 react_on_changed_images.run_if(sync_material_enabled),
                 react_on_changed_meshes.run_if(sync_mesh_enabled),
+                react_on_changed_audios.run_if(sync_audio_enabled),
                 promote_to_host_event_reader,
             )
                 .chain()
