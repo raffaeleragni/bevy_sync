@@ -2,7 +2,7 @@ mod assert;
 mod setup;
 
 use bevy::{
-    pbr::{Cascade, CascadeShadowConfig, Cascades, CascadesVisibleEntities, CubemapVisibleEntities},
+    pbr::{CascadeShadowConfig, Cascades, CascadesVisibleEntities, CubemapVisibleEntities},
     prelude::*,
     render::{
         mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
