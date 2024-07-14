@@ -34,8 +34,10 @@ fn main() {
     client.sync_component::<PointLight>();
     client.sync_component::<Handle<StandardMaterial>>();
     client.sync_component::<Handle<Mesh>>();
+    client.sync_component::<Handle<AudioSource>>();
     client.sync_materials(true);
     client.sync_meshes(true);
+    client.sync_audios(true);
 
     client.add_systems(Startup, load_world);
     client.run();

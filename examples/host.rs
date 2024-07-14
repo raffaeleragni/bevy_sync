@@ -35,8 +35,10 @@ fn main() {
     host.sync_component::<SpotLight>();
     host.sync_component::<Handle<StandardMaterial>>();
     host.sync_component::<Handle<Mesh>>();
+    host.sync_component::<Handle<AudioSource>>();
     host.sync_materials(true);
     host.sync_meshes(true);
+    host.sync_audios(true);
 
     host.add_systems(Startup, load_world);
     host.run();
