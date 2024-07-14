@@ -2,11 +2,11 @@ mod assert;
 mod setup;
 
 use bevy::{
-    pbr::CubemapVisibleEntities,
+    pbr::{Cascade, CascadeShadowConfig, Cascades, CascadesVisibleEntities, CubemapVisibleEntities},
     prelude::*,
     render::{
         mesh::skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
-        primitives::CubemapFrusta,
+        primitives::{CascadesFrusta, CubemapFrusta, Frustum},
     },
 };
 use bevy_sync::{SyncEntity, SyncExclude, SyncMark};
@@ -261,16 +261,35 @@ fn test_auto_spawn_for_point_light() {
         TestRun::no_pre_setup,
         |env| {
             env.setup_registration::<PointLight>();
+            env.setup_registration::<SpotLight>();
+            env.setup_registration::<DirectionalLight>();
             let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(4);
             let mut e = env.server.world_mut().entity_mut(e_id);
             e.insert(PointLightBundle::default());
+
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
+            env.update(4);
+            let mut e = env.server.world_mut().entity_mut(e_id);
+            e.insert(SpotLightBundle::default());
+
+            let e_id = env.server.world_mut().spawn(SyncMark {}).id();
+            env.update(4);
+            let mut e = env.server.world_mut().entity_mut(e_id);
+            e.insert(DirectionalLightBundle::default());
         },
         |env, _, _| {
             let world = env.clients[0].world_mut();
             let _ = get_first_entity_component::<PointLight>(world).unwrap();
+            let _ = get_first_entity_component::<SpotLight>(world).unwrap();
+            let _ = get_first_entity_component::<DirectionalLight>(world).unwrap();
             let _ = get_first_entity_component::<CubemapFrusta>(world).unwrap();
             let _ = get_first_entity_component::<CubemapVisibleEntities>(world).unwrap();
+            let _ = get_first_entity_component::<Frustum>(world).unwrap();
+            let _ = get_first_entity_component::<CascadesFrusta>(world).unwrap();
+            let _ = get_first_entity_component::<CascadesVisibleEntities>(world).unwrap();
+            let _ = get_first_entity_component::<Cascades>(world).unwrap();
+            let _ = get_first_entity_component::<CascadeShadowConfig>(world).unwrap();
         },
     );
 }
