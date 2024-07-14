@@ -8,7 +8,7 @@
 Plugin for synchronizing entities and components between server and its clients.
 Uses `bevy_renet`.
 
-== Basic features
+## Basic features
 
 - [X] Entity synchronization
 - [X] Entyty sync is based on UUIDs
@@ -26,7 +26,7 @@ Uses `bevy_renet`.
 - [X] Asset: Audio (>= 0.14.0)
 - [X] Compressed Assets
 
-== Advanced features
+## Advanced features
 
 - [ ] Throttleable sync (time window queuing)
 - [ ] Skippable channel for Unordered+Unreliable
