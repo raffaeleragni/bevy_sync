@@ -1,37 +1,6 @@
 //! bevy_sync
 //!
 //! Plugin for synchronizing entities and components between server and its clients.
-//!
-//! The synchronization is started with the setup:
-//!
-//! ```
-//! use bevy::prelude::*;
-//! use bevy_sync::prelude::*;
-//! use std::{env, net::{IpAddr, Ipv4Addr}};
-//! use bevy_sync::SyncComponent;
-//!
-//! let ip = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
-//! let mut app = App::new();
-//! app.add_plugins(DefaultPlugins);
-//! app.add_plugins(SyncPlugin);
-//! app.add_plugins(ServerPlugin {
-//!     ip,                          // binding network address
-//!     port: 4000,                  // port for the main sync protocol (udp)
-//!     web_port: 4001,              // port for http assets transfer
-//!     max_transfer: 100_000_000,   // maximum size allowed for asset transfer
-//! });
-//!
-//! // Specify which components and assets to sync
-//!
-//! app.sync_component::<Transform>();
-//! app.sync_component::<Handle<StandardMaterial>>();
-//! app.sync_component::<Handle<Mesh>>();
-//! app.sync_component::<Handle<AudioSource>>();
-//! app.sync_materials(true);
-//! app.sync_meshes(true);
-//! app.sync_audios(true);
-//! ```
-//!
 
 /// Use this event to promote one of the clients as host
 pub use proto::PromoteToHostEvent;
