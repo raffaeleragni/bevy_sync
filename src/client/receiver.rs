@@ -97,22 +97,12 @@ fn client_received_a_message(
             info!("Promotion: Client is being promoted to host");
             let ip = connection_parameters.ip;
             let port = connection_parameters.port;
-            let message = bincode::serialize(&Message::NewHost {
-                ip: connection_parameters.ip,
-                port: connection_parameters.port,
-                web_port: connection_parameters.web_port,
-                max_transfer: connection_parameters.max_transfer,
-            })
-            .unwrap();
             cmd.add(move |world: &mut World| {
                 info!("Promotion: Starting as host...");
                 world.insert_resource(create_server(ip, port));
                 world
                     .resource_mut::<SyncTrackerRes>()
                     .host_promotion_in_progress = true;
-                world
-                    .resource_mut::<RenetClient>()
-                    .send_message(DefaultChannel::ReliableOrdered, message);
             });
         }
         Message::NewHost {

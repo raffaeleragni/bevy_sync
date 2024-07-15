@@ -1,14 +1,14 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{
     transport::{NetcodeClientTransport, NetcodeServerTransport},
-    DefaultChannel, RenetServer, ServerEvent,
+    DefaultChannel, RenetClient, RenetServer, ServerEvent,
 };
 
 use crate::{
     lib_priv::{sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
     proto::{Message, PromoteToHostEvent},
     server::initial_sync::send_initial_sync,
-    ServerState,
+    ServerState, SyncConnectionParameters,
 };
 
 use self::track::{
@@ -66,6 +66,10 @@ impl Plugin for ServerSyncPlugin {
                 .run_if(resource_exists::<NetcodeServerTransport>)
                 .run_if(in_state(ServerState::Connected)),
         );
+        app.add_systems(
+            OnEnter(ServerState::Connected),
+            server_promoted_is_ready.run_if(resource_exists::<NetcodeClientTransport>),
+        );
     }
 }
 
@@ -80,9 +84,13 @@ fn client_connected(
             ServerEvent::ClientConnected { client_id } => {
                 let client_id = *client_id;
                 info!("Client connected with client id: {}", client_id);
-                // remove any previous pending client since the instance is a server now
-                // this clients can be pending after a host promotion
-                cmd.remove_resource::<NetcodeClientTransport>();
+                if tracker.host_promotion_in_progress {
+                    info!("Promotion: first connection to a promoted host, removing previous client instance.");
+                    // remove any previous pending client since the instance is a server now
+                    // this clients can be pending after a host promotion
+                    cmd.remove_resource::<NetcodeClientTransport>();
+                    tracker.host_promotion_in_progress = false;
+                }
             }
             ServerEvent::ClientDisconnected { client_id, reason } => {
                 if tracker.host_promotion_in_progress {
@@ -118,6 +126,21 @@ fn server_disconnected(mut state: ResMut<NextState<ServerState>>) {
 fn server_connected(mut state: ResMut<NextState<ServerState>>) {
     info!("Server ready to accept connections.");
     state.set(ServerState::Connected);
+}
+
+fn server_promoted_is_ready(
+    mut client: ResMut<RenetClient>,
+    connection_parameters: Res<SyncConnectionParameters>,
+) {
+    info!("Promotion: New server is ready, tell old server to shut down.");
+    let message = bincode::serialize(&Message::NewHost {
+        ip: connection_parameters.ip,
+        port: connection_parameters.port,
+        web_port: connection_parameters.web_port,
+        max_transfer: connection_parameters.max_transfer,
+    })
+    .unwrap();
+    client.send_message(DefaultChannel::ReliableOrdered, message);
 }
 
 fn promote_to_host_event_reader(
