@@ -18,7 +18,10 @@ use bevy::{
     state::app::StatesPlugin,
     MinimalPlugins,
 };
-use bevy_renet::renet::{RenetClient, RenetServer};
+use bevy_renet::renet::{
+    transport::{NetcodeClientTransport, NetcodeServerTransport},
+    RenetClient,
+};
 use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncPlugin};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -149,8 +152,8 @@ impl TestRun {
 }
 
 fn disconnect(app: &mut App) {
-    app.world_mut().remove_resource::<RenetServer>();
-    app.world_mut().remove_resource::<RenetClient>();
+    app.world_mut().remove_resource::<NetcodeServerTransport>();
+    app.world_mut().remove_resource::<NetcodeClientTransport>();
     for _ in 0..10 {
         app.update();
     }
