@@ -18,35 +18,8 @@ fn test_host_promotion_with_one_client() {
     TestRun::default().run(
         1,
         TestRun::no_pre_setup,
-        |env| {
-            let e_id = setup_and_check_sync(env);
-
-            // need this because the tests run on the same machine and promotion won't advance between
-            // occupied server releasing connection on same port and client becoming server on same port
-            alter_connection_port(env);
-            assert_server_is_host(env);
-            send_promotion_event(env);
-            env.update(10);
-            assert_all_are_connected(env);
-            assert_only_one_client_is_host(env);
-
-            env.server
-                .world_mut()
-                .entity_mut(e_id)
-                .get_mut::<MySynched>()
-                .unwrap()
-                .value = 7;
-        },
-        |env, _, _| {
-            let comp = get_first_entity_component::<MySynched>(env.server.world_mut()).unwrap();
-            assert_eq!(comp.value, 7);
-            assert!(!env.clients.is_empty());
-            for c in env.clients.iter_mut() {
-                let world = c.world_mut();
-                let comp = get_first_entity_component::<MySynched>(world).unwrap();
-                assert_eq!(comp.value, 7);
-            }
-        },
+        setup_host_promotion,
+        |env, _, _| assert_host_promotion(env),
     );
 }
 
@@ -57,36 +30,40 @@ fn test_host_promotion_with_more_clients() {
     TestRun::default().run(
         3,
         TestRun::no_pre_setup,
-        |env| {
-            let e_id = setup_and_check_sync(env);
-
-            // need this because the tests run on the same machine and promotion won't advance between
-            // occupied server releasing connection on same port and client becoming server on same port
-            alter_connection_port(env);
-            assert_server_is_host(env);
-            send_promotion_event(env);
-            env.update(10);
-            assert_all_are_connected(env);
-            assert_only_one_client_is_host(env);
-
-            env.server
-                .world_mut()
-                .entity_mut(e_id)
-                .get_mut::<MySynched>()
-                .unwrap()
-                .value = 7;
-        },
-        |env, _, _| {
-            let comp = get_first_entity_component::<MySynched>(env.server.world_mut()).unwrap();
-            assert_eq!(comp.value, 7);
-            assert!(!env.clients.is_empty());
-            for c in env.clients.iter_mut() {
-                let world = c.world_mut();
-                let comp = get_first_entity_component::<MySynched>(world).unwrap();
-                assert_eq!(comp.value, 7);
-            }
-        },
+        setup_host_promotion,
+        |env, _, _| assert_host_promotion(env),
     );
+}
+
+fn setup_host_promotion(env: &mut TestEnv) {
+    let e_id = setup_and_check_sync(env);
+
+    // need this because the tests run on the same machine and promotion won't advance between
+    // occupied server releasing connection on same port and client becoming server on same port
+    alter_connection_port(env);
+    assert_server_is_host(env);
+    send_promotion_event(env);
+    env.update(10);
+    assert_all_are_connected(env);
+    assert_only_one_client_is_host(env);
+
+    env.server
+        .world_mut()
+        .entity_mut(e_id)
+        .get_mut::<MySynched>()
+        .unwrap()
+        .value = 7;
+}
+
+fn assert_host_promotion(env: &mut TestEnv) {
+    let comp = get_first_entity_component::<MySynched>(env.server.world_mut()).unwrap();
+    assert_eq!(comp.value, 7);
+    assert!(!env.clients.is_empty());
+    for c in env.clients.iter_mut() {
+        let world = c.world_mut();
+        let comp = get_first_entity_component::<MySynched>(world).unwrap();
+        assert_eq!(comp.value, 7);
+    }
 }
 
 fn setup_and_check_sync(env: &mut TestEnv) -> Entity {
