@@ -18,7 +18,7 @@ use bevy::{
     state::app::StatesPlugin,
     MinimalPlugins,
 };
-use bevy_renet::renet::RenetClient;
+use bevy_renet::renet::{RenetClient, RenetServer};
 use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncPlugin};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -140,6 +140,19 @@ impl TestRun {
             count += 1;
         }
         assertion(&mut test_run, x, y);
+
+        disconnect(&mut test_run.server);
+        for mut client in test_run.clients {
+            disconnect(&mut client);
+        }
+    }
+}
+
+fn disconnect(app: &mut App) {
+    app.world_mut().remove_resource::<RenetServer>();
+    app.world_mut().remove_resource::<RenetClient>();
+    for _ in 0..10 {
+        app.update();
     }
 }
 
