@@ -23,7 +23,17 @@ fn test_host_promotion_with_one_client() {
     );
 }
 
-#[ignore = "Still not achieved on multi clients"]
+// It is currently difficult to run with this test.
+//
+// When there is only one server and one client in the same machine, one will open the new server
+// while the other will connect as client.
+//
+// However for a client that was already client before, all it will do is reconnect to the same ip
+// and port that was previously connected to, unaware that it is actually a new server.
+//
+// The new server seems to print a renet error of:
+// "ERROR renetcode::server: Failed to process packet: packet is too small"
+#[ignore = "Unfeasible to run on the same localhost ip for all instances?"]
 #[test]
 #[serial]
 fn test_host_promotion_with_more_clients() {
