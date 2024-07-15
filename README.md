@@ -14,16 +14,16 @@ Uses `bevy_renet`.
 - [X] Entyty sync is based on UUIDs
 - [X] Component synchronization
 - [X] Parent/Child entity synchronization
-- [X] Host switch / promotion (>= 0.13.1)
+- [X] Host switch / promotion
 - [X] SimpleMaterial (through sync channel)
 - [X] Serve assets through http
 - [X] Asset: Mesh
   - [X] programmatically created mesh
   - [X] mesh from gltf: static
-  - [X] rigged (>= 0.14.0)
-  - [X] with morphs (>= 0.14.0)
+  - [X] rigged
+  - [X] with morphs
 - [X] Asset: Textures
-- [X] Asset: Audio (>= 0.14.0)
+- [X] Asset: Audio
 - [X] Compressed Assets
 
 ## Advanced features
