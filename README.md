@@ -29,7 +29,7 @@ Uses `bevy_renet`.
 ## Advanced features
 
 - [ ] UPnP
-- [ ] Steak sockets (steam sdk binding)
+- [ ] Steam sockets (steam sdk binding)
 - [ ] Throttleable sync (time window queuing)
 - [ ] Skippable channel for Unordered+Unreliable
   - [ ] Transform
