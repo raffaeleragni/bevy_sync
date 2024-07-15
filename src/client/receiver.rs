@@ -1,5 +1,4 @@
 use crate::{
-    lib_priv::{PromotedToServer, PromotionState},
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client, create_server},
     proto::SyncAssetType,
@@ -14,8 +13,6 @@ pub(crate) fn poll_for_messages(
     mut track: ResMut<SyncTrackerRes>,
     mut sync_assets: ResMut<SyncAssetTransfer>,
     mut client: ResMut<RenetClient>,
-    mut send_promoted_event: EventWriter<PromotedToServer>,
-    mut promotion_state: ResMut<NextState<PromotionState>>,
 ) {
     while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         let deser_message = bincode::deserialize(&message).unwrap();
@@ -26,8 +23,6 @@ pub(crate) fn poll_for_messages(
             &mut track,
             &mut sync_assets,
             &mut commands,
-            &mut send_promoted_event,
-            &mut promotion_state,
         );
     }
 }
@@ -40,8 +35,6 @@ fn client_received_a_message(
     track: &mut ResMut<SyncTrackerRes>,
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
-    send_promoted_event: &mut EventWriter<PromotedToServer>,
-    promotion_state: &mut ResMut<NextState<PromotionState>>,
 ) {
     log_message_received(Who::Client, &msg);
     match msg {
@@ -101,31 +94,26 @@ fn client_received_a_message(
         Message::ImageUpdated { id, url } => sync_assets.request(SyncAssetType::Image, id, url),
         Message::AudioUpdated { id, url } => sync_assets.request(SyncAssetType::Audio, id, url),
         Message::PromoteToHost => {
-            info!("Client is being promoted to host");
-            client.send_message(
-                DefaultChannel::ReliableOrdered,
-                bincode::serialize(&Message::NewHost {
-                    ip: connection_parameters.ip,
-                    port: connection_parameters.port,
-                    web_port: connection_parameters.web_port,
-                    max_transfer: connection_parameters.max_transfer,
-                })
-                .unwrap(),
-            );
+            info!("Promotion: Client is being promoted to host");
             let ip = connection_parameters.ip;
             let port = connection_parameters.port;
+            let message = bincode::serialize(&Message::NewHost {
+                ip: connection_parameters.ip,
+                port: connection_parameters.port,
+                web_port: connection_parameters.web_port,
+                max_transfer: connection_parameters.max_transfer,
+            })
+            .unwrap();
             cmd.add(move |world: &mut World| {
-                // cannot remove client because the message above is still queued.
-                // found no way to flush client so far, but at least the previous server
-                // will still disconnect all the clients, so this client should still
-                // eventually disconnect
-                //world.resource_mut::<RenetClient>().disconnect();
-                //world.remove_resource::<NetcodeClientTransport>();
-                info!("Starting as host...");
+                info!("Promotion: Starting as host...");
                 world.insert_resource(create_server(ip, port));
+                world
+                    .resource_mut::<SyncTrackerRes>()
+                    .host_promotion_in_progress = true;
+                world
+                    .resource_mut::<RenetClient>()
+                    .send_message(DefaultChannel::ReliableOrdered, message);
             });
-            send_promoted_event.send(PromotedToServer {});
-            promotion_state.set(PromotionState::PromotedToServer);
         }
         Message::NewHost {
             ip,
@@ -133,13 +121,13 @@ fn client_received_a_message(
             web_port: _,
             max_transfer: _,
         } => {
-            info!("A new host has been promoted. Reconnecting to new host");
+            info!("Promotion: A new host has been promoted. Reconnecting to new host");
             client.disconnect();
             cmd.remove_resource::<NetcodeClientTransport>();
             cmd.insert_resource(create_client(ip, port));
             // even if it was a client before, this connection is not a new session
             // and won't need the initial_sync, so it's consider a client to client promotion
-            promotion_state.set(PromotionState::PromotedToClient);
+            track.host_promotion_in_progress = true;
         }
         // Nothing to do, only servers send initial sync
         Message::RequestInitialSync => {}

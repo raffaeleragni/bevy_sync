@@ -28,20 +28,6 @@ pub(crate) struct ComponentChange {
     pub(crate) data: Box<dyn Reflect>,
 }
 
-#[derive(Event)]
-pub(crate) struct PromotedToServer;
-
-#[derive(Event)]
-pub(crate) struct PromotedToClient;
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
-pub(crate) enum PromotionState {
-    #[default]
-    NeverPromoted,
-    PromotedToServer,
-    PromotedToClient,
-}
-
 #[derive(Resource, Default)]
 pub(crate) struct SyncTrackerRes {
     /// Mapping of entity ids between server and clients. key: server, value: client
@@ -61,6 +47,8 @@ pub(crate) struct SyncTrackerRes {
     pub(crate) sync_materials: bool,
     pub(crate) sync_meshes: bool,
     pub(crate) sync_audios: bool,
+
+    pub(crate) host_promotion_in_progress: bool,
 }
 
 pub(crate) fn sync_material_enabled(tracker: Res<SyncTrackerRes>) -> bool {
@@ -372,11 +360,8 @@ impl Plugin for SyncPlugin {
         app.add_plugins(BundleFixPlugin);
         app.add_plugins(ServerSyncPlugin);
         app.add_plugins(ClientSyncPlugin);
-        app.init_state::<PromotionState>();
         app.init_state::<ServerState>();
         app.init_state::<ClientState>();
-        app.add_event::<PromotedToServer>();
-        app.add_event::<PromotedToClient>();
         app.add_event::<PromoteToHostEvent>();
     }
 }

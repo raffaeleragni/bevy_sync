@@ -1,14 +1,8 @@
 use bevy::prelude::*;
-use bevy_renet::renet::{
-    transport::{NetcodeClientTransport, NetcodeServerTransport},
-    DefaultChannel, RenetClient,
-};
+use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
 
 use crate::{
-    lib_priv::{
-        sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, PromotionState,
-        SyncTrackerRes,
-    },
+    lib_priv::{sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
     proto::Message,
     ClientState,
 };
@@ -48,10 +42,6 @@ impl Plugin for ClientSyncPlugin {
         );
 
         app.add_systems(
-            OnExit(ClientState::Connected),
-            client_reset.run_if(in_state(PromotionState::NeverPromoted)),
-        );
-        app.add_systems(
             Update,
             (
                 entity_removed_from_client,
@@ -84,27 +74,24 @@ fn set_client_to_connecting(mut client_state: ResMut<NextState<ClientState>>) {
 
 fn verify_client_connected(
     mut client_state: ResMut<NextState<ClientState>>,
-    mut cmd: Commands,
-    promotion_state: Res<State<PromotionState>>,
     mut client: ResMut<RenetClient>,
+    mut tracker: ResMut<SyncTrackerRes>,
 ) {
     if !client.is_connected() {
         return;
     }
     info!("Connected to server.");
     client_state.set(ClientState::Connected);
-    if promotion_state.eq(&PromotionState::NeverPromoted) {
-        debug!("Starting new client session");
+    if !tracker.host_promotion_in_progress {
+        info!("Starting new client session and requesting initial sync.");
         client.send_message(
             DefaultChannel::ReliableOrdered,
             bincode::serialize(&Message::RequestInitialSync {}).unwrap(),
         );
+    } else {
+        // Since no initial sync is being sent and connection completed,
+        // now reset back as if promotin never happened.
+        tracker.host_promotion_in_progress = false;
+        info!("Promotion: Reconnected after host promotion, not requesting initial sync.");
     }
-    // remove any previous pending server since the instance is a client now
-    // this servers can be pending after a host promotion
-    cmd.remove_resource::<NetcodeServerTransport>();
-}
-
-fn client_reset(mut cmd: Commands) {
-    cmd.insert_resource(SyncTrackerRes::default());
 }

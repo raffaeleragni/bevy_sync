@@ -5,10 +5,7 @@ use bevy_renet::renet::{
 };
 
 use crate::{
-    lib_priv::{
-        sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, PromotionState,
-        SyncTrackerRes,
-    },
+    lib_priv::{sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
     proto::{Message, PromoteToHostEvent},
     server::initial_sync::send_initial_sync,
     ServerState,
@@ -44,10 +41,6 @@ impl Plugin for ServerSyncPlugin {
         );
 
         app.add_systems(
-            OnExit(ServerState::Connected),
-            server_reset.run_if(in_state(PromotionState::NeverPromoted)),
-        );
-        app.add_systems(
             Update,
             (
                 entity_removed_from_server,
@@ -76,7 +69,12 @@ impl Plugin for ServerSyncPlugin {
     }
 }
 
-fn client_connected(mut cmd: Commands, mut server_events: EventReader<ServerEvent>) {
+fn client_connected(
+    mut cmd: Commands,
+    mut server: ResMut<RenetServer>,
+    mut server_events: EventReader<ServerEvent>,
+    mut tracker: ResMut<SyncTrackerRes>,
+) {
     for event in server_events.read() {
         match event {
             ServerEvent::ClientConnected { client_id } => {
@@ -87,10 +85,26 @@ fn client_connected(mut cmd: Commands, mut server_events: EventReader<ServerEven
                 cmd.remove_resource::<NetcodeClientTransport>();
             }
             ServerEvent::ClientDisconnected { client_id, reason } => {
-                info!(
-                    "Client disconnected with client id: {}, reason: {}",
-                    client_id, reason
-                );
+                if tracker.host_promotion_in_progress {
+                    info!(
+                        "Promotion: Client flushed after host promotion with client id: {}, reason: {}",
+                        client_id, reason
+                    );
+                } else {
+                    info!(
+                        "Client disconnected with client id: {}, reason: {}",
+                        client_id, reason
+                    );
+                }
+
+                // After all clients finished disconnecting, reset the state as
+                // if promotion never happened
+                if server.connected_clients() == 0 && tracker.host_promotion_in_progress {
+                    info!("Promotion: Last client disconnected after a promotion to client, closing server.");
+                    server.disconnect_all();
+                    cmd.remove_resource::<NetcodeServerTransport>();
+                    tracker.host_promotion_in_progress = false;
+                }
             }
         }
     }
@@ -104,10 +118,6 @@ fn server_disconnected(mut state: ResMut<NextState<ServerState>>) {
 fn server_connected(mut state: ResMut<NextState<ServerState>>) {
     info!("Server ready to accept connections.");
     state.set(ServerState::Connected);
-}
-
-fn server_reset(mut cmd: Commands) {
-    cmd.insert_resource(SyncTrackerRes::default());
 }
 
 fn promote_to_host_event_reader(

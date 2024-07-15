@@ -1,7 +1,6 @@
 use bevy_renet::renet::ClientId;
 
 use crate::{
-    lib_priv::{PromotedToClient, PromotionState},
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client},
     proto::SyncAssetType,
@@ -15,8 +14,6 @@ pub(crate) fn poll_for_messages(
     mut server: ResMut<RenetServer>,
     mut track: ResMut<SyncTrackerRes>,
     mut sync_assets: ResMut<SyncAssetTransfer>,
-    mut send_promoted_event: EventWriter<PromotedToClient>,
-    mut next_promotion_state: ResMut<NextState<PromotionState>>,
 ) {
     for client_id in server.clients_id().into_iter() {
         while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered)
@@ -29,8 +26,6 @@ pub(crate) fn poll_for_messages(
                 &mut track,
                 &mut sync_assets,
                 &mut commands,
-                &mut send_promoted_event,
-                &mut next_promotion_state,
             );
         }
     }
@@ -44,8 +39,6 @@ fn server_received_a_message(
     track: &mut ResMut<SyncTrackerRes>,
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
-    send_promoted_event: &mut EventWriter<PromotedToClient>,
-    next_promotion_state: &mut ResMut<NextState<PromotionState>>,
 ) {
     log_message_received(Who::Server, &msg);
     match msg {
@@ -167,7 +160,10 @@ fn server_received_a_message(
             web_port,
             max_transfer,
         } => {
-            info!("A new host has been promoted. Reconnecting to new host");
+            info!("Promotion: A new host has been promoted. Relaying the info to all parties.");
+            // This client has already became server, so remove it from the pool
+            server.disconnect(client_id);
+            // Tell all other clients who is the new host
             repeat_except_for_client(
                 client_id,
                 server,
@@ -178,14 +174,14 @@ fn server_received_a_message(
                     max_transfer,
                 },
             );
-            server.disconnect_all();
+            info!("Promotion: A new host has been promoted. Reconnecting to new host");
             cmd.add(move |world: &mut World| {
-                world.remove_resource::<NetcodeServerTransport>();
-                info!("Creating a new client connection to new host...");
+                info!("Promotion: Creating a new client connection to new host...");
+                world
+                    .resource_mut::<SyncTrackerRes>()
+                    .host_promotion_in_progress = true;
                 world.insert_resource(create_client(ip, port));
             });
-            send_promoted_event.send(PromotedToClient {});
-            next_promotion_state.set(PromotionState::PromotedToClient);
         }
         Message::RequestInitialSync => {
             debug!("Sending initial sync to client id: {}", client_id);
