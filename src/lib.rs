@@ -7,8 +7,8 @@ pub use proto::PromoteToHostEvent;
 pub use uuid::Uuid;
 pub mod prelude {
     pub use super::{
-        ClientPlugin, ClientState, ServerPlugin, ServerState, SyncComponent, SyncEntity,
-        SyncExclude, SyncMark, SyncPlugin,
+        proto::PromoteToHostEvent, ClientPlugin, ClientState, ServerPlugin, ServerState,
+        SyncComponent, SyncEntity, SyncExclude, SyncMark, SyncPlugin,
     };
 }
 
