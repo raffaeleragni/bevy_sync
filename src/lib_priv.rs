@@ -13,8 +13,7 @@ use uuid::Uuid;
 use crate::{
     binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
     proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, PromoteToHostEvent,
-    ServerPlugin, ServerState, SyncComponent, SyncConnectionParameters, SyncEntity, SyncExclude,
-    SyncMark, SyncPlugin,
+    ServerPlugin, ServerState, SyncComponent, SyncEntity, SyncExclude, SyncMark, SyncPlugin,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -368,24 +367,26 @@ impl Plugin for SyncPlugin {
 
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(SyncConnectionParameters {
-            ip: self.ip,
-            port: self.port,
-            web_port: self.web_port,
-            max_transfer: self.max_transfer,
-        });
-        crate::networking::setup_server(app, self.ip, self.port, self.web_port, self.max_transfer);
+        app.insert_resource(self.parameters.clone());
+        crate::networking::setup_server(
+            app,
+            self.parameters.ip,
+            self.parameters.port,
+            self.parameters.web_port,
+            self.parameters.max_transfer,
+        );
     }
 }
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(SyncConnectionParameters {
-            ip: self.ip,
-            port: self.port,
-            web_port: self.web_port,
-            max_transfer: self.max_transfer,
-        });
-        crate::networking::setup_client(app, self.ip, self.port, self.web_port, self.max_transfer);
+        app.insert_resource(self.parameters.clone());
+        crate::networking::setup_client(
+            app,
+            self.parameters.ip,
+            self.parameters.port,
+            self.parameters.web_port,
+            self.parameters.max_transfer,
+        );
     }
 }

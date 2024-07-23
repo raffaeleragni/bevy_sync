@@ -22,7 +22,7 @@ use bevy_renet::renet::{
     transport::{NetcodeClientTransport, NetcodeServerTransport},
     RenetClient,
 };
-use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncPlugin};
+use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncConnectionParameters, SyncPlugin};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -196,18 +196,22 @@ fn add_plugins(app: &mut App) {
 
 fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut [App]) -> Result<(), Box<dyn Error>> {
     sapp.add_plugins(ServerPlugin {
-        ip: env.ip,
-        port: env.port,
-        web_port: portpicker::pick_unused_port().unwrap(),
-        max_transfer: 100_000_000,
-    });
-
-    for capp in capps {
-        capp.add_plugins(ClientPlugin {
+        parameters: SyncConnectionParameters {
             ip: env.ip,
             port: env.port,
             web_port: portpicker::pick_unused_port().unwrap(),
             max_transfer: 100_000_000,
+        },
+    });
+
+    for capp in capps {
+        capp.add_plugins(ClientPlugin {
+            parameters: SyncConnectionParameters {
+                ip: env.ip,
+                port: env.port,
+                web_port: portpicker::pick_unused_port().unwrap(),
+                max_transfer: 100_000_000,
+            },
         });
 
         wait_until_connected(sapp, capp, env.startup_max_wait_updates)?;

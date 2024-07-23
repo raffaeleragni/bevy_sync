@@ -4,7 +4,7 @@ use std::{
 };
 
 use bevy::{pbr::wireframe::Wireframe, prelude::*, render::primitives::Aabb};
-use bevy_sync::{ClientPlugin, SyncComponent, SyncPlugin};
+use bevy_sync::prelude::*;
 
 fn main() {
     if env::var("RUST_LOG").is_err() {
@@ -20,10 +20,12 @@ fn main() {
     client.add_plugins(bevy_editor_pls::EditorPlugin::default());
     client.add_plugins(SyncPlugin);
     client.add_plugins(ClientPlugin {
-        ip,
-        port,
-        web_port,
-        max_transfer: 100_000_000,
+        parameters: SyncConnectionParameters {
+            ip,
+            port,
+            web_port,
+            max_transfer: 100_000_000,
+        },
     });
 
     client.sync_component::<Name>();

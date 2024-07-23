@@ -4,7 +4,7 @@ use std::{
 };
 
 use bevy::{prelude::*, render::primitives::Aabb};
-use bevy_sync::{ServerPlugin, SyncComponent, SyncExclude, SyncMark, SyncPlugin};
+use bevy_sync::prelude::*;
 use uuid::Uuid;
 
 fn main() {
@@ -20,10 +20,12 @@ fn main() {
     host.add_plugins(bevy_editor_pls::EditorPlugin::default());
     host.add_plugins(SyncPlugin);
     host.add_plugins(ServerPlugin {
-        ip,
-        port,
-        web_port,
-        max_transfer: 100_000_000,
+        parameters: SyncConnectionParameters {
+            ip,
+            port,
+            web_port,
+            max_transfer: 100_000_000,
+        },
     });
 
     host.sync_component::<Name>();
