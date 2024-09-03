@@ -247,6 +247,12 @@ impl SyncComponent for App {
     >(
         &mut self,
     ) -> &mut Self {
+        // application may try to setup sync without knowing if bevy_sync was enabled.
+        if self.world().get_resource::<SyncTrackerRes>().is_none() {
+            warn!("Trying to register sync_component in bevy_sync, but bevy_sync is not enabled.");
+            return self;
+        }
+
         self.register_type::<T>();
         self.register_type_data::<T, ReflectFromReflect>();
         let c_id = self.world_mut().init_component::<T>();
