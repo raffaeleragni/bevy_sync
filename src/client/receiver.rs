@@ -95,29 +95,43 @@ fn client_received_a_message(
         Message::AudioUpdated { id, url } => sync_assets.request(SyncAssetType::Audio, id, url),
         Message::PromoteToHost => {
             info!("Promotion: Client is being promoted to host");
-            let ip = connection_parameters.ip;
-            let port = connection_parameters.port;
-            cmd.add(move |world: &mut World| {
-                info!("Promotion: Starting as host...");
-                world.insert_resource(create_server(ip, port));
-                world
-                    .resource_mut::<SyncTrackerRes>()
-                    .host_promotion_in_progress = true;
-            });
+            let sync_connection_parameters = connection_parameters.as_ref();
+            match sync_connection_parameters {
+                SyncConnectionParameters::Socket {
+                    ip,
+                    port,
+                    web_port: _,
+                    max_transfer: _,
+                } => {
+                    let ip = *ip;
+                    let port = *port;
+                    cmd.add(move |world: &mut World| {
+                        info!("Promotion: Starting as host...");
+                        world.insert_resource(create_server(ip, port));
+                        world
+                            .resource_mut::<SyncTrackerRes>()
+                            .host_promotion_in_progress = true;
+                    });
+                }
+            }
         }
-        Message::NewHost {
-            ip,
-            port,
-            web_port: _,
-            max_transfer: _,
-        } => {
-            info!("Promotion: A new host has been promoted. Reconnecting to new host");
-            client.disconnect();
-            cmd.remove_resource::<NetcodeClientTransport>();
-            cmd.insert_resource(create_client(ip, port));
-            // even if it was a client before, this connection is not a new session
-            // and won't need the initial_sync, so it's consider a client to client promotion
-            track.host_promotion_in_progress = true;
+        Message::NewHost { params } => {
+            match params {
+                SyncConnectionParameters::Socket {
+                    ip,
+                    port,
+                    web_port: _,
+                    max_transfer: _,
+                } => {
+                    info!("Promotion: A new host has been promoted. Reconnecting to new host");
+                    client.disconnect();
+                    cmd.remove_resource::<NetcodeClientTransport>();
+                    cmd.insert_resource(create_client(ip, port));
+                    // even if it was a client before, this connection is not a new session
+                    // and won't need the initial_sync, so it's consider a client to client promotion
+                    track.host_promotion_in_progress = true;
+                }
+            }
         }
         // Nothing to do, only servers send initial sync
         Message::RequestInitialSync => {}

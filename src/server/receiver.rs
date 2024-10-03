@@ -154,34 +154,29 @@ fn server_received_a_message(
         }
         // server is already host, no operation to do
         Message::PromoteToHost => (),
-        Message::NewHost {
-            ip,
-            port,
-            web_port,
-            max_transfer,
-        } => {
-            info!("Promotion: A new host has been promoted. Relaying the info to all parties.");
-            // This client has already became server, so remove it from the pool
-            server.disconnect(client_id);
-            // Tell all other clients who is the new host
-            repeat_except_for_client(
-                client_id,
-                server,
-                &Message::NewHost {
+        Message::NewHost { params } => {
+            match params {
+                SyncConnectionParameters::Socket {
                     ip,
                     port,
-                    web_port,
-                    max_transfer,
-                },
-            );
-            info!("Promotion: A new host has been promoted. Reconnecting to new host");
-            cmd.add(move |world: &mut World| {
-                info!("Promotion: Creating a new client connection to new host...");
-                world
-                    .resource_mut::<SyncTrackerRes>()
-                    .host_promotion_in_progress = true;
-                world.insert_resource(create_client(ip, port));
-            });
+                    web_port: _,
+                    max_transfer: _,
+                } => {
+                    info!("Promotion: A new host has been promoted. Relaying the info to all parties.");
+                    // This client has already became server, so remove it from the pool
+                    server.disconnect(client_id);
+                    // Tell all other clients who is the new host
+                    repeat_except_for_client(client_id, server, &Message::NewHost { params });
+                    info!("Promotion: A new host has been promoted. Reconnecting to new host");
+                    cmd.add(move |world: &mut World| {
+                        info!("Promotion: Creating a new client connection to new host...");
+                        world
+                            .resource_mut::<SyncTrackerRes>()
+                            .host_promotion_in_progress = true;
+                        world.insert_resource(create_client(ip, port));
+                    });
+                }
+            }
         }
         Message::RequestInitialSync => {
             debug!("Sending initial sync to client id: {}", client_id);

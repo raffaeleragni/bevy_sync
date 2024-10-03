@@ -4,6 +4,7 @@
 
 /// Use this event to promote one of the clients as host
 pub use proto::PromoteToHostEvent;
+use ::serde::{Deserialize, Serialize};
 pub use uuid::Uuid;
 pub mod prelude {
     pub use super::{
@@ -49,12 +50,14 @@ pub struct SyncExclude<T: Component> {
 }
 
 /// Specify networking options to create a session. This will also be available as a resource.
-#[derive(Resource, Clone)]
-pub struct SyncConnectionParameters {
-    pub ip: IpAddr,
-    pub port: u16,
-    pub web_port: u16,
-    pub max_transfer: usize,
+#[derive(Serialize, Deserialize, Debug, Resource, Clone)]
+pub enum SyncConnectionParameters {
+    Socket {
+        ip: IpAddr,
+        port: u16,
+        web_port: u16,
+        max_transfer: usize,
+    },
 }
 
 /// Main bevy_sync plugin to setup for sync

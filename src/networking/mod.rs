@@ -18,28 +18,36 @@ use bevy_renet::{
     RenetClientPlugin, RenetServerPlugin,
 };
 
+use crate::SyncConnectionParameters;
+
 const PROTOCOL_ID: u64 = 1;
 
-pub(crate) fn setup_server(
-    app: &mut App,
-    ip: IpAddr,
-    port: u16,
-    asset_port: u16,
-    max_transfer: usize,
-) {
-    setup_networking(app, ip, asset_port, max_transfer);
-    app.insert_resource(create_server(ip, port));
+pub(crate) fn setup_server(app: &mut App, params: SyncConnectionParameters) {
+    match params {
+        SyncConnectionParameters::Socket {
+            ip,
+            port,
+            web_port,
+            max_transfer,
+        } => {
+            setup_networking(app, ip, web_port, max_transfer);
+            app.insert_resource(create_server(ip, port));
+        }
+    }
 }
 
-pub(crate) fn setup_client(
-    app: &mut App,
-    ip: IpAddr,
-    port: u16,
-    asset_port: u16,
-    max_transfer: usize,
-) {
-    setup_networking(app, ip, asset_port, max_transfer);
-    app.insert_resource(create_client(ip, port));
+pub(crate) fn setup_client(app: &mut App, params: SyncConnectionParameters) {
+    match params {
+        SyncConnectionParameters::Socket {
+            ip,
+            port,
+            web_port,
+            max_transfer,
+        } => {
+            setup_networking(app, ip, web_port, max_transfer);
+            app.insert_resource(create_client(ip, port));
+        }
+    }
 }
 
 fn setup_networking(app: &mut App, ip: IpAddr, asset_port: u16, max_transfer: usize) {

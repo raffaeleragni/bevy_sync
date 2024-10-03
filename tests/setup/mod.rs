@@ -196,7 +196,7 @@ fn add_plugins(app: &mut App) {
 
 fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut [App]) -> Result<(), Box<dyn Error>> {
     sapp.add_plugins(ServerPlugin {
-        parameters: SyncConnectionParameters {
+        parameters: SyncConnectionParameters::Socket {
             ip: env.ip,
             port: env.port,
             web_port: portpicker::pick_unused_port().unwrap(),
@@ -206,7 +206,7 @@ fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut [App]) -> Result<(), 
 
     for capp in capps {
         capp.add_plugins(ClientPlugin {
-            parameters: SyncConnectionParameters {
+            parameters: SyncConnectionParameters::Socket {
                 ip: env.ip,
                 port: env.port,
                 web_port: portpicker::pick_unused_port().unwrap(),

@@ -115,9 +115,18 @@ fn alter_connection_port(env: &mut TestEnv) {
 }
 
 fn increment_port(app: &mut App, i: u16) {
-    app.world_mut()
+    match app
+        .world_mut()
         .resource_mut::<SyncConnectionParameters>()
-        .port += i;
+        .as_mut()
+    {
+        SyncConnectionParameters::Socket {
+            ip: _,
+            ref mut port,
+            web_port: _,
+            max_transfer: _,
+        } => *port += i,
+    }
 }
 
 fn send_promotion_event(env: &mut TestEnv) {

@@ -134,10 +134,7 @@ fn server_promoted_is_ready(
 ) {
     info!("Promotion: New server is ready, tell old server to shut down.");
     let message = bincode::serialize(&Message::NewHost {
-        ip: connection_parameters.ip,
-        port: connection_parameters.port,
-        web_port: connection_parameters.web_port,
-        max_transfer: connection_parameters.max_transfer,
+        params: connection_parameters.clone(),
     })
     .unwrap();
     client.send_message(DefaultChannel::ReliableOrdered, message);

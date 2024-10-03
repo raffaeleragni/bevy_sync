@@ -20,7 +20,7 @@ fn main() {
     client.add_plugins(bevy_editor_pls::EditorPlugin::default());
     client.add_plugins(SyncPlugin);
     client.add_plugins(ClientPlugin {
-        parameters: SyncConnectionParameters {
+        parameters: SyncConnectionParameters::Socket {
             ip,
             port,
             web_port,

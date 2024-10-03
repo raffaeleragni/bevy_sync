@@ -1,9 +1,9 @@
-use std::net::IpAddr;
-
 use bevy::ecs::event::Event;
 use bevy_renet::renet::ClientId;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+use crate::SyncConnectionParameters;
 
 pub type EntityId = Uuid;
 pub type AssId = Uuid;
@@ -51,10 +51,7 @@ pub(crate) enum Message {
     } = 9,
     PromoteToHost = 10,
     NewHost {
-        ip: IpAddr,
-        port: u16,
-        web_port: u16,
-        max_transfer: usize,
+        params: SyncConnectionParameters
     } = 11,
     RequestInitialSync = 12,
 }

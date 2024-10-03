@@ -376,10 +376,7 @@ impl Plugin for ServerPlugin {
         app.insert_resource(self.parameters.clone());
         crate::networking::setup_server(
             app,
-            self.parameters.ip,
-            self.parameters.port,
-            self.parameters.web_port,
-            self.parameters.max_transfer,
+            self.parameters.clone()
         );
     }
 }
@@ -389,10 +386,7 @@ impl Plugin for ClientPlugin {
         app.insert_resource(self.parameters.clone());
         crate::networking::setup_client(
             app,
-            self.parameters.ip,
-            self.parameters.port,
-            self.parameters.web_port,
-            self.parameters.max_transfer,
+            self.parameters.clone()
         );
     }
 }
