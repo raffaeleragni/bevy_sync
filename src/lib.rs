@@ -2,9 +2,9 @@
 //!
 //! Plugin for synchronizing entities and components between server and its clients.
 
+use ::serde::{Deserialize, Serialize};
 /// Use this event to promote one of the clients as host
 pub use proto::PromoteToHostEvent;
-use ::serde::{Deserialize, Serialize};
 pub use uuid::Uuid;
 pub mod prelude {
     pub use super::{

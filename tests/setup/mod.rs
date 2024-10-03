@@ -1,3 +1,4 @@
+use core::panic;
 use std::{
     env,
     error::Error,
@@ -23,6 +24,7 @@ use bevy_renet::renet::{
     RenetClient,
 };
 use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncConnectionParameters, SyncPlugin};
+use portpicker::pick_unused_port;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -56,10 +58,9 @@ impl Error for TestError {
 }
 
 pub(crate) struct TestRun {
-    pub(crate) port: u16,
-    pub(crate) ip: IpAddr,
-    pub(crate) startup_max_wait_updates: u32,
-    pub(crate) updates_per_run: u32,
+    pub(crate) params: SyncConnectionParameters,
+    startup_max_wait_updates: u32,
+    updates_per_run: usize,
 }
 
 pub(crate) struct TestEnv {
@@ -94,8 +95,12 @@ impl TestEnv {
 impl Default for TestRun {
     fn default() -> Self {
         Self {
-            port: portpicker::pick_unused_port().expect("No ports free"),
-            ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            params: SyncConnectionParameters::Socket {
+                port: portpicker::pick_unused_port().expect("No ports free"),
+                ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                web_port: pick_unused_port().unwrap(),
+                max_transfer: 100_000_000,
+            },
             startup_max_wait_updates: 20,
             updates_per_run: 20,
         }
@@ -108,6 +113,10 @@ impl TestRun {
 
     #[allow(dead_code)]
     pub(crate) fn no_setup(_: &mut TestEnv) {}
+
+    pub(crate) fn steam_sockets() -> Self {
+        todo!("not implemented");
+    }
 
     pub(crate) fn run<F0, F1, F2, T0, T1>(
         &self,
@@ -196,23 +205,22 @@ fn add_plugins(app: &mut App) {
 
 fn connect_envs(env: &TestRun, sapp: &mut App, capps: &mut [App]) -> Result<(), Box<dyn Error>> {
     sapp.add_plugins(ServerPlugin {
-        parameters: SyncConnectionParameters::Socket {
-            ip: env.ip,
-            port: env.port,
-            web_port: portpicker::pick_unused_port().unwrap(),
-            max_transfer: 100_000_000,
-        },
+        parameters: env.params.clone(),
     });
 
     for capp in capps {
-        capp.add_plugins(ClientPlugin {
-            parameters: SyncConnectionParameters::Socket {
-                ip: env.ip,
-                port: env.port,
-                web_port: portpicker::pick_unused_port().unwrap(),
-                max_transfer: 100_000_000,
-            },
-        });
+        let mut newenv = env.params.clone();
+        match newenv {
+            SyncConnectionParameters::Socket {
+                ip: _,
+                port: _,
+                ref mut web_port,
+                max_transfer: _,
+            } => {
+                *web_port = pick_unused_port().unwrap();
+            }
+        }
+        capp.add_plugins(ClientPlugin { parameters: newenv });
 
         wait_until_connected(sapp, capp, env.startup_max_wait_updates)?;
     }

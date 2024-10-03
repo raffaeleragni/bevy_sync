@@ -51,7 +51,7 @@ pub(crate) enum Message {
     } = 9,
     PromoteToHost = 10,
     NewHost {
-        params: SyncConnectionParameters
+        params: SyncConnectionParameters,
     } = 11,
     RequestInitialSync = 12,
 }

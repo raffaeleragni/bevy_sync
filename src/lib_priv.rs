@@ -374,19 +374,13 @@ impl Plugin for SyncPlugin {
 impl Plugin for ServerPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.parameters.clone());
-        crate::networking::setup_server(
-            app,
-            self.parameters.clone()
-        );
+        crate::networking::setup_server(app, self.parameters.clone());
     }
 }
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.parameters.clone());
-        crate::networking::setup_client(
-            app,
-            self.parameters.clone()
-        );
+        crate::networking::setup_client(app, self.parameters.clone());
     }
 }
