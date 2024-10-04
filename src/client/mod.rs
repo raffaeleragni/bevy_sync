@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
+use initial_sync::send_initial_sync;
 
 use crate::{
     lib_priv::{sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
@@ -13,6 +14,7 @@ use self::track::{
     react_on_changed_materials, react_on_changed_meshes,
 };
 
+mod initial_sync;
 mod receiver;
 mod track;
 

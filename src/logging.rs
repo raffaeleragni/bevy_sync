@@ -69,5 +69,8 @@ pub(crate) fn log_message_received(from: Who, message: &Message) {
             "Received a request for initial sync from client_id: {:?}",
             from
         ),
+        Message::FinishedInitialSync => {
+            debug!("Received FinishedInitialSync from client_id: {:?}", from)
+        }
     }
 }

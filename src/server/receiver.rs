@@ -182,6 +182,7 @@ fn server_received_a_message(
             debug!("Sending initial sync to client id: {}", client_id);
             cmd.add(move |world: &mut World| send_initial_sync(client_id, world));
         }
+        Message::FinishedInitialSync => (),
     }
 }
 

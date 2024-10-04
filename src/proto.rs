@@ -54,6 +54,7 @@ pub(crate) enum Message {
         params: SyncConnectionParameters,
     } = 11,
     RequestInitialSync = 12,
+    FinishedInitialSync = 13,
 }
 
 #[derive(Event)]

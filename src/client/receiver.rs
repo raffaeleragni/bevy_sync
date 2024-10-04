@@ -135,5 +135,6 @@ fn client_received_a_message(
         }
         // Nothing to do, only servers send initial sync
         Message::RequestInitialSync => {}
+        Message::FinishedInitialSync => {}
     }
 }
