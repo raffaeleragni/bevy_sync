@@ -1,4 +1,3 @@
-use core::panic;
 use std::{
     env,
     error::Error,
@@ -113,10 +112,6 @@ impl TestRun {
 
     #[allow(dead_code)]
     pub(crate) fn no_setup(_: &mut TestEnv) {}
-
-    pub(crate) fn steam_sockets() -> Self {
-        todo!("not implemented");
-    }
 
     pub(crate) fn run<F0, F1, F2, T0, T1>(
         &self,

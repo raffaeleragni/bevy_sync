@@ -16,6 +16,7 @@ pub mod prelude {
 mod binreflect;
 mod bundle_fix;
 mod client;
+mod full_sync;
 mod lib_priv;
 mod logging;
 mod networking;
