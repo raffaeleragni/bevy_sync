@@ -5,10 +5,7 @@ use bevy_renet::renet::{
 };
 
 use crate::{
-    lib_priv::{sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
-    proto::{Message, PromoteToHostEvent},
-    server::initial_sync::send_initial_sync,
-    ServerState, SyncConnectionParameters,
+    lib_priv::{sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, SyncTrackerRes}, proto::{Message, PromoteToHostEvent}, server::initial_sync::send_initial_sync, InitialSyncFinished, ServerState, SyncConnectionParameters
 };
 
 use self::track::{
@@ -123,9 +120,11 @@ fn server_disconnected(mut state: ResMut<NextState<ServerState>>) {
     state.set(ServerState::Disconnected);
 }
 
-fn server_connected(mut state: ResMut<NextState<ServerState>>) {
+fn server_connected(mut state: ResMut<NextState<ServerState>>, mut event: EventWriter<InitialSyncFinished>) {
     info!("Server ready to accept connections.");
     state.set(ServerState::Connected);
+    // Server is always 'ready' so it's finished from the start
+    event.send(InitialSyncFinished);
 }
 
 fn server_promoted_is_ready(
