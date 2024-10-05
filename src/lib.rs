@@ -93,6 +93,9 @@ pub enum ClientState {
     Disconnected,
 }
 
+#[derive(Event)]
+pub struct InitialSyncFinished;
+
 /// Use this trait extension to configure sync details for your app.
 /// Every component that needs to be synched must be called with sync_component.
 /// To enable assets synching, use the other sync_* methods.

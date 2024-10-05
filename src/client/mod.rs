@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
-use initial_sync::send_initial_sync;
 
 use crate::{
+    full_sync,
     lib_priv::{sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, SyncTrackerRes},
     proto::Message,
     ClientState,
@@ -14,13 +14,18 @@ use self::track::{
     react_on_changed_materials, react_on_changed_meshes,
 };
 
-mod initial_sync;
 mod receiver;
 mod track;
+
+#[derive(Resource, Default)]
+struct ClientPresendInitialSync {
+    messages: Vec<Message>,
+}
 
 pub(crate) struct ClientSyncPlugin;
 impl Plugin for ClientSyncPlugin {
     fn build(&self, app: &mut App) {
+        app.init_resource::<ClientPresendInitialSync>();
         app.add_systems(
             Update,
             set_client_to_connecting
@@ -75,8 +80,9 @@ fn set_client_to_connecting(mut client_state: ResMut<NextState<ClientState>>) {
 }
 
 fn verify_client_connected(
+    mut cmd: Commands,
     mut client_state: ResMut<NextState<ClientState>>,
-    mut client: ResMut<RenetClient>,
+    client: ResMut<RenetClient>,
     mut tracker: ResMut<SyncTrackerRes>,
 ) {
     if !client.is_connected() {
@@ -85,11 +91,16 @@ fn verify_client_connected(
     info!("Connected to server.");
     client_state.set(ClientState::Connected);
     if !tracker.host_promotion_in_progress {
-        info!("Starting new client session and requesting initial sync.");
-        client.send_message(
-            DefaultChannel::ReliableOrdered,
-            bincode::serialize(&Message::RequestInitialSync {}).unwrap(),
-        );
+        cmd.add(|world: &mut World| {
+            info!("Starting new client session and requesting initial sync.");
+            world.resource_mut::<ClientPresendInitialSync>().messages =
+                full_sync::build_full_sync(world).unwrap_or_default();
+            let mut client = world.resource_mut::<RenetClient>();
+            client.send_message(
+                DefaultChannel::ReliableOrdered,
+                bincode::serialize(&Message::RequestInitialSync {}).unwrap(),
+            );
+        });
     } else {
         // Since no initial sync is being sent and connection completed,
         // now reset back as if promotin never happened.

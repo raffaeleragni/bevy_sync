@@ -11,9 +11,7 @@ use bevy::{
 use uuid::Uuid;
 
 use crate::{
-    binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
-    proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, PromoteToHostEvent,
-    ServerPlugin, ServerState, SyncComponent, SyncEntity, SyncExclude, SyncMark, SyncPlugin,
+    binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, InitialSyncFinished, PromoteToHostEvent, ServerPlugin, ServerState, SyncComponent, SyncEntity, SyncExclude, SyncMark, SyncPlugin
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -360,6 +358,7 @@ fn setup_cascade_registrations<T: Component + Reflect + FromReflect + GetTypeReg
 
 impl Plugin for SyncPlugin {
     fn build(&self, app: &mut App) {
+        app.add_event::<InitialSyncFinished>();
         app.register_type::<SyncMark>();
         app.init_resource::<SyncTrackerRes>();
         app.add_plugins(BundleFixPlugin);

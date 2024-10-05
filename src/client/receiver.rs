@@ -2,7 +2,7 @@ use crate::{
     logging::{log_message_received, Who},
     networking::{assets::SyncAssetTransfer, create_client, create_server},
     proto::SyncAssetType,
-    SyncConnectionParameters, SyncEntity,
+    InitialSyncFinished, SyncConnectionParameters, SyncEntity,
 };
 
 use super::*;
@@ -13,6 +13,7 @@ pub(crate) fn poll_for_messages(
     mut track: ResMut<SyncTrackerRes>,
     mut sync_assets: ResMut<SyncAssetTransfer>,
     mut client: ResMut<RenetClient>,
+    mut event_sync_finished: EventWriter<InitialSyncFinished>,
 ) {
     while let Some(message) = client.receive_message(DefaultChannel::ReliableOrdered) {
         let deser_message = bincode::deserialize(&message).unwrap();
@@ -23,6 +24,7 @@ pub(crate) fn poll_for_messages(
             &mut track,
             &mut sync_assets,
             &mut commands,
+            &mut event_sync_finished,
         );
     }
 }
@@ -35,6 +37,7 @@ fn client_received_a_message(
     track: &mut ResMut<SyncTrackerRes>,
     sync_assets: &mut ResMut<SyncAssetTransfer>,
     cmd: &mut Commands,
+    event_sync_finished: &mut EventWriter<InitialSyncFinished>,
 ) {
     log_message_received(Who::Client, &msg);
     match msg {
@@ -135,6 +138,8 @@ fn client_received_a_message(
         }
         // Nothing to do, only servers send initial sync
         Message::RequestInitialSync => {}
-        Message::FinishedInitialSync => {}
+        Message::FinishedInitialSync => {
+            event_sync_finished.send(InitialSyncFinished);
+        }
     }
 }
