@@ -5,7 +5,6 @@ use bevy::{
 };
 
 /// Fixing some bundle situations that are not known at sync time because bundles disappear once applied
-
 pub(crate) struct BundleFixPlugin;
 
 impl Plugin for BundleFixPlugin {
