@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_renet::renet::{transport::NetcodeClientTransport, DefaultChannel, RenetClient};
+use bevy_renet::{netcode::NetcodeClientTransport, renet::{DefaultChannel, RenetClient}};
 
 use crate::{
     full_sync,
@@ -44,7 +44,7 @@ impl Plugin for ClientSyncPlugin {
             Update,
             set_client_to_disconnected
                 .run_if(resource_exists::<RenetClient>)
-                .run_if(resource_removed::<NetcodeClientTransport>())
+                .run_if(resource_removed::<NetcodeClientTransport>)
                 .run_if(in_state(ClientState::Connected)),
         );
 
@@ -91,7 +91,7 @@ fn verify_client_connected(
     info!("Connected to server.");
     client_state.set(ClientState::Connected);
     if !tracker.host_promotion_in_progress {
-        cmd.add(|world: &mut World| {
+        cmd.queue(|world: &mut World| {
             info!("Starting new client session and requesting initial sync.");
             world.resource_mut::<ClientPresendInitialSync>().messages =
                 full_sync::build_full_sync(world).unwrap_or_default();

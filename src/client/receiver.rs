@@ -62,7 +62,7 @@ fn client_received_a_message(
             let Some(&c_p_id) = track.uuid_to_entity.get(&p_id) else {
                 return;
             };
-            cmd.add(move |world: &mut World| {
+            cmd.queue(move |world: &mut World| {
                 let mut entity = world.entity_mut(c_e_id);
                 let opt_parent = entity.get::<Parent>();
                 if opt_parent.is_none() || opt_parent.unwrap().get() != c_p_id {
@@ -86,11 +86,11 @@ fn client_received_a_message(
             let Some(&e_id) = track.uuid_to_entity.get(&id) else {
                 return;
             };
-            cmd.add(move |world: &mut World| {
+            cmd.queue(move |world: &mut World| {
                 SyncTrackerRes::apply_component_change_from_network(world, e_id, name, &data);
             });
         }
-        Message::StandardMaterialUpdated { id, material } => cmd.add(move |world: &mut World| {
+        Message::StandardMaterialUpdated { id, material } => cmd.queue(move |world: &mut World| {
             SyncTrackerRes::apply_material_change_from_network(id, &material, world);
         }),
         Message::MeshUpdated { id, url } => sync_assets.request(SyncAssetType::Mesh, id, url),
@@ -108,7 +108,7 @@ fn client_received_a_message(
                 } => {
                     let ip = *ip;
                     let port = *port;
-                    cmd.add(move |world: &mut World| {
+                    cmd.queue(move |world: &mut World| {
                         info!("Promotion: Starting as host...");
                         world.insert_resource(create_server(ip, port));
                         world

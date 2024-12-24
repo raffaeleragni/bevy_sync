@@ -95,7 +95,7 @@ fn check_entity_components(world: &World, result: &mut Vec<Message>) -> Result<(
                 } else {
                     component.clone_value()
                 };
-                let compo_bin = match reflect_to_bin(component.as_reflect(), &registry) {
+                let compo_bin = match reflect_to_bin(component.as_ref(), &registry) {
                     Ok(compo_bin) => compo_bin,
                     Err(e) => {
                         debug!(
@@ -166,7 +166,7 @@ fn check_materials(world: &World, result: &mut Vec<Message>) -> Result<(), Box<d
             let AssetId::Uuid { uuid: id } = id else {
                 continue;
             };
-            let Ok(bin) = reflect_to_bin(material.as_reflect(), &registry) else {
+            let Ok(bin) = reflect_to_bin(material.as_partial_reflect(), &registry) else {
                 continue;
             };
             result.push(Message::StandardMaterialUpdated { id, material: bin });

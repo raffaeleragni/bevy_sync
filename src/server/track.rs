@@ -91,7 +91,7 @@ pub(crate) fn react_on_changed_components(
 ) {
     let registry = registry.read();
     while let Some(change) = track.changed_components_to_send.pop_front() {
-        let bin = match reflect_to_bin(change.data.as_reflect(), &registry) {
+        let bin = match reflect_to_bin(change.data.as_partial_reflect(), &registry) {
             Ok(bin) => bin,
             Err(e) => {
                 debug!(
@@ -136,7 +136,7 @@ pub(crate) fn react_on_changed_materials(
                 if track.skip_network_handle_change(*id) {
                     continue;
                 }
-                let Ok(bin) = reflect_to_bin(material.as_reflect(), &registry) else {
+                let Ok(bin) = reflect_to_bin(material.as_partial_reflect(), &registry) else {
                     continue;
                 };
                 let msg = &Message::StandardMaterialUpdated {

@@ -11,7 +11,10 @@ use bevy::{
 use uuid::Uuid;
 
 use crate::{
-    binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin, proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, InitialSyncFinished, PromoteToHostEvent, ServerPlugin, ServerState, SyncComponent, SyncEntity, SyncExclude, SyncMark, SyncPlugin
+    binreflect::bin_to_reflect, bundle_fix::BundleFixPlugin, client::ClientSyncPlugin,
+    proto::AssId, server::ServerSyncPlugin, ClientPlugin, ClientState, InitialSyncFinished,
+    PromoteToHostEvent, ServerPlugin, ServerState, SyncComponent, SyncEntity, SyncExclude,
+    SyncMark, SyncPlugin,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -22,7 +25,7 @@ pub(crate) struct ComponentChangeId {
 
 pub(crate) struct ComponentChange {
     pub(crate) change_id: ComponentChangeId,
-    pub(crate) data: Box<dyn Reflect>,
+    pub(crate) data: Box<dyn PartialReflect>,
 }
 
 #[derive(Resource, Default)]
@@ -61,7 +64,7 @@ pub(crate) fn sync_audio_enabled(tracker: Res<SyncTrackerRes>) -> bool {
 }
 
 impl SyncTrackerRes {
-    pub(crate) fn signal_component_changed(&mut self, id: Uuid, data: Box<dyn Reflect>) {
+    pub(crate) fn signal_component_changed(&mut self, id: Uuid, data: Box<dyn PartialReflect>) {
         let name = data.get_represented_type_info().unwrap().type_path().into();
         let change_id = ComponentChangeId { id, name };
         if self.pushed_component_from_network.contains(&change_id) {
@@ -97,17 +100,18 @@ impl SyncTrackerRes {
         let registry = world.resource::<AppTypeRegistry>().clone();
         let registry = registry.read();
         let component_data = bin_to_reflect(data, &registry);
-        let name = if (*component_data).type_id() == TypeId::of::<SkinnedMeshSyncMapper>() {
+        let is_skinned_mesh_mapper = "bevy_sync::lib_priv::SkinnedMeshSyncMapper".eq(name.as_str());
+        let name = if is_skinned_mesh_mapper {
             SkinnedMesh::default().reflect_type_path().to_string()
         } else {
             name
         };
-        let component_data = if (*component_data).type_id() == TypeId::of::<SkinnedMeshSyncMapper>()
-        {
+        let component_data = if is_skinned_mesh_mapper {
             let component = component_data
-                .downcast_ref::<SkinnedMeshSyncMapper>()
+                .try_downcast_ref::<SkinnedMeshSyncMapper>()
                 .unwrap();
-            SyncTrackerRes::to_skinned_mesh(world, component.clone()).clone_value()
+            debug!("Transforming SkinnedMeshSyncMapper into SkinnedMesh");
+            SyncTrackerRes::to_skinned_mesh(world, component.to_owned()).clone_value()
         } else {
             component_data
         };
@@ -152,7 +156,11 @@ impl SyncTrackerRes {
                 .pushed_component_from_network
                 .insert(change_id);
             let entity = &mut world.entity_mut(e_id);
-            reflect_component.apply_or_insert(entity, component_data.as_reflect(), &registry);
+            reflect_component.apply_or_insert(
+                entity,
+                component_data.as_partial_reflect(),
+                &registry,
+            );
             debug!(
                 "Applied component from network: {}v{} - {}",
                 e_id.index(),
@@ -184,7 +192,7 @@ impl SyncTrackerRes {
         let registry = registry.read();
         let component_data = bin_to_reflect(material, &registry);
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
-        let mat = *component_data.downcast::<StandardMaterial>().unwrap();
+        let mat = *component_data.try_downcast::<StandardMaterial>().unwrap();
         materials.insert(id, mat);
     }
 
@@ -229,13 +237,16 @@ impl SyncTrackerRes {
     }
 }
 
-fn is_value_different(previous_value: Option<&dyn Reflect>, component_data: &dyn Reflect) -> bool {
+fn is_value_different(
+    previous_value: Option<&dyn Reflect>,
+    component_data: &dyn PartialReflect,
+) -> bool {
     if previous_value.is_none() {
         return true;
     }
     !previous_value
         .unwrap()
-        .reflect_partial_eq(component_data)
+        .reflect_partial_eq(component_data.as_partial_reflect())
         .unwrap_or(true)
 }
 
@@ -253,8 +264,8 @@ impl SyncComponent for App {
 
         self.register_type::<T>();
         self.register_type_data::<T, ReflectFromReflect>();
-        let c_id = self.world_mut().init_component::<T>();
-        let c_exclude_id = self.world_mut().init_component::<SyncExclude<T>>();
+        let c_id = self.world_mut().register_component::<T>();
+        let c_exclude_id = self.world_mut().register_component::<SyncExclude<T>>();
         let mut track = self.world_mut().resource_mut::<SyncTrackerRes>();
         track.registered_componets_for_sync.insert(c_id);
         track
@@ -308,7 +319,10 @@ fn sync_skinned_mesh(
 ) {
     for (sup, component) in q.iter() {
         let component_to_send = tracker.to_skinned_mapper(&assets, component);
-        tracker.signal_component_changed(sup.uuid, component_to_send.clone_value());
+        tracker.signal_component_changed(
+            sup.uuid,
+            component_to_send.as_partial_reflect().clone_value(),
+        );
     }
 }
 
@@ -318,7 +332,7 @@ fn sync_detect<T: Component + Reflect>(
     q: Query<(&SyncEntity, &T), (With<SyncEntity>, Without<SyncExclude<T>>, Changed<T>)>,
 ) {
     for (sup, component) in q.iter() {
-        push.signal_component_changed(sup.uuid, component.clone_value());
+        push.signal_component_changed(sup.uuid, component.as_partial_reflect().clone_value());
     }
 }
 

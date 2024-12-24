@@ -17,7 +17,7 @@ fn main() {
 
     let mut client = App::new();
     client.add_plugins(DefaultPlugins);
-    client.add_plugins(bevy_editor_pls::EditorPlugin::default());
+    // client.add_plugins(bevy_editor_pls::EditorPlugin);
     client.add_plugins(SyncPlugin);
     client.add_plugins(ClientPlugin {
         parameters: SyncConnectionParameters::Socket {
@@ -34,9 +34,8 @@ fn main() {
     client.sync_component::<Transform>();
     client.sync_component::<Wireframe>();
     client.sync_component::<PointLight>();
-    client.sync_component::<Handle<StandardMaterial>>();
-    client.sync_component::<Handle<Mesh>>();
-    client.sync_component::<Handle<AudioSource>>();
+    client.sync_component::<MeshMaterial3d<StandardMaterial>>();
+    client.sync_component::<Mesh3d>();
     client.sync_materials(true);
     client.sync_meshes(true);
     client.sync_audios(true);
@@ -46,8 +45,8 @@ fn main() {
 }
 
 fn load_world(mut commands: Commands) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 }

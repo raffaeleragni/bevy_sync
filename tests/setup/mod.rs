@@ -18,10 +18,7 @@ use bevy::{
     state::app::StatesPlugin,
     MinimalPlugins,
 };
-use bevy_renet::renet::{
-    transport::{NetcodeClientTransport, NetcodeServerTransport},
-    RenetClient,
-};
+use bevy_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::RenetClient};
 use bevy_sync::{ClientPlugin, ServerPlugin, SyncComponent, SyncConnectionParameters, SyncPlugin};
 use portpicker::pick_unused_port;
 use serde::{Deserialize, Serialize};
@@ -167,7 +164,7 @@ fn create_server() -> Result<App, Box<dyn Error>> {
     let mut sapp = App::new();
     add_plugins(&mut sapp);
     // Start a non synched entity only on server so the id is intentionally offseted between server and client
-    sapp.world_mut().spawn(TransformBundle::default());
+    sapp.world_mut().spawn(Transform::default());
     Ok(sapp)
 }
 
@@ -255,7 +252,7 @@ pub(crate) fn spawn_new_material(app: &mut App) -> AssetId<StandardMaterial> {
     let handle = Handle::<StandardMaterial>::Weak(id.into());
     materials.insert(id, material);
 
-    app.world_mut().spawn(handle);
+    app.world_mut().spawn(MeshMaterial3d(handle));
 
     id.into()
 }
@@ -268,7 +265,7 @@ pub(crate) fn spawn_new_mesh(app: &mut App) -> AssetId<Mesh> {
     let handle = Handle::<Mesh>::Weak(id.into());
     meshes.insert(id, mesh);
 
-    app.world_mut().spawn(handle);
+    app.world_mut().spawn(Mesh3d(handle));
 
     id.into()
 }
@@ -277,11 +274,19 @@ pub(crate) fn spawn_new_mesh(app: &mut App) -> AssetId<Mesh> {
 pub(crate) fn spawn_new_image(app: &mut App) -> AssetId<Image> {
     let mut images = app.world_mut().resource_mut::<Assets<Image>>();
     let id = Uuid::new_v4();
-    let mesh = sample_image();
+    let image = sample_image();
     let handle = Handle::<Image>::Weak(id.into());
-    images.insert(id, mesh);
+    images.insert(id, image);
+    let material = StandardMaterial {
+        base_color: Color::srgb(1.0, 0.0, 0.0),
+        base_color_texture: Some(handle),
+        ..Default::default()
+    };
+    let mut materials = app.world_mut().resource_mut::<Assets<StandardMaterial>>();
+    let handle = Handle::<StandardMaterial>::Weak(id.into());
+    materials.insert(id, material);
 
-    app.world_mut().spawn(handle);
+    app.world_mut().spawn(MeshMaterial3d(handle));
 
     id.into()
 }
@@ -329,10 +334,7 @@ pub(crate) fn spawn_new_audio(app: &mut App) -> AssetId<AudioSource> {
     let mut assets = app.world_mut().resource_mut::<Assets<AudioSource>>();
     let id = Uuid::new_v4();
     let asset = sample_audio();
-    let handle = Handle::<AudioSource>::Weak(id.into());
     assets.insert(id, asset);
-
-    app.world_mut().spawn(handle);
 
     id.into()
 }

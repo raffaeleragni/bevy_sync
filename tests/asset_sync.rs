@@ -15,7 +15,7 @@ fn sync_material_from_server() {
     TestRun::default().run(
         1,
         |env| {
-            env.setup_registration::<Handle<StandardMaterial>>();
+            env.setup_registration::<MeshMaterial3d<StandardMaterial>>();
             env.server.sync_materials(true);
         },
         |env| {
@@ -34,7 +34,7 @@ fn sync_material_from_client() {
     TestRun::default().run(
         1,
         |env| {
-            env.setup_registration::<Handle<StandardMaterial>>();
+            env.setup_registration::<MeshMaterial3d<StandardMaterial>>();
             env.server.sync_materials(true);
             env.clients[0].sync_materials(true);
         },
@@ -54,7 +54,7 @@ fn sync_material_from_client_to_client_across_server() {
     TestRun::default().run(
         2,
         |env| {
-            env.setup_registration::<Handle<StandardMaterial>>();
+            env.setup_registration::<MeshMaterial3d<StandardMaterial>>();
             env.server.sync_materials(true);
             env.clients[0].sync_materials(true);
         },
@@ -74,7 +74,7 @@ fn test_mesh_transferred_from_server() {
     TestRun::default().run(
         1,
         |env| {
-            env.setup_registration::<Handle<Mesh>>();
+            env.setup_registration::<Mesh3d>();
             env.server.sync_meshes(true);
             env.clients[0].sync_meshes(true);
         },
@@ -94,7 +94,7 @@ fn test_mesh_transferred_from_client() {
     TestRun::default().run(
         1,
         |env| {
-            env.setup_registration::<Handle<Mesh>>();
+            env.setup_registration::<Mesh3d>();
             env.server.sync_meshes(true);
             env.clients[0].sync_meshes(true);
         },
@@ -114,8 +114,8 @@ fn test_image_transferred_from_server() {
     TestRun::default().run(
         1,
         |env| {
-            env.setup_registration::<Handle<StandardMaterial>>();
-            env.setup_registration::<Handle<Image>>();
+            env.setup_registration::<MeshMaterial3d<StandardMaterial>>();
+            env.setup_registration::<Mesh3d>();
             env.server.sync_materials(true);
             env.clients[0].sync_materials(true);
         },
@@ -135,8 +135,8 @@ fn test_images_transferred_from_client() {
     TestRun::default().run(
         1,
         |env| {
-            env.setup_registration::<Handle<StandardMaterial>>();
-            env.setup_registration::<Handle<Image>>();
+            env.setup_registration::<MeshMaterial3d<StandardMaterial>>();
+            env.setup_registration::<Mesh3d>();
             env.server.sync_materials(true);
             env.clients[0].sync_materials(true);
         },
@@ -156,7 +156,6 @@ fn test_audio_transferred_from_server() {
     TestRun::default().run(
         1,
         |env| {
-            env.setup_registration::<Handle<AudioSource>>();
             env.server.sync_audios(true);
             env.clients[0].sync_audios(true);
         },
@@ -176,7 +175,6 @@ fn test_audio_transferred_from_client() {
     TestRun::default().run(
         1,
         |env| {
-            env.setup_registration::<Handle<AudioSource>>();
             env.server.sync_audios(true);
             env.clients[0].sync_audios(true);
         },
@@ -196,7 +194,6 @@ fn test_audio_transferred_initial_sync() {
     TestRun::default().run(
         1,
         |env| {
-            env.setup_registration::<Handle<AudioSource>>();
             env.server.sync_audios(true);
             env.clients[0].sync_audios(true);
             let app = &mut env.server;
