@@ -7,15 +7,9 @@ use std::{
 
 use bevy::prelude::*;
 use bevy_renet::{
-    renet::{
-        transport::{
-            ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport,
-            ServerAuthentication, ServerConfig,
-        },
+    netcode::{ClientAuthentication, NetcodeClientPlugin, NetcodeClientTransport, NetcodeServerPlugin, NetcodeServerTransport, ServerAuthentication, ServerConfig}, renet::{
         ConnectionConfig, RenetClient, RenetServer,
-    },
-    transport::{NetcodeClientPlugin, NetcodeServerPlugin},
-    RenetClientPlugin, RenetServerPlugin,
+    }, RenetClientPlugin, RenetServerPlugin
 };
 
 use crate::SyncConnectionParameters;

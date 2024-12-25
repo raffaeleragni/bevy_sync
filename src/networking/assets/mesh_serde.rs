@@ -120,7 +120,7 @@ fn extract_morph_targets(mesh: &Mesh) -> &Option<Handle<Image>> {
     let morph_targets = refmesh
         .field("morph_targets")
         .unwrap()
-        .downcast_ref::<Option<Handle<Image>>>()
+        .try_downcast_ref::<Option<Handle<Image>>>()
         .unwrap();
     morph_targets
 }

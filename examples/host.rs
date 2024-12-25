@@ -17,7 +17,7 @@ fn main() {
     let web_port = 4000;
     let mut host = App::new();
     host.add_plugins(DefaultPlugins);
-    host.add_plugins(bevy_editor_pls::EditorPlugin::default());
+    // host.add_plugins(bevy_editor_pls::EditorPlugin::new());
     host.add_plugins(SyncPlugin);
     host.add_plugins(ServerPlugin {
         parameters: SyncConnectionParameters::Socket {
@@ -35,9 +35,8 @@ fn main() {
     host.sync_component::<PointLight>();
     host.sync_component::<DirectionalLight>();
     host.sync_component::<SpotLight>();
-    host.sync_component::<Handle<StandardMaterial>>();
-    host.sync_component::<Handle<Mesh>>();
-    host.sync_component::<Handle<AudioSource>>();
+    host.sync_component::<MeshMaterial3d<StandardMaterial>>();
+    host.sync_component::<Mesh3d>();
     host.sync_materials(true);
     host.sync_meshes(true);
     host.sync_audios(true);
@@ -65,51 +64,39 @@ fn load_world(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn((
-        PbrBundle {
-            mesh: meshes.addu(Plane3d::default().mesh().size(5.0, 5.0).into()),
-            material: materials.addu(Color::srgb(0.3, 0.5, 0.3).into()),
-            ..default()
-        },
+        Mesh3d(meshes.addu(Plane3d::default().mesh().size(5.0, 5.0).into())),
+        MeshMaterial3d(materials.addu(Color::srgb(0.3, 0.5, 0.3).into())),
         SyncMark,
         Name::new("Ground"),
         SyncExclude::<Name>::default(),
     ));
     commands.spawn((
-        PbrBundle {
-            mesh: meshes.addu(Mesh::from(Cuboid::new(1.0, 1.0, 1.0))),
-            material: materials.addu(Color::srgb(0.8, 0.7, 0.6).into()),
-            transform: Transform::from_xyz(0.0, 0.5, 0.0),
-            ..default()
-        },
+        Mesh3d(meshes.addu(Mesh::from(Cuboid::new(1.0, 1.0, 1.0)))),
+        MeshMaterial3d(materials.addu(Color::srgb(0.8, 0.7, 0.6).into())),
+        Transform::from_xyz(0.0, 0.5, 0.0),
         SyncMark,
         Name::new("Cube"),
     ));
     commands.spawn((
-        PointLightBundle {
-            transform: Transform::from_xyz(4.0, 8.0, 4.0),
-            ..default()
-        },
+        PointLight::default(),
+        Transform::from_xyz(4.0, 8.0, 4.0),
         SyncMark,
         Name::new("Light Point"),
     ));
     commands.spawn((
-        DirectionalLightBundle {
-            transform: Transform::from_xyz(4.0, 8.0, 4.0),
-            ..default()
-        },
+        DirectionalLight::default(),
+        Transform::from_xyz(4.0, 8.0, 4.0),
         SyncMark,
         Name::new("Light Directional"),
     ));
     commands.spawn((
-        SpotLightBundle {
-            transform: Transform::from_xyz(4.0, 8.0, 4.0),
-            ..default()
-        },
+        SpotLight::default(),
+        Transform::from_xyz(4.0, 8.0, 4.0),
         SyncMark,
         Name::new("Light Spot"),
     ));
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 }

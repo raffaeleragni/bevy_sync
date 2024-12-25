@@ -19,9 +19,8 @@ fn test_initial_world_sync_sent_from_server() {
         1,
         |env| {
             env.setup_registration::<MySynched>();
-            env.setup_registration::<Handle<StandardMaterial>>();
-            env.setup_registration::<Handle<Mesh>>();
-            env.setup_registration::<Handle<Image>>();
+            env.setup_registration::<MeshMaterial3d<StandardMaterial>>();
+            env.setup_registration::<Mesh3d>();
             env.server.sync_materials(true);
             env.server.sync_meshes(true);
             let e_id = env.server.world_mut().spawn(SyncMark {}).id();
@@ -66,7 +65,7 @@ fn test_init_sync_multiple_clients() {
         3,
         |env: &mut TestEnv| {
             env.setup_registration::<MySynched>();
-            env.setup_registration::<Handle<StandardMaterial>>();
+            env.setup_registration::<MeshMaterial3d<StandardMaterial>>();
             env.server.sync_materials(true);
             env.server.sync_meshes(true);
             let e_id = env.server.world_mut().spawn(SyncMark {}).id();
@@ -102,7 +101,7 @@ fn test_initial_world_sync_not_transfer_excluded_components() {
         1,
         |env| {
             env.setup_registration::<MySynched>();
-            env.setup_registration::<Handle<StandardMaterial>>();
+            env.setup_registration::<MeshMaterial3d<StandardMaterial>>();
             env.server.sync_materials(true);
             let e_id = env
                 .server
@@ -171,8 +170,8 @@ fn test_initial_world_sync_without_uuid() {
         1,
         |env| {
             env.setup_registration::<MySynched>();
-            env.setup_registration::<Handle<StandardMaterial>>();
-            env.setup_registration::<Handle<Mesh>>();
+            env.setup_registration::<MeshMaterial3d<StandardMaterial>>();
+            env.setup_registration::<Mesh3d>();
             env.server.sync_materials(true);
             env.server.sync_meshes(true);
             let e_id = env.server.world_mut().spawn(SyncMark {}).id();
@@ -181,7 +180,7 @@ fn test_initial_world_sync_without_uuid() {
             let mesh_id = spawn_new_mesh_nouuid(&mut env.server);
 
             let mut e = env.server.world_mut().entity_mut(e_id);
-            e.insert((MySynched { value: 7 }, material_id, mesh_id));
+            e.insert((MySynched { value: 7 }, MeshMaterial3d(material_id), Mesh3d(mesh_id)));
 
             1
         },

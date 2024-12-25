@@ -243,7 +243,7 @@ fn test_auto_spawn_for_computed_visibility() {
             let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(4);
             let mut e = env.server.world_mut().entity_mut(e_id);
-            e.insert(VisibilityBundle::default());
+            e.insert(Visibility::default());
         },
         |env, _, _| {
             let world = env.clients[0].world_mut();
@@ -266,17 +266,17 @@ fn test_auto_spawn_for_point_light() {
             let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(4);
             let mut e = env.server.world_mut().entity_mut(e_id);
-            e.insert(PointLightBundle::default());
+            e.insert(PointLight::default());
 
             let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(4);
             let mut e = env.server.world_mut().entity_mut(e_id);
-            e.insert(SpotLightBundle::default());
+            e.insert(SpotLight::default());
 
             let e_id = env.server.world_mut().spawn(SyncMark {}).id();
             env.update(4);
             let mut e = env.server.world_mut().entity_mut(e_id);
-            e.insert(DirectionalLightBundle::default());
+            e.insert(DirectionalLight::default());
         },
         |env, _, _| {
             let world = env.clients[0].world_mut();
@@ -359,7 +359,7 @@ fn assert_skinned_test(env: &mut TestEnv, test_mat: Vec<Mat4>) {
             let joints = compo.joints.clone();
             for (i, e) in joints.into_iter().enumerate() {
                 let joint_entity_on_client = world.get_entity(e);
-                assert!(joint_entity_on_client.is_some());
+                assert!(joint_entity_on_client.is_ok());
                 let entity = joint_entity_on_client.unwrap();
                 let name = entity.get::<Name>().unwrap();
                 assert_eq!(name.as_str(), format!("{i}"));

@@ -1,8 +1,8 @@
 use bevy::prelude::*;
-use bevy_renet::renet::{
-    transport::{NetcodeClientTransport, NetcodeServerTransport},
+use bevy_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::{
+    
     DefaultChannel, RenetClient, RenetServer, ServerEvent,
-};
+}};
 
 use crate::{
     lib_priv::{sync_audio_enabled, sync_material_enabled, sync_mesh_enabled, SyncTrackerRes}, proto::{Message, PromoteToHostEvent}, server::initial_sync::send_initial_sync, InitialSyncFinished, ServerState, SyncConnectionParameters
@@ -34,7 +34,7 @@ impl Plugin for ServerSyncPlugin {
             server_disconnected
                 .run_if(resource_exists::<RenetServer>)
                 .run_if(in_state(ServerState::Connected))
-                .run_if(resource_removed::<NetcodeServerTransport>()),
+                .run_if(resource_removed::<NetcodeServerTransport>),
         );
 
         app.add_systems(

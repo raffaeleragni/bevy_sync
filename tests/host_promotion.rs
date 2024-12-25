@@ -1,8 +1,5 @@
 use bevy::{app::App, ecs::entity::Entity};
-use bevy_renet::renet::{
-    transport::{NetcodeClientTransport, NetcodeServerTransport},
-    RenetServer,
-};
+use bevy_renet::{netcode::{NetcodeClientTransport, NetcodeServerTransport}, renet::RenetServer};
 use bevy_sync::{PromoteToHostEvent, SyncConnectionParameters, SyncMark};
 use serial_test::serial;
 use setup::{MySynched, TestEnv, TestRun};

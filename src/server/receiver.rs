@@ -53,7 +53,7 @@ fn server_received_a_message(
             entity_id: me_id,
             parent_id: mp_id,
         } => {
-            cmd.add(move |world: &mut World| {
+            cmd.queue(move |world: &mut World| {
                 let track = world.resource::<SyncTrackerRes>();
                 let Some(e_id) = track.uuid_to_entity.get(&me_id) else {
                     return;
@@ -63,7 +63,7 @@ fn server_received_a_message(
                 };
                 let e_id = *e_id;
                 let p_id = *p_id;
-                let Some(mut entity) = world.get_entity_mut(e_id) else {
+                let Ok(mut entity) = world.get_entity_mut(e_id) else {
                     return;
                 };
                 let opt_parent = entity.get::<Parent>();
@@ -96,7 +96,7 @@ fn server_received_a_message(
             let Some(&e_id) = track.uuid_to_entity.get(&id) else {
                 return;
             };
-            cmd.add(move |world: &mut World| {
+            cmd.queue(move |world: &mut World| {
                 let changed = SyncTrackerRes::apply_component_change_from_network(
                     world,
                     e_id,
@@ -113,7 +113,7 @@ fn server_received_a_message(
                 }
             });
         }
-        Message::StandardMaterialUpdated { id, material } => cmd.add(move |world: &mut World| {
+        Message::StandardMaterialUpdated { id, material } => cmd.queue(move |world: &mut World| {
             SyncTrackerRes::apply_material_change_from_network(id, &material, world);
 
             repeat_except_for_client(
@@ -124,7 +124,7 @@ fn server_received_a_message(
         }),
         Message::MeshUpdated { id, url } => {
             sync_assets.request(SyncAssetType::Mesh, id, url.clone());
-            cmd.add(move |world: &mut World| {
+            cmd.queue(move |world: &mut World| {
                 repeat_except_for_client(
                     client_id,
                     &mut world.resource_mut::<RenetServer>(),
@@ -134,7 +134,7 @@ fn server_received_a_message(
         }
         Message::ImageUpdated { id, url } => {
             sync_assets.request(SyncAssetType::Image, id, url.clone());
-            cmd.add(move |world: &mut World| {
+            cmd.queue(move |world: &mut World| {
                 repeat_except_for_client(
                     client_id,
                     &mut world.resource_mut::<RenetServer>(),
@@ -144,7 +144,7 @@ fn server_received_a_message(
         }
         Message::AudioUpdated { id, url } => {
             sync_assets.request(SyncAssetType::Audio, id, url.clone());
-            cmd.add(move |world: &mut World| {
+            cmd.queue(move |world: &mut World| {
                 repeat_except_for_client(
                     client_id,
                     &mut world.resource_mut::<RenetServer>(),
@@ -168,7 +168,7 @@ fn server_received_a_message(
                     // Tell all other clients who is the new host
                     repeat_except_for_client(client_id, server, &Message::NewHost { params });
                     info!("Promotion: A new host has been promoted. Reconnecting to new host");
-                    cmd.add(move |world: &mut World| {
+                    cmd.queue(move |world: &mut World| {
                         info!("Promotion: Creating a new client connection to new host...");
                         world
                             .resource_mut::<SyncTrackerRes>()
@@ -180,7 +180,7 @@ fn server_received_a_message(
         }
         Message::RequestInitialSync => {
             debug!("Sending initial sync to client id: {}", client_id);
-            cmd.add(move |world: &mut World| send_initial_sync(client_id, world));
+            cmd.queue(move |world: &mut World| send_initial_sync(client_id, world));
         }
         Message::FinishedInitialSync => (),
     }
